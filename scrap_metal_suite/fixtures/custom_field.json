@@ -1,5 +1,6 @@
 [
     {
+        "name": "Supplier-custom_source",
         "doctype": "Custom Field",
         "dt": "Supplier",
         "fieldname": "custom_source",
@@ -12,6 +13,7 @@
         "description": "How this supplier was created"
     },
     {
+        "name": "Supplier-custom_registration_request",
         "doctype": "Custom Field",
         "dt": "Supplier",
         "fieldname": "custom_registration_request",
