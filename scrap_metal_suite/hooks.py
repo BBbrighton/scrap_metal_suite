@@ -29,7 +29,7 @@ app_license = "mit"
 # app_include_js = "/assets/scrap_metal_suite/js/scrap_metal_suite.js"
 
 # include js, css files in header of web template
-# web_include_css = "/assets/scrap_metal_suite/css/scrap_metal_suite.css"
+web_include_css = "/assets/scrap_metal_suite/css/supplier_registration.css"
 # web_include_js = "/assets/scrap_metal_suite/js/scrap_metal_suite.js"
 
 # include custom scss in every website theme (without file extension ".scss")
@@ -242,3 +242,20 @@ app_license = "mit"
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+
+# Fixtures
+# --------
+fixtures = [
+    {
+        "dt": "Custom Field",
+        "filters": [["module", "=", "Scrap Metal Suite"]]
+    }
+]
+
+# Document Events for Supplier source tracking
+# --------------------------------------------
+doc_events = {
+    "Supplier": {
+        "before_insert": "scrap_metal_suite.overrides.supplier.set_source_on_manual_create"
+    }
+}

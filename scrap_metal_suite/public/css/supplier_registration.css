@@ -1,0 +1,327 @@
+/* Supplier Registration Form Styles */
+
+.supplier-registration-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.registration-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.registration-header h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 10px;
+}
+
+.registration-header .lead {
+    font-size: 1.1rem;
+    color: #6c757d;
+}
+
+.registration-form-wrapper {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+    padding: 40px;
+}
+
+/* Form Sections */
+.form-section {
+    margin-bottom: 35px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 20px;
+}
+
+.section-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    margin-right: 12px;
+    color: white;
+}
+
+/* Collapsible sections */
+.collapsible .section-title {
+    cursor: pointer;
+    user-select: none;
+    justify-content: flex-start;
+}
+
+.collapse-icon {
+    margin-left: auto;
+    font-size: 1.5rem;
+    font-weight: 300;
+    color: #6c757d;
+}
+
+/* Form Controls */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: -10px;
+    margin-right: -10px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    padding-left: 10px;
+    padding-right: 10px;
+    margin-bottom: 15px;
+}
+
+.col-md-4 {
+    flex: 0 0 33.333%;
+    max-width: 33.333%;
+}
+
+.col-md-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+}
+
+.col-md-8 {
+    flex: 0 0 66.666%;
+    max-width: 66.666%;
+}
+
+.col-md-12 {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+label {
+    display: block;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.required {
+    color: #e74c3c;
+}
+
+.form-control {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #333;
+    background-color: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    background-color: #fff;
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.form-control::placeholder {
+    color: #adb5bd;
+}
+
+select.form-control {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-text {
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+/* Submit Button */
+.form-actions {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.btn-submit {
+    padding: 14px 50px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 220px;
+}
+
+.btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+    margin-right: 8px;
+}
+
+/* Success Message */
+.success-message {
+    text-align: center;
+    padding: 60px 40px;
+}
+
+.success-icon {
+    color: #28a745;
+    margin-bottom: 25px;
+}
+
+.success-message h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 15px;
+}
+
+.success-message p {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-bottom: 10px;
+}
+
+.registration-id {
+    background: #f8f9fa;
+    padding: 15px 25px;
+    border-radius: 8px;
+    display: inline-block;
+    margin: 20px 0;
+}
+
+.registration-id strong {
+    color: #667eea;
+    font-family: monospace;
+    font-size: 1.2rem;
+}
+
+.success-message .note {
+    font-size: 0.95rem;
+    font-style: italic;
+}
+
+.btn-outline-primary {
+    color: #667eea;
+    border: 2px solid #667eea;
+    padding: 12px 30px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: transparent;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 20px;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-primary:hover {
+    background: #667eea;
+    color: white;
+    text-decoration: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .supplier-registration-container {
+        padding: 20px 15px;
+    }
+
+    .registration-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .registration-form-wrapper {
+        padding: 25px 20px;
+    }
+
+    .col-md-4,
+    .col-md-6,
+    .col-md-8 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+    }
+
+    .btn-submit {
+        width: 100%;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.form-section {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+.form-section:nth-child(1) { animation-delay: 0.1s; }
+.form-section:nth-child(2) { animation-delay: 0.2s; }
+.form-section:nth-child(3) { animation-delay: 0.3s; }
+.form-section:nth-child(4) { animation-delay: 0.4s; }
+.form-section:nth-child(5) { animation-delay: 0.5s; }
+.form-section:nth-child(6) { animation-delay: 0.6s; }
+
+/* Collapse animation */
+.collapse {
+    display: none;
+    padding-top: 15px;
+}
+
+.collapse.show {
+    display: block;
+}

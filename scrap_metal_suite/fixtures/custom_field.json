@@ -1,0 +1,26 @@
+[
+    {
+        "doctype": "Custom Field",
+        "dt": "Supplier",
+        "fieldname": "custom_source",
+        "fieldtype": "Select",
+        "label": "Source",
+        "options": "\nManual\nWebform",
+        "insert_after": "supplier_name",
+        "read_only": 1,
+        "module": "Scrap Metal Suite",
+        "description": "How this supplier was created"
+    },
+    {
+        "doctype": "Custom Field",
+        "dt": "Supplier",
+        "fieldname": "custom_registration_request",
+        "fieldtype": "Link",
+        "label": "Registration Request",
+        "options": "Supplier Registration Request",
+        "insert_after": "custom_source",
+        "read_only": 1,
+        "module": "Scrap Metal Suite",
+        "description": "Link to the original registration request if created via webform"
+    }
+]

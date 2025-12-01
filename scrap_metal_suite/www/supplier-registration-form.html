@@ -1,0 +1,283 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Supplier Registration{% endblock %}
+
+{% block page_content %}
+<div class="supplier-registration-container">
+    <div class="registration-header">
+        <h1>Supplier Registration</h1>
+        <p class="lead">Register as a scrap metal supplier to start doing business with us</p>
+    </div>
+
+    <div class="registration-form-wrapper">
+        <form id="supplier-registration-form" class="registration-form">
+            <!-- Company Information -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <span class="section-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    </span>
+                    Company Information
+                </h3>
+                <div class="form-row">
+                    <div class="form-group col-md-8">
+                        <label for="company_name">Company / Business Name <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="company_name" name="company_name" required>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="supplier_type">Supplier Type <span class="required">*</span></label>
+                        <select class="form-control" id="supplier_type" name="supplier_type" required>
+                            <option value="">Select Type</option>
+                            <option value="Individual">Individual</option>
+                            <option value="Company">Company</option>
+                            <option value="Partnership">Partnership</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="tax_id">Tax ID / VAT Number</label>
+                        <input type="text" class="form-control" id="tax_id" name="tax_id">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="business_registration_number">Business Registration Number</label>
+                        <input type="text" class="form-control" id="business_registration_number" name="business_registration_number">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <span class="section-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </span>
+                    Contact Information
+                </h3>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="contact_person">Contact Person Name <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="contact_person" name="contact_person" required>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="email">Email Address <span class="required">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="mobile">Mobile Number <span class="required">*</span></label>
+                        <input type="tel" class="form-control" id="mobile" name="mobile" required>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" class="form-control" id="phone" name="phone">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <span class="section-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    </span>
+                    Address
+                </h3>
+                <div class="form-row">
+                    <div class="form-group col-md-12">
+                        <label for="address_line_1">Address Line 1 <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="address_line_1" name="address_line_1" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-12">
+                        <label for="address_line_2">Address Line 2</label>
+                        <input type="text" class="form-control" id="address_line_2" name="address_line_2">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="city">City <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="city" name="city" required>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="state">State / Province</label>
+                        <input type="text" class="form-control" id="state" name="state">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="postal_code">Postal Code</label>
+                        <input type="text" class="form-control" id="postal_code" name="postal_code">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="country">Country <span class="required">*</span></label>
+                        <select class="form-control" id="country" name="country" required>
+                            <option value="">Select Country</option>
+                            {% for country in countries %}
+                            <option value="{{ country.name }}">{{ country.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Materials Supplied -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <span class="section-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                    </span>
+                    Materials Supplied
+                </h3>
+                <div class="form-row">
+                    <div class="form-group col-md-12">
+                        <label for="materials_supplied">Types of Scrap Materials</label>
+                        <textarea class="form-control" id="materials_supplied" name="materials_supplied" rows="3" placeholder="e.g., Copper, Aluminum, Steel, Iron, Brass, etc."></textarea>
+                        <small class="form-text text-muted">List the types of scrap metal you typically supply</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bank Details (Collapsible) -->
+            <div class="form-section collapsible">
+                <h3 class="section-title" data-toggle="collapse" data-target="#bank-details" aria-expanded="false">
+                    <span class="section-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    </span>
+                    Bank Details
+                    <span class="collapse-icon">+</span>
+                </h3>
+                <div id="bank-details" class="collapse">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="bank_name">Bank Name</label>
+                            <input type="text" class="form-control" id="bank_name" name="bank_name">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="bank_branch">Bank Branch</label>
+                            <input type="text" class="form-control" id="bank_branch" name="bank_branch">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="bank_account_name">Account Holder Name</label>
+                            <input type="text" class="form-control" id="bank_account_name" name="bank_account_name">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="bank_account_number">Bank Account Number</label>
+                            <input type="text" class="form-control" id="bank_account_number" name="bank_account_number">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Notes (Collapsible) -->
+            <div class="form-section collapsible">
+                <h3 class="section-title" data-toggle="collapse" data-target="#additional-notes" aria-expanded="false">
+                    <span class="section-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    </span>
+                    Additional Notes
+                    <span class="collapse-icon">+</span>
+                </h3>
+                <div id="additional-notes" class="collapse">
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <label for="notes">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="4" placeholder="Any additional information you'd like to share..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg btn-submit">
+                    <span class="btn-text">Submit Registration</span>
+                    <span class="btn-loading" style="display: none;">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        Submitting...
+                    </span>
+                </button>
+            </div>
+        </form>
+
+        <!-- Success Message (Hidden by default) -->
+        <div id="success-message" class="success-message" style="display: none;">
+            <div class="success-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            </div>
+            <h2>Registration Submitted!</h2>
+            <p>Thank you for registering as a supplier. Your application is now under review.</p>
+            <p class="registration-id">Registration ID: <strong id="reg-id"></strong></p>
+            <p class="note">We will contact you via email once your application has been processed.</p>
+            <a href="/" class="btn btn-outline-primary">Return to Home</a>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('supplier-registration-form');
+    const submitBtn = form.querySelector('.btn-submit');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    const successMessage = document.getElementById('success-message');
+    const formWrapper = document.querySelector('.registration-form');
+
+    // Handle collapsible sections
+    document.querySelectorAll('.collapsible .section-title').forEach(function(title) {
+        title.addEventListener('click', function() {
+            const icon = this.querySelector('.collapse-icon');
+            const isExpanded = this.getAttribute('aria-expanded') === 'true';
+            icon.textContent = isExpanded ? '+' : '-';
+            this.setAttribute('aria-expanded', !isExpanded);
+        });
+    });
+
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Show loading state
+        btnText.style.display = 'none';
+        btnLoading.style.display = 'inline-block';
+        submitBtn.disabled = true;
+
+        // Collect form data
+        const formData = new FormData(form);
+        const data = {};
+        formData.forEach((value, key) => {
+            data[key] = value;
+        });
+
+        // Submit to API
+        frappe.call({
+            method: 'scrap_metal_suite.scrap_metal_suite.doctype.supplier_registration_request.supplier_registration_request.submit_registration',
+            args: {
+                data: JSON.stringify(data)
+            },
+            callback: function(r) {
+                if (r.message && r.message.success) {
+                    // Show success message
+                    formWrapper.style.display = 'none';
+                    document.getElementById('reg-id').textContent = r.message.registration_id;
+                    successMessage.style.display = 'block';
+
+                    // Scroll to top
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            },
+            error: function(r) {
+                // Reset button state
+                btnText.style.display = 'inline-block';
+                btnLoading.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
