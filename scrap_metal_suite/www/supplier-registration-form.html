@@ -114,10 +114,7 @@
                     <div class="form-group col-md-6">
                         <label for="country">Country <span class="required">*</span></label>
                         <select class="form-control" id="country" name="country" required>
-                            <option value="">Select Country</option>
-                            {% for country in countries %}
-                            <option value="{{ country.name }}">{{ country.name }}</option>
-                            {% endfor %}
+                            <option value="">Loading countries...</option>
                         </select>
                     </div>
                 </div>
@@ -226,6 +223,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnLoading = submitBtn.querySelector('.btn-loading');
     const successMessage = document.getElementById('success-message');
     const formWrapper = document.querySelector('.registration-form');
+
+    // Load countries via API
+    frappe.call({
+        method: 'scrap_metal_suite.api.v1.get_countries',
+        callback: function(r) {
+            const countrySelect = document.getElementById('country');
+            countrySelect.innerHTML = '<option value="">Select Country</option>';
+            if (r.message) {
+                r.message.forEach(function(country) {
+                    const option = document.createElement('option');
+                    option.value = country.name;
+                    option.textContent = country.name;
+                    countrySelect.appendChild(option);
+                });
+            }
+        }
+    });
 
     // Handle collapsible sections
     document.querySelectorAll('.collapsible .section-title').forEach(function(title) {
