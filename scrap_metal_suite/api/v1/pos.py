@@ -20,6 +20,25 @@ def check_pos_operator():
         frappe.throw(_("Access denied. POS Operator role required."), frappe.PermissionError)
 
 
+def _calculate_variance(order):
+    """
+    Calculate weight variance between truck net weight and scrap weight.
+    Internal function - not exposed as API.
+
+    Variance = Net Truck Weight - Total Scrap Weight
+    Positive variance = more weight on truck scale (normal due to moisture, debris)
+    Negative variance = more weight on scrap scale (possible issue)
+    """
+    if order.net_truck_weight and order.total_scrap_weight:
+        order.weight_variance = flt(order.net_truck_weight) - flt(order.total_scrap_weight)
+
+        # Calculate percentage (avoid division by zero)
+        if order.net_truck_weight > 0:
+            order.weight_variance_percent = (order.weight_variance / order.net_truck_weight) * 100
+        else:
+            order.weight_variance_percent = 0
+
+
 @frappe.whitelist()
 def get_pos_profile(profile_name):
     """
@@ -229,13 +248,13 @@ def lookup_order(query):
 @frappe.whitelist()
 def get_order_details(order_id):
     """
-    Get full details of a POS Order.
+    Get full details of a POS Order including truck weight data.
 
     Args:
         order_id: POS Order name
 
     Returns:
-        dict: Order details including supplier info
+        dict: Order details including supplier info and truck weights
     """
     check_pos_operator()
     order = frappe.get_doc("POS Order", order_id)
@@ -256,7 +275,18 @@ def get_order_details(order_id):
         "license_plate": order.license_plate,
         "purchase_order": order.purchase_order,
         "notes": order.notes,
-        "status": order.status
+        "status": order.status,
+        # Truck weight fields
+        "gross_weight": order.gross_weight,
+        "gross_weight_time": order.gross_weight_time,
+        "tare_weight": order.tare_weight,
+        "tare_weight_time": order.tare_weight_time,
+        "net_truck_weight": order.net_truck_weight,
+        "total_scrap_weight": order.total_scrap_weight,
+        "weight_variance": order.weight_variance,
+        "weight_variance_percent": order.weight_variance_percent,
+        "is_truck_reweighed": order.is_truck_reweighed,
+        "is_scrap_reweighed": order.is_scrap_reweighed
     }
 
 
@@ -334,13 +364,29 @@ def create_scrap_weight(session, pos_order, items, remarks=None):
     order_doc.status = "Processed"
     order_doc.processed_by = frappe.session.user
     order_doc.processed_time = frappe.utils.now_datetime()
+
+    # Update total scrap weight on order (sum of all scrap weights)
+    total_scrap = frappe.db.sql("""
+        SELECT COALESCE(SUM(total_weight), 0) as total
+        FROM `tabScrap Weight`
+        WHERE pos_order = %s
+    """, pos_order, as_dict=True)[0].total
+    order_doc.total_scrap_weight = flt(total_scrap)
+
+    # Calculate variance if truck weights exist
+    if order_doc.net_truck_weight:
+        _calculate_variance(order_doc)
+
     order_doc.save()
 
     return {
         "scrap_weight": scrap_weight.name,
         "total_weight": scrap_weight.total_weight,
         "order_id": pos_order,
-        "is_reweight": is_reweight
+        "is_reweight": is_reweight,
+        "total_scrap_weight": order_doc.total_scrap_weight,
+        "weight_variance": order_doc.weight_variance,
+        "weight_variance_percent": order_doc.weight_variance_percent
     }
 
 
@@ -356,6 +402,16 @@ def get_session_weights(session):
         list: Scrap weights with details
     """
     check_pos_operator()
+
+    # Verify user owns this session or is System Manager
+    session_operator = frappe.db.get_value("POS Session", session, "operator")
+    if not session_operator:
+        frappe.throw(_("Session {0} not found").format(session))
+
+    user_roles = frappe.get_roles(frappe.session.user)
+    if session_operator != frappe.session.user and "System Manager" not in user_roles:
+        frappe.throw(_("You can only view your own session data"), frappe.PermissionError)
+
     weights = frappe.get_all(
         "Scrap Weight",
         filters={"session": session},
@@ -399,4 +455,218 @@ def get_session_summary(session):
     return {
         "session": session_doc,
         "totals": totals
+    }
+
+
+@frappe.whitelist()
+def record_truck_weight(pos_order, weight_type, weight, remarks=None):
+    """
+    Record truck gross or tare weight for a POS Order.
+
+    Args:
+        pos_order: POS Order name
+        weight_type: 'gross' or 'tare'
+        weight: Weight in kg
+        remarks: Optional remarks/notes
+
+    Returns:
+        dict: Updated order with calculated fields
+    """
+    check_pos_operator()
+
+    if weight_type not in ['gross', 'tare']:
+        frappe.throw(_("weight_type must be 'gross' or 'tare'"))
+
+    weight = flt(weight)
+    if weight <= 0:
+        frappe.throw(_("Weight must be greater than 0"))
+
+    order = frappe.get_doc("POS Order", pos_order)
+
+    # Record the weight with timestamp
+    if weight_type == 'gross':
+        order.gross_weight = weight
+        order.gross_weight_time = frappe.utils.now_datetime()
+    else:
+        order.tare_weight = weight
+        order.tare_weight_time = frappe.utils.now_datetime()
+
+    # Update remarks if provided (field may not exist if migration not run)
+    if remarks and hasattr(order, 'truck_weight_remarks'):
+        order.truck_weight_remarks = remarks
+
+    # Calculate net truck weight if both weights are available
+    if order.gross_weight and order.tare_weight:
+        order.net_truck_weight = flt(order.gross_weight) - flt(order.tare_weight)
+
+        # Calculate variance if scrap weight exists
+        if order.total_scrap_weight:
+            _calculate_variance(order)
+
+    order.save()
+
+    return {
+        "order_id": order.name,
+        "gross_weight": order.gross_weight,
+        "gross_weight_time": order.gross_weight_time,
+        "tare_weight": order.tare_weight,
+        "tare_weight_time": order.tare_weight_time,
+        "net_truck_weight": order.net_truck_weight,
+        "total_scrap_weight": getattr(order, 'total_scrap_weight', None),
+        "weight_variance": getattr(order, 'weight_variance', None),
+        "weight_variance_percent": getattr(order, 'weight_variance_percent', None),
+        "truck_weight_remarks": getattr(order, 'truck_weight_remarks', None)
+    }
+
+
+@frappe.whitelist()
+def save_truck_remarks(pos_order, remarks):
+    """
+    Save remarks for truck weighing.
+
+    Args:
+        pos_order: POS Order name
+        remarks: Remarks text
+
+    Returns:
+        dict: Success status
+    """
+    check_pos_operator()
+
+    order = frappe.get_doc("POS Order", pos_order)
+
+    if not hasattr(order, 'truck_weight_remarks'):
+        frappe.throw(_("truck_weight_remarks field not found. Please run 'bench migrate' to update the database."))
+
+    order.truck_weight_remarks = remarks
+    order.save()
+
+    return {
+        "success": True,
+        "remarks": order.truck_weight_remarks
+    }
+
+
+@frappe.whitelist()
+def update_total_scrap_weight(pos_order):
+    """
+    Recalculate total scrap weight from all Scrap Weight records for an order.
+    Called after scrap weights are recorded.
+
+    Args:
+        pos_order: POS Order name
+
+    Returns:
+        dict: Updated totals and variance
+    """
+    check_pos_operator()
+
+    # Sum all scrap weights for this order
+    total = frappe.db.sql("""
+        SELECT COALESCE(SUM(total_weight), 0) as total
+        FROM `tabScrap Weight`
+        WHERE pos_order = %s
+    """, pos_order, as_dict=True)[0].total
+
+    order = frappe.get_doc("POS Order", pos_order)
+    order.total_scrap_weight = flt(total)
+
+    # Calculate variance if net truck weight exists
+    if order.net_truck_weight:
+        _calculate_variance(order)
+
+    order.save()
+
+    return {
+        "order_id": order.name,
+        "total_scrap_weight": order.total_scrap_weight,
+        "net_truck_weight": order.net_truck_weight,
+        "weight_variance": order.weight_variance,
+        "weight_variance_percent": order.weight_variance_percent
+    }
+
+
+@frappe.whitelist()
+def mark_reweighed(pos_order, reweight_type):
+    """
+    Mark an order as having been reweighed (truck or scrap).
+
+    Args:
+        pos_order: POS Order name
+        reweight_type: 'truck' or 'scrap'
+
+    Returns:
+        dict: Updated flags
+    """
+    check_pos_operator()
+
+    if reweight_type not in ['truck', 'scrap']:
+        frappe.throw(_("reweight_type must be 'truck' or 'scrap'"))
+
+    order = frappe.get_doc("POS Order", pos_order)
+
+    if reweight_type == 'truck':
+        order.is_truck_reweighed = 1
+    else:
+        order.is_scrap_reweighed = 1
+
+    order.save()
+
+    return {
+        "order_id": order.name,
+        "is_truck_reweighed": order.is_truck_reweighed,
+        "is_scrap_reweighed": order.is_scrap_reweighed
+    }
+
+
+@frappe.whitelist()
+def get_weight_verification(pos_order):
+    """
+    Get weight verification summary for an order including scrap weight records.
+
+    Args:
+        pos_order: POS Order name
+
+    Returns:
+        dict: All weight data with verification status and scrap records
+    """
+    check_pos_operator()
+
+    order = frappe.db.get_value(
+        "POS Order",
+        pos_order,
+        [
+            "name", "gross_weight", "gross_weight_time",
+            "tare_weight", "tare_weight_time", "net_truck_weight",
+            "total_scrap_weight", "weight_variance", "weight_variance_percent",
+            "is_truck_reweighed", "is_scrap_reweighed",
+            "truck_weight_remarks", "truck_weight_photo"
+        ],
+        as_dict=True
+    )
+
+    if not order:
+        frappe.throw(_("POS Order {0} not found").format(pos_order))
+
+    # Get scrap weight records for this order
+    scrap_records = frappe.get_all(
+        "Scrap Weight",
+        filters={"pos_order": pos_order},
+        fields=["name", "total_weight", "posting_date", "posting_time", "is_reweight"],
+        order_by="creation asc"
+    )
+
+    # Determine verification status
+    variance_threshold = 2.0  # 2% tolerance
+    variance_ok = True
+    if order.weight_variance_percent is not None:
+        variance_ok = abs(order.weight_variance_percent) <= variance_threshold
+
+    return {
+        **order,
+        "scrap_records": scrap_records,
+        "variance_threshold": variance_threshold,
+        "variance_ok": variance_ok,
+        "has_truck_weights": bool(order.gross_weight and order.tare_weight),
+        "has_scrap_weights": bool(order.total_scrap_weight)
     }

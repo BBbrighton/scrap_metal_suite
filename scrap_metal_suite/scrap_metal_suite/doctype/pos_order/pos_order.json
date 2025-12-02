@@ -15,6 +15,24 @@
   "section_break_details",
   "purchase_order",
   "notes",
+  "section_break_truck_weight",
+  "gross_weight",
+  "gross_weight_time",
+  "column_break_truck_1",
+  "tare_weight",
+  "tare_weight_time",
+  "section_break_truck_calc",
+  "net_truck_weight",
+  "total_scrap_weight",
+  "column_break_truck_2",
+  "weight_variance",
+  "weight_variance_percent",
+  "section_break_truck_remarks",
+  "truck_weight_remarks",
+  "truck_weight_photo",
+  "section_break_reweight",
+  "is_truck_reweighed",
+  "is_scrap_reweighed",
   "section_break_status",
   "status",
   "processed_by",
@@ -93,6 +111,113 @@
    "label": "Notes"
   },
   {
+   "fieldname": "section_break_truck_weight",
+   "fieldtype": "Section Break",
+   "label": "Truck Weight Verification"
+  },
+  {
+   "fieldname": "gross_weight",
+   "fieldtype": "Float",
+   "label": "Gross Weight (kg)",
+   "description": "Weight of truck with scrap (weighed first)"
+  },
+  {
+   "fieldname": "gross_weight_time",
+   "fieldtype": "Datetime",
+   "label": "Gross Weight Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_truck_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "tare_weight",
+   "fieldtype": "Float",
+   "label": "Tare Weight (kg)",
+   "description": "Weight of empty truck (weighed after unloading)"
+  },
+  {
+   "fieldname": "tare_weight_time",
+   "fieldtype": "Datetime",
+   "label": "Tare Weight Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_truck_calc",
+   "fieldtype": "Section Break",
+   "label": "Weight Verification"
+  },
+  {
+   "fieldname": "net_truck_weight",
+   "fieldtype": "Float",
+   "label": "Net Truck Weight (kg)",
+   "read_only": 1,
+   "description": "Gross - Tare = Net weight from truck scale"
+  },
+  {
+   "fieldname": "total_scrap_weight",
+   "fieldtype": "Float",
+   "label": "Total Scrap Weight (kg)",
+   "read_only": 1,
+   "description": "Sum of all scrap weight records"
+  },
+  {
+   "fieldname": "column_break_truck_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "weight_variance",
+   "fieldtype": "Float",
+   "label": "Weight Variance (kg)",
+   "read_only": 1,
+   "description": "Net truck weight - Total scrap weight"
+  },
+  {
+   "fieldname": "weight_variance_percent",
+   "fieldtype": "Percent",
+   "label": "Variance %",
+   "read_only": 1,
+   "description": "Variance as percentage of net truck weight"
+  },
+  {
+   "fieldname": "section_break_truck_remarks",
+   "fieldtype": "Section Break",
+   "label": "Truck Weight Notes"
+  },
+  {
+   "fieldname": "truck_weight_remarks",
+   "fieldtype": "Small Text",
+   "label": "Truck Weight Remarks",
+   "description": "Notes from truck scale operator"
+  },
+  {
+   "fieldname": "truck_weight_photo",
+   "fieldtype": "Attach Image",
+   "label": "Truck Weight Photo",
+   "description": "Photo taken during truck weighing"
+  },
+  {
+   "fieldname": "section_break_reweight",
+   "fieldtype": "Section Break",
+   "label": "Reweight Flags",
+   "collapsible": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_truck_reweighed",
+   "fieldtype": "Check",
+   "label": "Truck Reweighed",
+   "description": "Truck was reweighed due to variance"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_scrap_reweighed",
+   "fieldtype": "Check",
+   "label": "Scrap Reweighed",
+   "description": "Scrap was reweighed due to variance"
+  },
+  {
    "fieldname": "section_break_status",
    "fieldtype": "Section Break",
    "label": "Processing Status"
@@ -128,7 +253,7 @@
    "link_fieldname": "pos_order"
   }
  ],
- "modified": "2025-12-02 12:00:00.000000",
+ "modified": "2025-12-02 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "POS Order",

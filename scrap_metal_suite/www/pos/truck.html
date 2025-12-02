@@ -1,0 +1,1098 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Truck Scale Terminal{% endblock %}
+
+{% block head_include %}
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css">
+<script src="/assets/scrap_metal_suite/js/html5-qrcode.min.js"></script>
+{% endblock %}
+
+{% block style %}
+<style>
+/* Hide Frappe navigation and footer for fullscreen POS */
+.navbar, .web-footer, .footer, footer,
+.page-header, .page-head, header.navbar {
+    display: none !important;
+}
+body {
+    padding-top: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+}
+.main-section {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.web-content, .page-content, main {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="pos-terminal" id="truckTerminal">
+    {% if error %}
+    <div class="pos-error">
+        <div class="error-icon">&#9888;</div>
+        <h2>Error</h2>
+        <p>{{ error }}</p>
+        <a href="/pos" class="btn-pos">Back to POS</a>
+    </div>
+    {% else %}
+    <!-- Header Bar -->
+    <header class="terminal-header">
+        <div class="header-left">
+            <a href="/pos" class="btn-back-small">&#8592;</a>
+            <span class="session-badge">{{ session.name }}</span>
+            <span class="profile-name">Truck Scale</span>
+            <span class="operator-name">{{ operator_name }}</span>
+        </div>
+        <div class="header-center">
+            <span class="current-time" id="currentTime"></span>
+        </div>
+        <div class="header-right">
+            <button class="btn-header btn-theme" onclick="toggleTheme()" title="Toggle Theme">
+                <span id="themeIcon">&#9728;</span>
+            </button>
+            <button class="btn-header btn-danger" onclick="confirmEndSession()">End Session</button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="terminal-body">
+        <!-- Left Panel - Weight Recording -->
+        <div class="panel panel-items">
+            <div class="panel-header">
+                <h2>&#128666; Truck Weights</h2>
+            </div>
+            <div class="weight-panel-content" id="weightPanelContent">
+                <!-- No order state -->
+                <div class="weight-empty-state" id="weightEmptyState">
+                    <div class="empty-icon">&#9878;</div>
+                    <p>Select an order to record truck weights</p>
+                </div>
+
+                <!-- Weight cards (shown when order selected) -->
+                <div class="weight-cards-panel" id="weightCardsPanel" style="display:none;">
+                    <div class="weight-card gross-card">
+                        <div class="weight-card-header">Gross Weight</div>
+                        <div class="weight-card-value" id="grossValue">--</div>
+                        <div class="weight-card-time" id="grossTime"></div>
+                        <button class="btn-pos btn-primary btn-record" onclick="openWeightModal('gross')" id="btnGross">
+                            Record Gross
+                        </button>
+                    </div>
+                    <div class="weight-card tare-card">
+                        <div class="weight-card-header">Tare Weight</div>
+                        <div class="weight-card-value" id="tareValue">--</div>
+                        <div class="weight-card-time" id="tareTime"></div>
+                        <button class="btn-pos btn-primary btn-record" onclick="openWeightModal('tare')" id="btnTare">
+                            Record Tare
+                        </button>
+                    </div>
+                    <div class="weight-card net-card">
+                        <div class="weight-card-header">Net Weight</div>
+                        <div class="weight-card-value large" id="netValue">--</div>
+                        <div class="weight-card-label">Gross - Tare</div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-section" id="actionButtons" style="display:none;">
+                    <button class="btn-pos btn-secondary" onclick="openRemarksModal()" id="remarksBtn">
+                        &#128172; Remarks
+                    </button>
+                    <button class="btn-pos btn-secondary" onclick="openPhotoCapture()" id="photoBtn">
+                        &#128247; Photo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Order Selection & Info -->
+        <div class="panel panel-transaction">
+            <!-- Order Section with Scanner -->
+            <div class="order-section">
+                <div class="order-label-row">
+                    <label>Order ID</label>
+                    <button class="scan-btn" onclick="openScanner()" title="Scan Barcode/QR">
+                        <span>&#128247;</span> Scan
+                    </button>
+                </div>
+                <div class="order-input-group">
+                    <input type="text" id="orderSearch" placeholder="Enter Order ID or scan..."
+                           oninput="searchOrder(this.value)" autocomplete="off">
+                    <div id="orderResults" class="order-results"></div>
+                </div>
+
+                <!-- Order Details Card (shown when order selected) -->
+                <div id="orderDetailsCard" class="order-details-card" style="display:none;">
+                    <div class="order-card-header">
+                        <span class="order-card-id" id="orderCardId"></span>
+                        <button class="clear-btn" onclick="clearOrder()">&#10005;</button>
+                    </div>
+                    <div class="order-card-body">
+                        <div class="order-detail-row">
+                            <span class="detail-label">Supplier</span>
+                            <span class="detail-value" id="orderCardSupplier"></span>
+                        </div>
+                        <div class="order-detail-row">
+                            <span class="detail-label">Order Date</span>
+                            <span class="detail-value" id="orderCardDate"></span>
+                        </div>
+                        <div class="order-detail-row">
+                            <span class="detail-label">License Plate</span>
+                            <span class="detail-value" id="orderCardPlate"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Variance Section -->
+            <div class="variance-panel" id="variancePanel" style="display:none;">
+                <div class="panel-header">
+                    <h3>Weight Verification</h3>
+                </div>
+                <div class="variance-content">
+                    <div class="variance-row">
+                        <span class="variance-label">Net Truck Weight</span>
+                        <span class="variance-value" id="varNet">--</span>
+                    </div>
+                    <div class="variance-row">
+                        <span class="variance-label">Total Scrap Weight</span>
+                        <span class="variance-value" id="varScrap">--</span>
+                    </div>
+                    <div class="variance-row variance-total">
+                        <span class="variance-label">Variance</span>
+                        <span class="variance-value" id="varDiff">--</span>
+                    </div>
+                    <div class="variance-status" id="varianceStatus"></div>
+                </div>
+            </div>
+
+            <!-- Scrap Weight Summary -->
+            <div class="scrap-panel" id="scrapPanel" style="display:none;">
+                <div class="panel-header">
+                    <h3>Scrap Weight Records</h3>
+                    <span class="scrap-count" id="scrapCount">0</span>
+                </div>
+                <div class="scrap-list" id="scrapList">
+                    <!-- Filled dynamically -->
+                </div>
+                <div class="scrap-total">
+                    <span>Total</span>
+                    <span id="scrapTotal">0.00 Kg</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanner Modal -->
+    <div id="scannerModal" class="modal" style="display:none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Scan Order Barcode/QR</h3>
+                <button class="modal-close" onclick="closeScanner()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div id="qr-reader" class="scanner-container"></div>
+                <div id="scannerStatus" class="scanner-instructions">
+                    Point camera at barcode or QR code
+                </div>
+                <div class="manual-entry">
+                    <label>Or enter manually:</label>
+                    <input type="text" id="manualOrderInput" placeholder="Enter Order ID..."
+                           onkeyup="if(event.key==='Enter')submitManualOrder()">
+                    <button class="btn-pos btn-primary" onclick="submitManualOrder()">Search</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weight Input Modal -->
+    <div id="weightModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="weightModalTitle">Record Weight</h3>
+                <button class="modal-close" onclick="closeWeightModal()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="weight-display">
+                    <input type="number" id="weightInput" step="0.01" min="0" placeholder="0.00"
+                           onkeyup="if(event.key==='Enter')saveWeight()">
+                    <span class="weight-uom">Kg</span>
+                </div>
+                <p class="truck-weight-hint" id="weightHint"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeWeightModal()">Cancel</button>
+                <button class="btn-pos btn-primary" onclick="saveWeight()">Save Weight</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- End Session Modal -->
+    <div id="endSessionModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>End Session</h3>
+                <button class="modal-close" onclick="closeEndSessionModal()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to end this session?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeEndSessionModal()">Cancel</button>
+                <button class="btn-pos btn-danger" onclick="endSession()">End Session</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remarks Modal -->
+    <div id="remarksModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Truck Weight Remarks</h3>
+                <button class="modal-close" onclick="closeRemarksModal()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <textarea id="remarksInput" placeholder="Enter remarks for this truck weighing..." rows="4"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeRemarksModal()">Cancel</button>
+                <button class="btn-pos btn-primary" onclick="saveRemarks()">Save Remarks</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Capture Modal -->
+    <div id="photoModal" class="modal" style="display:none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Capture Photo</h3>
+                <button class="modal-close" onclick="closePhotoCapture()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="camera-container">
+                    <video id="cameraVideo" autoplay playsinline></video>
+                    <canvas id="photoCanvas" style="display:none;"></canvas>
+                    <img id="capturedPhoto" style="display:none;">
+                </div>
+                <div class="photo-controls">
+                    <button class="btn-pos btn-primary btn-large" onclick="capturePhoto()" id="captureBtn">
+                        &#128247; Capture
+                    </button>
+                    <button class="btn-pos btn-secondary" onclick="retakePhoto()" id="retakeBtn" style="display:none;">
+                        &#128260; Retake
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closePhotoCapture()">Cancel</button>
+                <button class="btn-pos btn-success" onclick="savePhoto()" id="savePhotoBtn" disabled>Save Photo</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// ===== State =====
+const state = {
+    session: '{{ session.name }}',
+    theme: localStorage.getItem('posTheme') || 'dark',
+    order: null,
+    weightType: null,
+    remarks: '',
+    capturedPhotoData: null,
+    cameraStream: null,
+    weights: {
+        gross_weight: null,
+        gross_weight_time: null,
+        tare_weight: null,
+        tare_weight_time: null,
+        net_truck_weight: null,
+        total_scrap_weight: null,
+        weight_variance: null,
+        weight_variance_percent: null,
+        truck_weight_remarks: null,
+        truck_weight_photo: null,
+        scrap_records: []
+    }
+};
+
+// ===== Initialization =====
+document.addEventListener('DOMContentLoaded', () => {
+    applyTheme(state.theme);
+    updateClock();
+    setInterval(updateClock, 1000);
+});
+
+// ===== Theme Functions =====
+function toggleTheme() {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('posTheme', state.theme);
+    applyTheme(state.theme);
+}
+
+function applyTheme(theme) {
+    const terminal = document.getElementById('truckTerminal');
+    const themeIcon = document.getElementById('themeIcon');
+
+    if (theme === 'light') {
+        terminal.classList.add('light-theme');
+        themeIcon.innerHTML = '&#127769;'; // moon
+    } else {
+        terminal.classList.remove('light-theme');
+        themeIcon.innerHTML = '&#9728;'; // sun
+    }
+}
+
+// ===== Clock =====
+function updateClock() {
+    const now = new Date();
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dow = days[now.getDay()];
+    const date = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    document.getElementById('currentTime').textContent = `${dow} ${date} ${time}`;
+}
+
+// ===== API Helper =====
+async function callAPI(method, args = {}) {
+    const response = await fetch(`/api/method/${method}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Frappe-CSRF-Token': frappe.csrf_token
+        },
+        body: JSON.stringify(args)
+    });
+
+    const data = await response.json();
+
+    if (data.exc) {
+        throw new Error(data.exc);
+    }
+
+    return data;
+}
+
+// ===== Scanner Functions =====
+let html5QrCode = null;
+
+async function openScanner() {
+    const modal = document.getElementById('scannerModal');
+    modal.style.display = 'flex';
+
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+        } catch (e) {}
+        html5QrCode = null;
+    }
+
+    document.getElementById('qr-reader').innerHTML = '';
+    document.getElementById('scannerStatus').textContent = 'Starting camera...';
+
+    try {
+        html5QrCode = new Html5Qrcode("qr-reader");
+
+        const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+        };
+
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            onScanSuccess,
+            () => {}
+        );
+
+        document.getElementById('scannerStatus').textContent = 'Point camera at barcode or QR code';
+    } catch (err) {
+        console.error('Scanner error:', err);
+        document.getElementById('scannerStatus').textContent = 'Camera not available. Please enter Order ID manually.';
+    }
+}
+
+function onScanSuccess(decodedText) {
+    // Play beep
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+        oscillator.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.1);
+    } catch (e) {}
+
+    closeScanner();
+    searchAndSelectOrder(decodedText);
+}
+
+async function closeScanner() {
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+        } catch (e) {}
+        html5QrCode = null;
+    }
+    document.getElementById('scannerModal').style.display = 'none';
+}
+
+function submitManualOrder() {
+    const input = document.getElementById('manualOrderInput');
+    const orderId = input.value.trim();
+    if (orderId) {
+        closeScanner();
+        searchAndSelectOrder(orderId);
+    }
+}
+
+function parseQRValue(rawValue) {
+    if (rawValue.includes('/app/pos-order/')) {
+        const match = rawValue.match(/\/app\/pos-order\/([^\/\?#]+)/);
+        if (match && match[1]) {
+            return decodeURIComponent(match[1]);
+        }
+    }
+
+    if (rawValue.startsWith('http://') || rawValue.startsWith('https://')) {
+        try {
+            const url = new URL(rawValue);
+            const pathParts = url.pathname.split('/').filter(p => p);
+            if (pathParts.length > 0) {
+                return decodeURIComponent(pathParts[pathParts.length - 1]);
+            }
+        } catch (e) {}
+    }
+
+    return rawValue;
+}
+
+async function searchAndSelectOrder(query) {
+    const parsedQuery = parseQRValue(query);
+
+    try {
+        const data = await callAPI('scrap_metal_suite.api.v1.pos.lookup_order', { query: parsedQuery });
+
+        if (data.message && data.message.length > 0) {
+            const o = data.message[0];
+            selectOrder(o.name, o.order_id, o.supplier, o.supplier_name || '', o.license_plate || '', o.order_date || '');
+        } else {
+            frappe.msgprint('Order not found: ' + parsedQuery);
+        }
+    } catch (error) {
+        console.error('Order search error:', error);
+        frappe.msgprint('Error searching for order');
+    }
+}
+
+// ===== Order Search =====
+let searchTimeout;
+
+async function searchOrder(query) {
+    clearTimeout(searchTimeout);
+    const resultsDiv = document.getElementById('orderResults');
+
+    if (query.length < 2) {
+        resultsDiv.innerHTML = '';
+        resultsDiv.style.display = 'none';
+        return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+        try {
+            const data = await callAPI('scrap_metal_suite.api.v1.pos.lookup_order', { query: query });
+
+            if (data.message && data.message.length > 0) {
+                resultsDiv.innerHTML = data.message.map(o => `
+                    <div class="order-result" onclick="selectOrder('${o.name}', '${o.order_id || ''}', '${o.supplier}', '${o.supplier_name || ''}', '${o.license_plate || ''}', '${o.order_date || ''}')">
+                        <span class="order-id">${o.order_id || o.name}</span>
+                        <span class="order-details">${o.supplier_name || o.supplier} ${o.license_plate ? '| ' + o.license_plate : ''}</span>
+                    </div>
+                `).join('');
+                resultsDiv.style.display = 'block';
+            } else {
+                resultsDiv.innerHTML = '<div class="no-results">No orders found</div>';
+                resultsDiv.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Order search error:', error);
+            resultsDiv.innerHTML = '<div class="no-results">Error searching</div>';
+            resultsDiv.style.display = 'block';
+        }
+    }, 300);
+}
+
+function selectOrder(name, orderId, supplier, supplierName, licensePlate, orderDate) {
+    state.order = {
+        name: name,
+        orderId: orderId || name,
+        supplier: supplier,
+        supplierName: supplierName,
+        licensePlate: licensePlate,
+        orderDate: orderDate
+    };
+
+    // Hide search input, show order card
+    document.getElementById('orderSearch').style.display = 'none';
+    document.getElementById('orderResults').style.display = 'none';
+
+    const card = document.getElementById('orderDetailsCard');
+    document.getElementById('orderCardId').textContent = orderId || name;
+    document.getElementById('orderCardSupplier').textContent = supplierName || supplier;
+    document.getElementById('orderCardDate').textContent = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
+    document.getElementById('orderCardPlate').textContent = licensePlate || '-';
+    card.style.display = 'block';
+
+    // Show weight cards and action buttons
+    document.getElementById('weightEmptyState').style.display = 'none';
+    document.getElementById('weightCardsPanel').style.display = 'block';
+    document.getElementById('actionButtons').style.display = 'flex';
+
+    // Load existing weight data
+    loadWeightData(name);
+}
+
+function clearOrder() {
+    state.order = null;
+    resetWeights();
+
+    // Show search input, hide order card
+    document.getElementById('orderSearch').value = '';
+    document.getElementById('orderSearch').style.display = 'block';
+    document.getElementById('orderDetailsCard').style.display = 'none';
+
+    // Show empty state, hide weight cards and action buttons
+    document.getElementById('weightEmptyState').style.display = 'flex';
+    document.getElementById('weightCardsPanel').style.display = 'none';
+    document.getElementById('actionButtons').style.display = 'none';
+
+    // Hide variance and scrap panels
+    document.getElementById('variancePanel').style.display = 'none';
+    document.getElementById('scrapPanel').style.display = 'none';
+
+    // Reset remarks and photo buttons
+    updateRemarksButton();
+    updatePhotoButton();
+}
+
+// ===== Weight Data =====
+async function loadWeightData(orderId) {
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.get_weight_verification', {
+            pos_order: orderId
+        });
+
+        if (response.message) {
+            state.weights = {
+                gross_weight: response.message.gross_weight,
+                gross_weight_time: response.message.gross_weight_time,
+                tare_weight: response.message.tare_weight,
+                tare_weight_time: response.message.tare_weight_time,
+                net_truck_weight: response.message.net_truck_weight,
+                total_scrap_weight: response.message.total_scrap_weight,
+                weight_variance: response.message.weight_variance,
+                weight_variance_percent: response.message.weight_variance_percent,
+                truck_weight_remarks: response.message.truck_weight_remarks,
+                truck_weight_photo: response.message.truck_weight_photo,
+                scrap_records: response.message.scrap_records || []
+            };
+            updateWeightDisplay();
+            updateRemarksButton();
+            updatePhotoButton();
+        }
+    } catch (error) {
+        console.error('Failed to load weights:', error);
+    }
+}
+
+function updateWeightDisplay() {
+    const w = state.weights;
+
+    // Gross weight
+    const grossEl = document.getElementById('grossValue');
+    const grossTimeEl = document.getElementById('grossTime');
+    if (w.gross_weight) {
+        grossEl.textContent = w.gross_weight.toFixed(2) + ' Kg';
+        grossTimeEl.textContent = w.gross_weight_time ? new Date(w.gross_weight_time).toLocaleString() : '';
+        document.getElementById('btnGross').textContent = 'Update Gross';
+    } else {
+        grossEl.textContent = '--';
+        grossTimeEl.textContent = '';
+        document.getElementById('btnGross').textContent = 'Record Gross';
+    }
+
+    // Tare weight
+    const tareEl = document.getElementById('tareValue');
+    const tareTimeEl = document.getElementById('tareTime');
+    if (w.tare_weight) {
+        tareEl.textContent = w.tare_weight.toFixed(2) + ' Kg';
+        tareTimeEl.textContent = w.tare_weight_time ? new Date(w.tare_weight_time).toLocaleString() : '';
+        document.getElementById('btnTare').textContent = 'Update Tare';
+    } else {
+        tareEl.textContent = '--';
+        tareTimeEl.textContent = '';
+        document.getElementById('btnTare').textContent = 'Record Tare';
+    }
+
+    // Net weight
+    const netEl = document.getElementById('netValue');
+    if (w.net_truck_weight !== null && w.net_truck_weight !== undefined) {
+        netEl.textContent = w.net_truck_weight.toFixed(2) + ' Kg';
+    } else {
+        netEl.textContent = '--';
+    }
+
+    // Variance section
+    const variancePanel = document.getElementById('variancePanel');
+    if (w.net_truck_weight && w.total_scrap_weight) {
+        variancePanel.style.display = 'block';
+
+        document.getElementById('varNet').textContent = w.net_truck_weight.toFixed(2) + ' Kg';
+        document.getElementById('varScrap').textContent = w.total_scrap_weight.toFixed(2) + ' Kg';
+
+        const variance = w.weight_variance || 0;
+        const variancePercent = w.weight_variance_percent || 0;
+        const diffEl = document.getElementById('varDiff');
+        diffEl.textContent = `${variance.toFixed(2)} Kg (${variancePercent.toFixed(1)}%)`;
+
+        const statusEl = document.getElementById('varianceStatus');
+        const absPercent = Math.abs(variancePercent);
+        if (absPercent <= 2) {
+            statusEl.innerHTML = '<span class="status-ok">&#10004; Variance within tolerance (&le;2%)</span>';
+            diffEl.className = 'variance-value variance-ok';
+        } else if (absPercent <= 5) {
+            statusEl.innerHTML = '<span class="status-warning">&#9888; Variance warning (2-5%)</span>';
+            diffEl.className = 'variance-value variance-warning';
+        } else {
+            statusEl.innerHTML = '<span class="status-error">&#10008; Variance exceeds tolerance (>5%)</span>';
+            diffEl.className = 'variance-value variance-error';
+        }
+    } else {
+        variancePanel.style.display = 'none';
+    }
+
+    // Scrap weight summary
+    const scrapPanel = document.getElementById('scrapPanel');
+    const scrapRecords = w.scrap_records || [];
+    if (scrapRecords.length > 0 || w.total_scrap_weight) {
+        scrapPanel.style.display = 'block';
+        document.getElementById('scrapCount').textContent = scrapRecords.length;
+
+        const listEl = document.getElementById('scrapList');
+        if (scrapRecords.length > 0) {
+            listEl.innerHTML = scrapRecords.map(r => `
+                <div class="scrap-item">
+                    <span class="scrap-name">${r.item_name || r.name}</span>
+                    <span class="scrap-weight">${parseFloat(r.total_weight).toFixed(2)} Kg</span>
+                </div>
+            `).join('');
+        } else {
+            listEl.innerHTML = '<div class="scrap-item">-</div>';
+        }
+
+        document.getElementById('scrapTotal').textContent = (w.total_scrap_weight || 0).toFixed(2) + ' Kg';
+    } else {
+        scrapPanel.style.display = 'none';
+    }
+}
+
+function resetWeights() {
+    state.weights = {
+        gross_weight: null,
+        gross_weight_time: null,
+        tare_weight: null,
+        tare_weight_time: null,
+        net_truck_weight: null,
+        total_scrap_weight: null,
+        weight_variance: null,
+        weight_variance_percent: null,
+        truck_weight_remarks: null,
+        truck_weight_photo: null,
+        scrap_records: []
+    };
+
+    document.getElementById('grossValue').textContent = '--';
+    document.getElementById('grossTime').textContent = '';
+    document.getElementById('tareValue').textContent = '--';
+    document.getElementById('tareTime').textContent = '';
+    document.getElementById('netValue').textContent = '--';
+    document.getElementById('btnGross').textContent = 'Record Gross';
+    document.getElementById('btnTare').textContent = 'Record Tare';
+}
+
+// ===== Weight Modal =====
+function openWeightModal(weightType) {
+    if (!state.order) return;
+
+    state.weightType = weightType;
+    const modal = document.getElementById('weightModal');
+    const title = document.getElementById('weightModalTitle');
+    const hint = document.getElementById('weightHint');
+    const input = document.getElementById('weightInput');
+
+    if (weightType === 'gross') {
+        title.textContent = 'Record Gross Weight';
+        hint.textContent = 'Weigh the truck WITH scrap loaded';
+    } else {
+        title.textContent = 'Record Tare Weight';
+        hint.textContent = 'Weigh the EMPTY truck after unloading';
+    }
+
+    input.value = '';
+    modal.style.display = 'flex';
+    input.focus();
+}
+
+function closeWeightModal() {
+    document.getElementById('weightModal').style.display = 'none';
+    state.weightType = null;
+}
+
+async function saveWeight() {
+    const weight = parseFloat(document.getElementById('weightInput').value);
+
+    if (!weight || weight <= 0) {
+        frappe.msgprint('Please enter a valid weight');
+        return;
+    }
+
+    if (!state.order) {
+        frappe.msgprint('No order selected');
+        return;
+    }
+
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.record_truck_weight', {
+            pos_order: state.order.name,
+            weight_type: state.weightType,
+            weight: weight
+        });
+
+        if (response.message) {
+            state.weights = {
+                ...state.weights,
+                gross_weight: response.message.gross_weight,
+                gross_weight_time: response.message.gross_weight_time,
+                tare_weight: response.message.tare_weight,
+                tare_weight_time: response.message.tare_weight_time,
+                net_truck_weight: response.message.net_truck_weight,
+                total_scrap_weight: response.message.total_scrap_weight,
+                weight_variance: response.message.weight_variance,
+                weight_variance_percent: response.message.weight_variance_percent
+            };
+
+            updateWeightDisplay();
+            closeWeightModal();
+
+            const typeLabel = state.weightType === 'gross' ? 'Gross' : 'Tare';
+            frappe.show_alert({
+                message: `${typeLabel} weight recorded: ${weight.toFixed(2)} Kg`,
+                indicator: 'green'
+            }, 3);
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: 'Error',
+            indicator: 'red',
+            message: error.message || 'Failed to record weight'
+        });
+    }
+}
+
+// ===== Session Management =====
+function confirmEndSession() {
+    document.getElementById('endSessionModal').style.display = 'flex';
+}
+
+function closeEndSessionModal() {
+    document.getElementById('endSessionModal').style.display = 'none';
+}
+
+async function endSession() {
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.close_session', {
+            session: state.session
+        });
+
+        if (response.message) {
+            frappe.show_alert({
+                message: 'Session closed successfully',
+                indicator: 'green'
+            }, 3);
+
+            setTimeout(() => { window.location.href = '/pos'; }, 1000);
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: 'Error',
+            indicator: 'red',
+            message: error.message || 'Failed to close session'
+        });
+    }
+}
+
+// ===== Remarks Functions =====
+function openRemarksModal() {
+    if (!state.order) return;
+
+    const modal = document.getElementById('remarksModal');
+    const input = document.getElementById('remarksInput');
+
+    // Load existing remarks
+    input.value = state.weights.truck_weight_remarks || '';
+    modal.style.display = 'flex';
+    input.focus();
+}
+
+function closeRemarksModal() {
+    document.getElementById('remarksModal').style.display = 'none';
+}
+
+async function saveRemarks() {
+    if (!state.order) {
+        frappe.msgprint('No order selected');
+        return;
+    }
+
+    const remarks = document.getElementById('remarksInput').value.trim();
+
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.save_truck_remarks', {
+            pos_order: state.order.name,
+            remarks: remarks
+        });
+
+        if (response.message && response.message.success) {
+            state.weights.truck_weight_remarks = remarks;
+            closeRemarksModal();
+
+            frappe.show_alert({
+                message: 'Remarks saved successfully',
+                indicator: 'green'
+            }, 3);
+
+            // Update button to show remarks exist
+            updateRemarksButton();
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: 'Error',
+            indicator: 'red',
+            message: error.message || 'Failed to save remarks'
+        });
+    }
+}
+
+function updateRemarksButton() {
+    const btn = document.getElementById('remarksBtn');
+    if (state.weights.truck_weight_remarks) {
+        btn.innerHTML = '&#128172; Remarks &#10004;';
+        btn.classList.add('has-content');
+    } else {
+        btn.innerHTML = '&#128172; Remarks';
+        btn.classList.remove('has-content');
+    }
+}
+
+// ===== Photo Capture Functions =====
+async function openPhotoCapture() {
+    if (!state.order) return;
+
+    const modal = document.getElementById('photoModal');
+    const video = document.getElementById('cameraVideo');
+    const capturedImg = document.getElementById('capturedPhoto');
+    const captureBtn = document.getElementById('captureBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const saveBtn = document.getElementById('savePhotoBtn');
+
+    // Reset UI state
+    video.style.display = 'block';
+    capturedImg.style.display = 'none';
+    captureBtn.style.display = 'inline-block';
+    retakeBtn.style.display = 'none';
+    saveBtn.disabled = true;
+    state.capturedPhotoData = null;
+
+    modal.style.display = 'flex';
+
+    // Start camera
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        state.cameraStream = stream;
+        video.srcObject = stream;
+    } catch (err) {
+        console.error('Camera error:', err);
+        frappe.msgprint('Unable to access camera. Please ensure camera permissions are granted.');
+    }
+}
+
+function closePhotoCapture() {
+    // Stop camera stream
+    if (state.cameraStream) {
+        state.cameraStream.getTracks().forEach(track => track.stop());
+        state.cameraStream = null;
+    }
+
+    document.getElementById('photoModal').style.display = 'none';
+}
+
+function capturePhoto() {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('photoCanvas');
+    const capturedImg = document.getElementById('capturedPhoto');
+    const captureBtn = document.getElementById('captureBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const saveBtn = document.getElementById('savePhotoBtn');
+
+    // Set canvas size to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw video frame to canvas
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    // Convert to data URL
+    state.capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
+
+    // Show captured image
+    capturedImg.src = state.capturedPhotoData;
+    video.style.display = 'none';
+    capturedImg.style.display = 'block';
+
+    // Update buttons
+    captureBtn.style.display = 'none';
+    retakeBtn.style.display = 'inline-block';
+    saveBtn.disabled = false;
+}
+
+function retakePhoto() {
+    const video = document.getElementById('cameraVideo');
+    const capturedImg = document.getElementById('capturedPhoto');
+    const captureBtn = document.getElementById('captureBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const saveBtn = document.getElementById('savePhotoBtn');
+
+    // Reset UI
+    video.style.display = 'block';
+    capturedImg.style.display = 'none';
+    captureBtn.style.display = 'inline-block';
+    retakeBtn.style.display = 'none';
+    saveBtn.disabled = true;
+    state.capturedPhotoData = null;
+}
+
+async function savePhoto() {
+    if (!state.order || !state.capturedPhotoData) {
+        frappe.msgprint('No photo captured');
+        return;
+    }
+
+    try {
+        // Convert base64 to blob
+        const base64Data = state.capturedPhotoData.split(',')[1];
+        const blob = b64toBlob(base64Data, 'image/jpeg');
+
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('file', blob, `truck_weight_${state.order.name}_${Date.now()}.jpg`);
+        formData.append('doctype', 'POS Order');
+        formData.append('docname', state.order.name);
+        formData.append('fieldname', 'truck_weight_photo');
+        formData.append('is_private', '0');
+
+        // Upload file
+        const uploadResponse = await fetch('/api/method/upload_file', {
+            method: 'POST',
+            headers: {
+                'X-Frappe-CSRF-Token': frappe.csrf_token
+            },
+            body: formData
+        });
+
+        const uploadData = await uploadResponse.json();
+
+        if (uploadData.message && uploadData.message.file_url) {
+            state.weights.truck_weight_photo = uploadData.message.file_url;
+            closePhotoCapture();
+
+            frappe.show_alert({
+                message: 'Photo saved successfully',
+                indicator: 'green'
+            }, 3);
+
+            // Update button to show photo exists
+            updatePhotoButton();
+        } else {
+            throw new Error('Upload failed');
+        }
+    } catch (error) {
+        console.error('Photo save error:', error);
+        frappe.msgprint({
+            title: 'Error',
+            indicator: 'red',
+            message: error.message || 'Failed to save photo'
+        });
+    }
+}
+
+// Helper: Convert base64 to Blob
+function b64toBlob(b64Data, contentType) {
+    const byteCharacters = atob(b64Data);
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512);
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+    }
+
+    return new Blob(byteArrays, { type: contentType });
+}
+
+function updatePhotoButton() {
+    const btn = document.getElementById('photoBtn');
+    if (state.weights.truck_weight_photo) {
+        btn.innerHTML = '&#128247; Photo &#10004;';
+        btn.classList.add('has-content');
+    } else {
+        btn.innerHTML = '&#128247; Photo';
+        btn.classList.remove('has-content');
+    }
+}
+
+// ===== Modal Click Handler =====
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            // Close photo modal properly to stop camera
+            if (modal.id === 'photoModal') {
+                closePhotoCapture();
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+    });
+});
+</script>
+
+{% endblock %}

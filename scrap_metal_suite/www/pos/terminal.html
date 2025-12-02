@@ -39,7 +39,7 @@ body {
 <div class="pos-terminal" id="posTerminal">
     {% if error %}
     <div class="pos-error">
-        <div class="error-icon">⚠️</div>
+        <div class="error-icon">&#9888;</div>
         <h2>Error</h2>
         <p>{{ error }}</p>
         <a href="/pos" class="btn-pos">Back to POS</a>
@@ -48,18 +48,23 @@ body {
     <!-- Header Bar -->
     <header class="terminal-header">
         <div class="header-left">
+            <a href="/pos" class="btn-back-small">&#8592;</a>
             <span class="session-badge">{{ session.name }}</span>
             <span class="profile-name">{{ profile.profile_name }}</span>
+            <span class="operator-name">{{ operator_name }}</span>
         </div>
         <div class="header-center">
             <span class="current-time" id="currentTime"></span>
         </div>
         <div class="header-right">
-            <button class="btn-header btn-theme" onclick="toggleTheme()" title="Toggle Theme">
-                <span id="themeIcon">☀️</span>
+            <button class="btn-lang" onclick="toggleLanguage()" title="Toggle Language">
+                <span id="langIcon">TH</span>
             </button>
-            <button class="btn-header" onclick="showSessionSummary()">Summary</button>
-            <button class="btn-header btn-danger" onclick="confirmCloseSession()">Close Shift</button>
+            <button class="btn-header btn-theme" onclick="toggleTheme()" title="Toggle Theme">
+                <span id="themeIcon">&#9728;</span>
+            </button>
+            <button class="btn-header" onclick="showSessionSummary()" data-i18n="summary">Summary</button>
+            <button class="btn-header btn-danger" onclick="confirmCloseSession()" data-i18n="closeShift">Close Shift</button>
         </div>
     </header>
 
@@ -68,7 +73,7 @@ body {
         <!-- Left Panel - Item Selection -->
         <div class="panel panel-items">
             <div class="panel-header">
-                <h2>Items</h2>
+                <h2 data-i18n="items">Items</h2>
             </div>
             <div class="item-grid">
                 {% for item in pos_items %}
@@ -84,13 +89,14 @@ body {
             <!-- Order Section with Scanner -->
             <div class="order-section">
                 <div class="order-label-row">
-                    <label>Order ID</label>
+                    <label data-i18n="orderId">Order ID</label>
                     <button class="scan-btn" onclick="openScanner()" title="Scan Barcode/QR">
-                        <span>📷</span> Scan
+                        <span>&#128247;</span> <span data-i18n="scan">Scan</span>
                     </button>
                 </div>
                 <div class="order-input-group">
-                    <input type="text" id="orderSearch" placeholder="Enter Order ID or scan..."
+                    <input type="text" id="orderSearch" data-i18n-placeholder="enterOrderId"
+                           placeholder="Enter Order ID or scan..."
                            oninput="searchOrder(this.value)" autocomplete="off">
                     <div id="orderResults" class="order-results"></div>
                 </div>
@@ -99,29 +105,29 @@ body {
                 <div id="orderDetailsCard" class="order-details-card" style="display:none;">
                     <div class="order-card-header">
                         <span class="order-card-id" id="orderCardId"></span>
-                        <button class="clear-btn" onclick="clearOrder()">✕</button>
+                        <button class="clear-btn" onclick="clearOrder()">&#10005;</button>
                     </div>
                     <div class="order-card-body">
                         <div class="order-detail-row">
-                            <span class="detail-label">Supplier</span>
+                            <span class="detail-label" data-i18n="supplier">Supplier</span>
                             <span class="detail-value" id="orderCardSupplier"></span>
                         </div>
                         <div class="order-detail-row">
-                            <span class="detail-label">Order Date</span>
+                            <span class="detail-label" data-i18n="orderDate">Order Date</span>
                             <span class="detail-value" id="orderCardDate"></span>
                         </div>
                         <div class="order-detail-row">
-                            <span class="detail-label">License Plate</span>
+                            <span class="detail-label" data-i18n="licensePlate">License Plate</span>
                             <span class="detail-value" id="orderCardPlate"></span>
                         </div>
                         <div class="order-detail-row">
-                            <span class="detail-label">Status</span>
+                            <span class="detail-label" data-i18n="status">Status</span>
                             <span class="detail-value" id="orderCardStatus"></span>
                         </div>
                     </div>
                     <!-- Re-weight warning (shown when order already processed) -->
-                    <div id="reweightWarning" class="reweight-warning" style="display:none;">
-                        ⚠️ This order was already processed. Recording will create a re-weight entry.
+                    <div id="reweightWarning" class="reweight-warning" style="display:none;" data-i18n="reweightWarning">
+                        This order was already processed. Recording will create a re-weight entry.
                     </div>
                 </div>
             </div>
@@ -129,18 +135,18 @@ body {
             <!-- Cart Items -->
             <div class="cart-section">
                 <div class="cart-header">
-                    <h3>Cart</h3>
-                    <button class="clear-cart-btn" onclick="clearCart()">Clear All</button>
+                    <h3 data-i18n="cart">Cart</h3>
+                    <button class="clear-cart-btn" onclick="clearCart()" data-i18n="clearAll">Clear All</button>
                 </div>
                 <div id="cartItems" class="cart-items">
-                    <div class="cart-empty">No items added</div>
+                    <div class="cart-empty" data-i18n="noItemsAdded">No items added</div>
                 </div>
             </div>
 
             <!-- Totals -->
             <div class="totals-section">
                 <div class="total-row total-weight">
-                    <span>Total Weight:</span>
+                    <span data-i18n="totalWeight">Total Weight:</span>
                     <span id="totalWeight">0.00 Kg</span>
                 </div>
             </div>
@@ -148,17 +154,17 @@ body {
             <!-- Actions -->
             <div class="action-section">
                 <button class="btn-pos btn-secondary" onclick="openRemarksModal()" id="remarksBtn" disabled>
-                    💬 Remarks
+                    &#128172; <span data-i18n="remarks">Remarks</span>
                 </button>
                 <button class="btn-pos btn-secondary" onclick="openPhotoCapture()" id="photoBtn" disabled>
-                    📸 Photo
+                    &#128247; <span data-i18n="photo">Photo</span>
                 </button>
             </div>
             <div class="action-section">
-                <button class="btn-pos btn-secondary btn-large" onclick="clearTransaction()">
+                <button class="btn-pos btn-secondary btn-large" onclick="clearTransaction()" data-i18n="cancel">
                     Cancel
                 </button>
-                <button class="btn-pos btn-success btn-large" onclick="recordWeight()" id="recordWeightBtn" disabled>
+                <button class="btn-pos btn-success btn-large" onclick="recordWeight()" id="recordWeightBtn" disabled data-i18n="recordWeight">
                     Record Weight
                 </button>
             </div>
@@ -170,7 +176,7 @@ body {
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="modalItemName">Item Name</h3>
-                <button class="modal-close" onclick="closeWeightModal()">✕</button>
+                <button class="modal-close" onclick="closeWeightModal()">&#10005;</button>
             </div>
             <div class="modal-body">
                 <div class="weight-display">
@@ -180,8 +186,8 @@ body {
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-pos btn-secondary" onclick="closeWeightModal()">Cancel</button>
-                <button class="btn-pos btn-primary" onclick="addToCart()">Add to Cart</button>
+                <button class="btn-pos btn-secondary" onclick="closeWeightModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn-pos btn-primary" onclick="addToCart()" data-i18n="addToCart">Add to Cart</button>
             </div>
         </div>
     </div>
@@ -190,19 +196,20 @@ body {
     <div id="scannerModal" class="modal" style="display:none;">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h3>Scan Order Barcode/QR</h3>
-                <button class="modal-close" onclick="closeScanner()">✕</button>
+                <h3 data-i18n="scanOrderBarcode">Scan Order Barcode/QR</h3>
+                <button class="modal-close" onclick="closeScanner()">&#10005;</button>
             </div>
             <div class="modal-body">
                 <div id="qr-reader" class="scanner-container"></div>
-                <div id="scannerStatus" class="scanner-instructions">
+                <div id="scannerStatus" class="scanner-instructions" data-i18n="pointCamera">
                     Point camera at barcode or QR code
                 </div>
                 <div class="manual-entry">
-                    <label>Or enter manually:</label>
-                    <input type="text" id="manualOrderInput" placeholder="Enter Order ID..."
+                    <label data-i18n="orEnterManually">Or enter manually:</label>
+                    <input type="text" id="manualOrderInput" data-i18n-placeholder="enterOrderId"
+                           placeholder="Enter Order ID..."
                            onkeyup="if(event.key==='Enter')submitManualOrder()">
-                    <button class="btn-pos btn-primary" onclick="submitManualOrder()">Search</button>
+                    <button class="btn-pos btn-primary" onclick="submitManualOrder()" data-i18n="search">Search</button>
                 </div>
             </div>
         </div>
@@ -212,15 +219,15 @@ body {
     <div id="remarksModal" class="modal" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Add Remarks</h3>
-                <button class="modal-close" onclick="closeRemarksModal()">✕</button>
+                <h3 data-i18n="addRemarks">Add Remarks</h3>
+                <button class="modal-close" onclick="closeRemarksModal()">&#10005;</button>
             </div>
             <div class="modal-body">
-                <textarea id="remarksInput" placeholder="Enter remarks for this order..." rows="4"></textarea>
+                <textarea id="remarksInput" data-i18n-placeholder="enterRemarks" placeholder="Enter remarks for this order..." rows="4"></textarea>
             </div>
             <div class="modal-footer">
-                <button class="btn-pos btn-secondary" onclick="closeRemarksModal()">Cancel</button>
-                <button class="btn-pos btn-primary" onclick="saveRemarks()">Save Remarks</button>
+                <button class="btn-pos btn-secondary" onclick="closeRemarksModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn-pos btn-primary" onclick="saveRemarks()" data-i18n="saveRemarks">Save Remarks</button>
             </div>
         </div>
     </div>
@@ -229,8 +236,8 @@ body {
     <div id="photoModal" class="modal" style="display:none;">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h3>Capture Photo</h3>
-                <button class="modal-close" onclick="closePhotoCapture()">✕</button>
+                <h3 data-i18n="capturePhoto">Capture Photo</h3>
+                <button class="modal-close" onclick="closePhotoCapture()">&#10005;</button>
             </div>
             <div class="modal-body">
                 <div class="camera-container">
@@ -240,16 +247,16 @@ body {
                 </div>
                 <div class="photo-controls">
                     <button class="btn-pos btn-primary btn-large" onclick="capturePhoto()" id="captureBtn">
-                        📸 Capture
+                        &#128247; <span data-i18n="capture">Capture</span>
                     </button>
                     <button class="btn-pos btn-secondary" onclick="retakePhoto()" id="retakeBtn" style="display:none;">
-                        🔄 Retake
+                        &#128260; <span data-i18n="retake">Retake</span>
                     </button>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-pos btn-secondary" onclick="closePhotoCapture()">Cancel</button>
-                <button class="btn-pos btn-success" onclick="savePhoto()" id="savePhotoBtn" disabled>Save Photo</button>
+                <button class="btn-pos btn-secondary" onclick="closePhotoCapture()" data-i18n="cancel">Cancel</button>
+                <button class="btn-pos btn-success" onclick="savePhoto()" id="savePhotoBtn" disabled data-i18n="savePhoto">Save Photo</button>
             </div>
         </div>
     </div>
@@ -258,14 +265,14 @@ body {
     <div id="summaryModal" class="modal" style="display:none;">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h3>Session Summary</h3>
-                <button class="modal-close" onclick="closeSummaryModal()">✕</button>
+                <h3 data-i18n="sessionSummary">Session Summary</h3>
+                <button class="modal-close" onclick="closeSummaryModal()">&#10005;</button>
             </div>
             <div class="modal-body" id="summaryContent">
                 Loading...
             </div>
             <div class="modal-footer">
-                <button class="btn-pos btn-secondary" onclick="closeSummaryModal()">Close</button>
+                <button class="btn-pos btn-secondary" onclick="closeSummaryModal()" data-i18n="close">Close</button>
             </div>
         </div>
     </div>
@@ -274,41 +281,184 @@ body {
     <div id="closeSessionModal" class="modal" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Close Session</h3>
-                <button class="modal-close" onclick="closeCloseSessionModal()">✕</button>
+                <h3 data-i18n="closeSession">Close Session</h3>
+                <button class="modal-close" onclick="closeCloseSessionModal()">&#10005;</button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to close this session?</p>
+                <p data-i18n="confirmCloseSession">Are you sure you want to close this session?</p>
                 <div id="closeSessionSummary"></div>
             </div>
             <div class="modal-footer">
-                <button class="btn-pos btn-secondary" onclick="closeCloseSessionModal()">Cancel</button>
-                <button class="btn-pos btn-danger" onclick="closeSession()">Close Session</button>
+                <button class="btn-pos btn-secondary" onclick="closeCloseSessionModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn-pos btn-danger" onclick="closeSession()" data-i18n="closeSession">Close Session</button>
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <script>
-// State
+// ===== Translations =====
+const translations = {
+    en: {
+        items: 'Items',
+        orderId: 'Order ID',
+        scan: 'Scan',
+        enterOrderId: 'Enter Order ID or scan...',
+        supplier: 'Supplier',
+        orderDate: 'Order Date',
+        licensePlate: 'License Plate',
+        status: 'Status',
+        reweightWarning: 'This order was already processed. Recording will create a re-weight entry.',
+        cart: 'Cart',
+        clearAll: 'Clear All',
+        noItemsAdded: 'No items added',
+        totalWeight: 'Total Weight:',
+        remarks: 'Remarks',
+        photo: 'Photo',
+        cancel: 'Cancel',
+        recordWeight: 'Record Weight',
+        addToCart: 'Add to Cart',
+        scanOrderBarcode: 'Scan Order Barcode/QR',
+        pointCamera: 'Point camera at barcode or QR code',
+        orEnterManually: 'Or enter manually:',
+        search: 'Search',
+        addRemarks: 'Add Remarks',
+        enterRemarks: 'Enter remarks for this order...',
+        saveRemarks: 'Save Remarks',
+        capturePhoto: 'Capture Photo',
+        capture: 'Capture',
+        retake: 'Retake',
+        savePhoto: 'Save Photo',
+        sessionSummary: 'Session Summary',
+        close: 'Close',
+        closeSession: 'Close Session',
+        confirmCloseSession: 'Are you sure you want to close this session?',
+        summary: 'Summary',
+        closeShift: 'Close Shift',
+        weightsRecorded: 'Weights Recorded',
+        orderNotFound: 'Order not found',
+        errorSearching: 'Error searching for order',
+        noOrdersFound: 'No orders found',
+        cameraNotAvailable: 'Camera not available',
+        startingCamera: 'Starting camera...',
+        pleaseEnterWeight: 'Please enter a valid weight',
+        remarksSaved: 'Remarks saved',
+        photoReady: 'Photo captured and ready to attach',
+        weightRecorded: 'Weight recorded',
+        reweight: 'Re-weight',
+        total: 'Total',
+        sessionClosed: 'Session closed successfully!',
+        error: 'Error',
+        failedToRecord: 'Failed to record weight',
+        failedToClose: 'Failed to close session'
+    },
+    th: {
+        items: 'รายการสินค้า',
+        orderId: 'รหัสออเดอร์',
+        scan: 'สแกน',
+        enterOrderId: 'กรอกรหัสออเดอร์หรือสแกน...',
+        supplier: 'ผู้ขาย',
+        orderDate: 'วันที่สั่ง',
+        licensePlate: 'ป้ายทะเบียน',
+        status: 'สถานะ',
+        reweightWarning: 'ออเดอร์นี้ถูกบันทึกแล้ว การบันทึกจะเป็นการชั่งซ้ำ',
+        cart: 'ตะกร้า',
+        clearAll: 'ล้างทั้งหมด',
+        noItemsAdded: 'ยังไม่มีรายการ',
+        totalWeight: 'น้ำหนักรวม:',
+        remarks: 'หมายเหตุ',
+        photo: 'ถ่ายรูป',
+        cancel: 'ยกเลิก',
+        recordWeight: 'บันทึกน้ำหนัก',
+        addToCart: 'เพิ่มลงตะกร้า',
+        scanOrderBarcode: 'สแกนบาร์โค้ด/QR ออเดอร์',
+        pointCamera: 'เล็งกล้องไปที่บาร์โค้ดหรือ QR โค้ด',
+        orEnterManually: 'หรือกรอกเอง:',
+        search: 'ค้นหา',
+        addRemarks: 'เพิ่มหมายเหตุ',
+        enterRemarks: 'กรอกหมายเหตุสำหรับออเดอร์นี้...',
+        saveRemarks: 'บันทึกหมายเหตุ',
+        capturePhoto: 'ถ่ายรูป',
+        capture: 'ถ่าย',
+        retake: 'ถ่ายใหม่',
+        savePhoto: 'บันทึกรูป',
+        sessionSummary: 'สรุปเซสชั่น',
+        close: 'ปิด',
+        closeSession: 'ปิดเซสชั่น',
+        confirmCloseSession: 'คุณต้องการปิดเซสชั่นนี้หรือไม่?',
+        summary: 'สรุป',
+        closeShift: 'ปิดกะ',
+        weightsRecorded: 'จำนวนครั้งที่ชั่ง',
+        orderNotFound: 'ไม่พบออเดอร์',
+        errorSearching: 'เกิดข้อผิดพลาดในการค้นหา',
+        noOrdersFound: 'ไม่พบออเดอร์',
+        cameraNotAvailable: 'ไม่สามารถเข้าถึงกล้อง',
+        startingCamera: 'กำลังเปิดกล้อง...',
+        pleaseEnterWeight: 'กรุณากรอกน้ำหนักที่ถูกต้อง',
+        remarksSaved: 'บันทึกหมายเหตุแล้ว',
+        photoReady: 'ถ่ายรูปแล้ว พร้อมแนบ',
+        weightRecorded: 'บันทึกน้ำหนักแล้ว',
+        reweight: 'ชั่งซ้ำ',
+        total: 'รวม',
+        sessionClosed: 'ปิดเซสชั่นสำเร็จ!',
+        error: 'ข้อผิดพลาด',
+        failedToRecord: 'ไม่สามารถบันทึกน้ำหนักได้',
+        failedToClose: 'ไม่สามารถปิดเซสชั่นได้'
+    }
+};
+
+// ===== State =====
 const state = {
     session: '{{ session.name }}',
+    language: localStorage.getItem('posLanguage') || 'en',
+    theme: localStorage.getItem('posTheme') || 'dark',
     order: null,
     cart: [],
     currentItem: null,
     remarks: '',
     capturedPhotoData: null,
-    theme: localStorage.getItem('posTheme') || 'dark',
     scannerStream: null,
     cameraStream: null
 };
 
-// Initialize theme
+// ===== Initialization =====
 document.addEventListener('DOMContentLoaded', () => {
     applyTheme(state.theme);
+    applyLanguage(state.language);
+    updateClock();
+    setInterval(updateClock, 1000);
 });
 
-// Theme Toggle
+// ===== Language Functions =====
+function t(key) {
+    return translations[state.language][key] || translations['en'][key] || key;
+}
+
+function toggleLanguage() {
+    state.language = state.language === 'en' ? 'th' : 'en';
+    localStorage.setItem('posLanguage', state.language);
+    applyLanguage(state.language);
+}
+
+function applyLanguage(lang) {
+    const langIcon = document.getElementById('langIcon');
+    langIcon.textContent = lang === 'en' ? 'TH' : 'EN';
+
+    // Update all elements with data-i18n attribute
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        el.textContent = t(key);
+    });
+
+    // Update placeholders
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = t(key);
+    });
+}
+
+// ===== Theme Functions =====
 function toggleTheme() {
     state.theme = state.theme === 'dark' ? 'light' : 'dark';
     localStorage.setItem('posTheme', state.theme);
@@ -321,14 +471,24 @@ function applyTheme(theme) {
 
     if (theme === 'light') {
         terminal.classList.add('light-theme');
-        themeIcon.textContent = '🌙';
+        themeIcon.innerHTML = '&#127769;'; // moon
     } else {
         terminal.classList.remove('light-theme');
-        themeIcon.textContent = '☀️';
+        themeIcon.innerHTML = '&#9728;'; // sun
     }
 }
 
-// API helper function
+// ===== Clock =====
+function updateClock() {
+    const now = new Date();
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dow = days[now.getDay()];
+    const date = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    document.getElementById('currentTime').textContent = `${dow} ${date} ${time}`;
+}
+
+// ===== API Helper =====
 async function callAPI(method, args = {}) {
     const response = await fetch(`/api/method/${method}`, {
         method: 'POST',
@@ -348,34 +508,22 @@ async function callAPI(method, args = {}) {
     return data;
 }
 
-// Update clock
-function updateClock() {
-    const now = new Date();
-    document.getElementById('currentTime').textContent = now.toLocaleTimeString();
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-// Scanner Functions using html5-qrcode library
+// ===== Scanner Functions =====
 let html5QrCode = null;
 
 async function openScanner() {
     const modal = document.getElementById('scannerModal');
     modal.style.display = 'flex';
 
-    // Clear previous scanner instance
     if (html5QrCode) {
         try {
             await html5QrCode.stop();
-        } catch (e) {
-            // Ignore if already stopped
-        }
+        } catch (e) {}
         html5QrCode = null;
     }
 
-    // Clear the container
     document.getElementById('qr-reader').innerHTML = '';
-    document.getElementById('scannerStatus').textContent = 'Starting camera...';
+    document.getElementById('scannerStatus').textContent = t('startingCamera');
 
     try {
         html5QrCode = new Html5Qrcode("qr-reader");
@@ -390,18 +538,17 @@ async function openScanner() {
             { facingMode: "environment" },
             config,
             onScanSuccess,
-            onScanFailure
+            () => {}
         );
 
-        document.getElementById('scannerStatus').textContent = 'Point camera at barcode or QR code';
+        document.getElementById('scannerStatus').textContent = t('pointCamera');
     } catch (err) {
         console.error('Scanner error:', err);
-        document.getElementById('scannerStatus').textContent = 'Camera not available. Please enter Order ID manually.';
+        document.getElementById('scannerStatus').textContent = t('cameraNotAvailable');
     }
 }
 
-function onScanSuccess(decodedText, decodedResult) {
-    // Play a beep sound (optional)
+function onScanSuccess(decodedText) {
     try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioCtx.createOscillator();
@@ -410,31 +557,20 @@ function onScanSuccess(decodedText, decodedResult) {
         oscillator.connect(audioCtx.destination);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.1);
-    } catch (e) {
-        // Audio not available, ignore
-    }
+    } catch (e) {}
 
     closeScanner();
     searchAndSelectOrder(decodedText);
 }
 
-function onScanFailure(error) {
-    // Ignore scan failures (no QR found in frame)
-}
-
 async function closeScanner() {
-    const modal = document.getElementById('scannerModal');
-
     if (html5QrCode) {
         try {
             await html5QrCode.stop();
-        } catch (e) {
-            // Ignore if already stopped
-        }
+        } catch (e) {}
         html5QrCode = null;
     }
-
-    modal.style.display = 'none';
+    document.getElementById('scannerModal').style.display = 'none';
 }
 
 function submitManualOrder() {
@@ -446,10 +582,7 @@ function submitManualOrder() {
     }
 }
 
-// Parse QR code value - extract document name from URL if needed
 function parseQRValue(rawValue) {
-    // Check if it's a URL (from QR_foundry)
-    // Format: http://localhost:8000/app/pos-order/ORD-2025-00002
     if (rawValue.includes('/app/pos-order/')) {
         const match = rawValue.match(/\/app\/pos-order\/([^\/\?#]+)/);
         if (match && match[1]) {
@@ -457,26 +590,20 @@ function parseQRValue(rawValue) {
         }
     }
 
-    // Also handle other potential URL formats
     if (rawValue.startsWith('http://') || rawValue.startsWith('https://')) {
-        // Try to extract the last path segment
         try {
             const url = new URL(rawValue);
             const pathParts = url.pathname.split('/').filter(p => p);
             if (pathParts.length > 0) {
                 return decodeURIComponent(pathParts[pathParts.length - 1]);
             }
-        } catch (e) {
-            // Not a valid URL, use as-is
-        }
+        } catch (e) {}
     }
 
-    // Return raw value if not a URL
     return rawValue;
 }
 
 async function searchAndSelectOrder(query) {
-    // Parse QR value to extract document name if it's a URL
     const parsedQuery = parseQRValue(query);
 
     try {
@@ -486,15 +613,15 @@ async function searchAndSelectOrder(query) {
             const o = data.message[0];
             selectOrder(o.name, o.order_id, o.supplier, o.supplier_name || '', o.license_plate || '', o.order_date || '', o.status || 'Pending');
         } else {
-            frappe.msgprint('Order not found: ' + parsedQuery);
+            frappe.msgprint(t('orderNotFound') + ': ' + parsedQuery);
         }
     } catch (error) {
         console.error('Order search error:', error);
-        frappe.msgprint('Error searching for order');
+        frappe.msgprint(t('errorSearching'));
     }
 }
 
-// Order Search
+// ===== Order Search =====
 let searchTimeout;
 async function searchOrder(query) {
     clearTimeout(searchTimeout);
@@ -514,17 +641,17 @@ async function searchOrder(query) {
                 resultsDiv.innerHTML = data.message.map(o => `
                     <div class="order-result" onclick="selectOrder('${o.name}', '${o.order_id || ''}', '${o.supplier}', '${o.supplier_name || ''}', '${o.license_plate || ''}', '${o.order_date || ''}', '${o.status || 'Pending'}')">
                         <span class="order-id">${o.order_id || o.name}</span>
-                        <span class="order-details">${o.supplier_name || o.supplier} ${o.license_plate ? '| ' + o.license_plate : ''} ${o.status === 'Processed' ? '| ✓ Processed' : ''}</span>
+                        <span class="order-details">${o.supplier_name || o.supplier} ${o.license_plate ? '| ' + o.license_plate : ''} ${o.status === 'Processed' ? '| ✓' : ''}</span>
                     </div>
                 `).join('');
                 resultsDiv.style.display = 'block';
             } else {
-                resultsDiv.innerHTML = '<div class="no-results">No orders found</div>';
+                resultsDiv.innerHTML = `<div class="no-results">${t('noOrdersFound')}</div>`;
                 resultsDiv.style.display = 'block';
             }
         } catch (error) {
             console.error('Order search error:', error);
-            resultsDiv.innerHTML = '<div class="no-results">Error searching</div>';
+            resultsDiv.innerHTML = `<div class="no-results">${t('errorSearching')}</div>`;
             resultsDiv.style.display = 'block';
         }
     }, 300);
@@ -541,32 +668,23 @@ function selectOrder(name, orderId, supplier, supplierName, licensePlate, orderD
         status: status || 'Pending'
     };
 
-    // Hide search input
     document.getElementById('orderSearch').style.display = 'none';
     document.getElementById('orderResults').style.display = 'none';
 
-    // Show order details card
     const card = document.getElementById('orderDetailsCard');
     document.getElementById('orderCardId').textContent = orderId || name;
     document.getElementById('orderCardSupplier').textContent = supplierName || supplier;
     document.getElementById('orderCardDate').textContent = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
     document.getElementById('orderCardPlate').textContent = licensePlate || '-';
 
-    // Show status with styling
     const statusEl = document.getElementById('orderCardStatus');
     statusEl.textContent = status || 'Pending';
     statusEl.className = 'detail-value status-' + (status || 'Pending').toLowerCase();
 
-    // Show re-weight warning if order already processed
     const reweightWarning = document.getElementById('reweightWarning');
-    if (status === 'Processed') {
-        reweightWarning.style.display = 'block';
-    } else {
-        reweightWarning.style.display = 'none';
-    }
+    reweightWarning.style.display = status === 'Processed' ? 'block' : 'none';
 
     card.style.display = 'block';
-
     updateButtonStates();
 }
 
@@ -580,7 +698,7 @@ function clearOrder() {
     updateButtonStates();
 }
 
-// Item Selection
+// ===== Item Selection =====
 function selectItem(code, name, uom) {
     state.currentItem = { code, name, uom };
     document.getElementById('modalItemName').textContent = name;
@@ -595,12 +713,12 @@ function closeWeightModal() {
     state.currentItem = null;
 }
 
-// Cart Management
+// ===== Cart Management =====
 function addToCart() {
     const weight = parseFloat(document.getElementById('weightInput').value);
 
     if (!weight || weight <= 0) {
-        frappe.msgprint('Please enter a valid weight');
+        frappe.msgprint(t('pleaseEnterWeight'));
         return;
     }
 
@@ -619,7 +737,7 @@ function addToCart() {
 function renderCart() {
     const container = document.getElementById('cartItems');
     if (state.cart.length === 0) {
-        container.innerHTML = '<div class="cart-empty">No items added</div>';
+        container.innerHTML = `<div class="cart-empty">${t('noItemsAdded')}</div>`;
         document.getElementById('totalWeight').textContent = '0.00 Kg';
         return;
     }
@@ -630,21 +748,18 @@ function renderCart() {
                 <span class="item-name">${item.item_name}</span>
                 <span class="item-details">${item.weight.toFixed(2)} ${item.uom}</span>
             </div>
-            <button class="remove-btn" data-index="${index}" type="button">✕</button>
+            <button class="remove-btn" data-index="${index}" type="button">&#10005;</button>
         </div>
     `).join('');
 
-    // Attach click handlers to remove buttons
     container.querySelectorAll('.remove-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            const index = parseInt(this.dataset.index);
-            removeFromCart(index);
+            removeFromCart(parseInt(this.dataset.index));
         });
     });
 
-    // Update totals
     const totalWeight = state.cart.reduce((sum, item) => sum + item.weight, 0);
     document.getElementById('totalWeight').textContent = totalWeight.toFixed(2) + ' Kg';
 }
@@ -675,7 +790,7 @@ function updateButtonStates() {
     document.getElementById('photoBtn').disabled = !hasOrder;
 }
 
-// Remarks Functions
+// ===== Remarks =====
 function openRemarksModal() {
     if (!state.order) return;
     document.getElementById('remarksInput').value = state.remarks || '';
@@ -689,22 +804,17 @@ function closeRemarksModal() {
 function saveRemarks() {
     state.remarks = document.getElementById('remarksInput').value.trim();
     closeRemarksModal();
-    frappe.show_alert({
-        message: 'Remarks saved',
-        indicator: 'green'
-    }, 2);
+    frappe.show_alert({ message: t('remarksSaved'), indicator: 'green' }, 2);
 }
 
-// Photo Capture Functions
+// ===== Photo Capture =====
 async function openPhotoCapture() {
     if (!state.order) return;
 
     const modal = document.getElementById('photoModal');
     const video = document.getElementById('cameraVideo');
-    const canvas = document.getElementById('photoCanvas');
     const capturedImg = document.getElementById('capturedPhoto');
 
-    // Reset state
     video.style.display = 'block';
     capturedImg.style.display = 'none';
     document.getElementById('captureBtn').style.display = 'inline-block';
@@ -720,13 +830,12 @@ async function openPhotoCapture() {
         video.srcObject = state.cameraStream;
     } catch (err) {
         console.error('Camera error:', err);
-        frappe.msgprint('Camera not available');
+        frappe.msgprint(t('cameraNotAvailable'));
         closePhotoCapture();
     }
 }
 
 function closePhotoCapture() {
-    const modal = document.getElementById('photoModal');
     const video = document.getElementById('cameraVideo');
 
     if (state.cameraStream) {
@@ -734,7 +843,7 @@ function closePhotoCapture() {
         state.cameraStream = null;
     }
     video.srcObject = null;
-    modal.style.display = 'none';
+    document.getElementById('photoModal').style.display = 'none';
 }
 
 function capturePhoto() {
@@ -742,23 +851,15 @@ function capturePhoto() {
     const canvas = document.getElementById('photoCanvas');
     const capturedImg = document.getElementById('capturedPhoto');
 
-    // Set canvas size to video size
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
 
-    // Draw video frame to canvas
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
-
-    // Convert to data URL
     state.capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
-
-    // Show captured image
     capturedImg.src = state.capturedPhotoData;
     video.style.display = 'none';
     capturedImg.style.display = 'block';
 
-    // Update buttons
     document.getElementById('captureBtn').style.display = 'none';
     document.getElementById('retakeBtn').style.display = 'inline-block';
     document.getElementById('savePhotoBtn').disabled = false;
@@ -769,7 +870,6 @@ function retakePhoto() {
     const capturedImg = document.getElementById('capturedPhoto');
 
     state.capturedPhotoData = null;
-
     video.style.display = 'block';
     capturedImg.style.display = 'none';
 
@@ -781,14 +881,11 @@ function retakePhoto() {
 function savePhoto() {
     if (state.capturedPhotoData) {
         closePhotoCapture();
-        frappe.show_alert({
-            message: 'Photo captured and ready to attach',
-            indicator: 'green'
-        }, 2);
+        frappe.show_alert({ message: t('photoReady'), indicator: 'green' }, 2);
     }
 }
 
-// Record Weight
+// ===== Record Weight =====
 async function recordWeight() {
     if (!state.order || state.cart.length === 0) return;
 
@@ -805,25 +902,23 @@ async function recordWeight() {
         });
 
         if (data.message) {
-            // If photo was captured, attach it
             if (state.capturedPhotoData) {
                 await attachPhoto(data.message.scrap_weight);
             }
 
-            const reweightMsg = data.message.is_reweight ? ' (Re-weight)' : '';
+            const reweightMsg = data.message.is_reweight ? ` (${t('reweight')})` : '';
             frappe.show_alert({
-                message: `Weight ${data.message.scrap_weight} recorded${reweightMsg}! Total: ${data.message.total_weight.toFixed(2)} Kg`,
+                message: `${t('weightRecorded')} ${data.message.scrap_weight}${reweightMsg}! ${t('total')}: ${data.message.total_weight.toFixed(2)} Kg`,
                 indicator: 'green'
             }, 5);
 
-            // Clear for next transaction
             clearTransaction();
         }
     } catch (error) {
         frappe.msgprint({
-            title: 'Error',
+            title: t('error'),
             indicator: 'red',
-            message: error.message || 'Failed to record weight'
+            message: error.message || t('failedToRecord')
         });
     }
 }
@@ -832,11 +927,9 @@ async function attachPhoto(docname) {
     if (!state.capturedPhotoData) return;
 
     try {
-        // Convert base64 to blob
         const response = await fetch(state.capturedPhotoData);
         const blob = await response.blob();
 
-        // Create FormData
         const formData = new FormData();
         formData.append('file', blob, `photo_${Date.now()}.jpg`);
         formData.append('doctype', 'Scrap Weight');
@@ -845,9 +938,7 @@ async function attachPhoto(docname) {
 
         await fetch('/api/method/upload_file', {
             method: 'POST',
-            headers: {
-                'X-Frappe-CSRF-Token': frappe.csrf_token
-            },
+            headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
             body: formData
         });
     } catch (err) {
@@ -855,7 +946,7 @@ async function attachPhoto(docname) {
     }
 }
 
-// Session Management
+// ===== Session Management =====
 async function showSessionSummary() {
     document.getElementById('summaryModal').style.display = 'flex';
     try {
@@ -871,18 +962,18 @@ async function showSessionSummary() {
                 <div class="summary-stats">
                     <div class="stat-card">
                         <span class="stat-value">${weightCount}</span>
-                        <span class="stat-label">Weights Recorded</span>
+                        <span class="stat-label">${t('weightsRecorded')}</span>
                     </div>
                     <div class="stat-card">
                         <span class="stat-value">${totalWeight.toFixed(2)} Kg</span>
-                        <span class="stat-label">Total Weight</span>
+                        <span class="stat-label">${t('totalWeight')}</span>
                     </div>
                 </div>
             `;
         }
     } catch (error) {
         console.error('Summary error:', error);
-        document.getElementById('summaryContent').innerHTML = '<p>Error loading summary</p>';
+        document.getElementById('summaryContent').innerHTML = `<p>${t('error')}</p>`;
     }
 }
 
@@ -903,8 +994,8 @@ async function confirmCloseSession() {
             const totalWeight = parseFloat(data.totals.total_weight) || 0;
             document.getElementById('closeSessionSummary').innerHTML = `
                 <div class="close-summary">
-                    <p><strong>Weights Recorded:</strong> ${weightCount}</p>
-                    <p><strong>Total Weight:</strong> ${totalWeight.toFixed(2)} Kg</p>
+                    <p><strong>${t('weightsRecorded')}:</strong> ${weightCount}</p>
+                    <p><strong>${t('totalWeight')}</strong> ${totalWeight.toFixed(2)} Kg</p>
                 </div>
             `;
         }
@@ -924,34 +1015,23 @@ async function closeSession() {
         });
 
         if (response.message) {
-            frappe.show_alert({
-                message: 'Session closed successfully!',
-                indicator: 'green'
-            }, 3);
-
-            setTimeout(() => {
-                window.location.href = '/pos';
-            }, 1000);
+            frappe.show_alert({ message: t('sessionClosed'), indicator: 'green' }, 3);
+            setTimeout(() => { window.location.href = '/pos'; }, 1000);
         }
     } catch (error) {
         frappe.msgprint({
-            title: 'Error',
+            title: t('error'),
             indicator: 'red',
-            message: error.message || 'Failed to close session'
+            message: error.message || t('failedToClose')
         });
     }
 }
 
-// Close modals on outside click
+// ===== Modal Click Handler =====
 document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             modal.style.display = 'none';
-            // Stop any active streams
-            if (state.scannerStream) {
-                state.scannerStream.getTracks().forEach(track => track.stop());
-                state.scannerStream = null;
-            }
             if (state.cameraStream) {
                 state.cameraStream.getTracks().forEach(track => track.stop());
                 state.cameraStream = null;
@@ -960,5 +1040,5 @@ document.querySelectorAll('.modal').forEach(modal => {
     });
 });
 </script>
-{% endif %}
+
 {% endblock %}
