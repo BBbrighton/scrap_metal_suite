@@ -6,6 +6,20 @@ from frappe import _
 from frappe.utils import flt, nowdate
 
 
+def check_pos_operator():
+    """
+    Check if current user has POS Operator role.
+    Raises PermissionError if not authorized.
+    System Manager is also allowed for admin access.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Please login to access POS"), frappe.AuthenticationError)
+
+    user_roles = frappe.get_roles(frappe.session.user)
+    if "POS Operator" not in user_roles and "System Manager" not in user_roles:
+        frappe.throw(_("Access denied. POS Operator role required."), frappe.PermissionError)
+
+
 @frappe.whitelist()
 def get_pos_profile(profile_name):
     """
@@ -17,6 +31,7 @@ def get_pos_profile(profile_name):
     Returns:
         dict: Profile config with items list
     """
+    check_pos_operator()
     profile = frappe.get_doc("POS Profile Scrap", profile_name)
 
     return {
@@ -41,6 +56,7 @@ def get_active_session():
     Returns:
         dict: Session details or None if no active session
     """
+    check_pos_operator()
     session = frappe.db.get_value(
         "POS Session",
         {"operator": frappe.session.user, "status": "Open"},
@@ -62,6 +78,7 @@ def open_session(pos_profile):
     Returns:
         dict: New session details
     """
+    check_pos_operator()
     # Check for existing open session
     existing = frappe.db.exists(
         "POS Session",
@@ -100,6 +117,7 @@ def close_session(session):
     Returns:
         dict: Session totals
     """
+    check_pos_operator()
     session_doc = frappe.get_doc("POS Session", session)
 
     # Verify ownership or authority
@@ -128,6 +146,7 @@ def lookup_order(query):
     Returns:
         list: Matching orders with supplier_name, order_date, license_plate, status
     """
+    check_pos_operator()
     from frappe.utils import add_days
 
     if not query or len(query) < 2:
@@ -218,6 +237,7 @@ def get_order_details(order_id):
     Returns:
         dict: Order details including supplier info
     """
+    check_pos_operator()
     order = frappe.get_doc("POS Order", order_id)
 
     # Get supplier details
@@ -257,6 +277,7 @@ def create_scrap_weight(session, pos_order, items, remarks=None):
     Returns:
         dict: {scrap_weight, total_weight, is_reweight}
     """
+    check_pos_operator()
     import json
 
     if isinstance(items, str):
@@ -334,6 +355,7 @@ def get_session_weights(session):
     Returns:
         list: Scrap weights with details
     """
+    check_pos_operator()
     weights = frappe.get_all(
         "Scrap Weight",
         filters={"session": session},
@@ -358,6 +380,7 @@ def get_session_summary(session):
     Returns:
         dict: Session summary with totals
     """
+    check_pos_operator()
     totals = frappe.db.sql("""
         SELECT
             COUNT(*) as weight_count,
