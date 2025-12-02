@@ -2,6 +2,11 @@
 
 {% block title %}POS Terminal{% endblock %}
 
+{% block head_include %}
+<!-- QR/Barcode Scanner Library (self-hosted for offline support) -->
+<script src="/assets/scrap_metal_suite/js/html5-qrcode.min.js"></script>
+{% endblock %}
+
 {% block style %}
 <style>
 /* Hide Frappe navigation and footer for fullscreen POS */
@@ -189,13 +194,8 @@ body {
                 <button class="modal-close" onclick="closeScanner()">✕</button>
             </div>
             <div class="modal-body">
-                <div class="scanner-container">
-                    <video id="scannerVideo" autoplay playsinline></video>
-                    <div class="scanner-overlay">
-                        <div class="scanner-frame"></div>
-                    </div>
-                </div>
-                <div class="scanner-instructions">
+                <div id="qr-reader" class="scanner-container"></div>
+                <div id="scannerStatus" class="scanner-instructions">
                     Point camera at barcode or QR code
                 </div>
                 <div class="manual-entry">
@@ -356,63 +356,85 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// Scanner Functions
+// Scanner Functions using html5-qrcode library
+let html5QrCode = null;
+
 async function openScanner() {
     const modal = document.getElementById('scannerModal');
-    const video = document.getElementById('scannerVideo');
     modal.style.display = 'flex';
 
+    // Clear previous scanner instance
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+        } catch (e) {
+            // Ignore if already stopped
+        }
+        html5QrCode = null;
+    }
+
+    // Clear the container
+    document.getElementById('qr-reader').innerHTML = '';
+    document.getElementById('scannerStatus').textContent = 'Starting camera...';
+
     try {
-        state.scannerStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' }
-        });
-        video.srcObject = state.scannerStream;
+        html5QrCode = new Html5Qrcode("qr-reader");
 
-        // Start scanning (simplified - in production use a library like ZXing)
-        startBarcodeScanning();
+        const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+        };
+
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            onScanSuccess,
+            onScanFailure
+        );
+
+        document.getElementById('scannerStatus').textContent = 'Point camera at barcode or QR code';
     } catch (err) {
-        console.error('Camera error:', err);
-        frappe.msgprint('Camera not available. Please enter Order ID manually.');
+        console.error('Scanner error:', err);
+        document.getElementById('scannerStatus').textContent = 'Camera not available. Please enter Order ID manually.';
     }
 }
 
-function closeScanner() {
+function onScanSuccess(decodedText, decodedResult) {
+    // Play a beep sound (optional)
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+        oscillator.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.1);
+    } catch (e) {
+        // Audio not available, ignore
+    }
+
+    closeScanner();
+    searchAndSelectOrder(decodedText);
+}
+
+function onScanFailure(error) {
+    // Ignore scan failures (no QR found in frame)
+}
+
+async function closeScanner() {
     const modal = document.getElementById('scannerModal');
-    const video = document.getElementById('scannerVideo');
 
-    if (state.scannerStream) {
-        state.scannerStream.getTracks().forEach(track => track.stop());
-        state.scannerStream = null;
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+        } catch (e) {
+            // Ignore if already stopped
+        }
+        html5QrCode = null;
     }
-    video.srcObject = null;
+
     modal.style.display = 'none';
-}
-
-function startBarcodeScanning() {
-    // Simplified barcode detection - in production use BarcodeDetector API or ZXing library
-    if ('BarcodeDetector' in window) {
-        const barcodeDetector = new BarcodeDetector();
-        const video = document.getElementById('scannerVideo');
-
-        const scanInterval = setInterval(async () => {
-            if (!state.scannerStream) {
-                clearInterval(scanInterval);
-                return;
-            }
-
-            try {
-                const barcodes = await barcodeDetector.detect(video);
-                if (barcodes.length > 0) {
-                    clearInterval(scanInterval);
-                    const code = barcodes[0].rawValue;
-                    closeScanner();
-                    searchAndSelectOrder(code);
-                }
-            } catch (err) {
-                // Continue scanning
-            }
-        }, 500);
-    }
 }
 
 function submitManualOrder() {
@@ -424,15 +446,47 @@ function submitManualOrder() {
     }
 }
 
+// Parse QR code value - extract document name from URL if needed
+function parseQRValue(rawValue) {
+    // Check if it's a URL (from QR_foundry)
+    // Format: http://localhost:8000/app/pos-order/ORD-2025-00002
+    if (rawValue.includes('/app/pos-order/')) {
+        const match = rawValue.match(/\/app\/pos-order\/([^\/\?#]+)/);
+        if (match && match[1]) {
+            return decodeURIComponent(match[1]);
+        }
+    }
+
+    // Also handle other potential URL formats
+    if (rawValue.startsWith('http://') || rawValue.startsWith('https://')) {
+        // Try to extract the last path segment
+        try {
+            const url = new URL(rawValue);
+            const pathParts = url.pathname.split('/').filter(p => p);
+            if (pathParts.length > 0) {
+                return decodeURIComponent(pathParts[pathParts.length - 1]);
+            }
+        } catch (e) {
+            // Not a valid URL, use as-is
+        }
+    }
+
+    // Return raw value if not a URL
+    return rawValue;
+}
+
 async function searchAndSelectOrder(query) {
+    // Parse QR value to extract document name if it's a URL
+    const parsedQuery = parseQRValue(query);
+
     try {
-        const data = await callAPI('scrap_metal_suite.api.v1.pos.lookup_order', { query: query });
+        const data = await callAPI('scrap_metal_suite.api.v1.pos.lookup_order', { query: parsedQuery });
 
         if (data.message && data.message.length > 0) {
             const o = data.message[0];
             selectOrder(o.name, o.order_id, o.supplier, o.supplier_name || '', o.license_plate || '', o.order_date || '', o.status || 'Pending');
         } else {
-            frappe.msgprint('Order not found: ' + query);
+            frappe.msgprint('Order not found: ' + parsedQuery);
         }
     } catch (error) {
         console.error('Order search error:', error);

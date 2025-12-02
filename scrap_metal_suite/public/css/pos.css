@@ -1171,32 +1171,36 @@
     border-radius: 12px;
     overflow: hidden;
     margin-bottom: 16px;
+    min-height: 300px;
 }
 
-.scanner-container video {
-    width: 100%;
-    height: auto;
-    display: block;
+/* html5-qrcode library styles */
+#qr-reader {
+    width: 100% !important;
+    border: none !important;
 }
 
-.scanner-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-}
-
-.scanner-frame {
-    width: 200px;
-    height: 200px;
-    border: 3px solid #3b82f6;
+#qr-reader video {
+    width: 100% !important;
     border-radius: 12px;
-    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+}
+
+#qr-reader__scan_region {
+    background: #000;
+}
+
+#qr-reader__dashboard {
+    padding: 10px !important;
+}
+
+#qr-reader__dashboard_section_swaplink {
+    color: #3b82f6 !important;
+    text-decoration: underline;
+}
+
+/* Hide the file scan option - we only want camera */
+#qr-reader__dashboard_section_fsr {
+    display: none !important;
 }
 
 .scanner-instructions {
