@@ -630,9 +630,19 @@ function renderCart() {
                 <span class="item-name">${item.item_name}</span>
                 <span class="item-details">${item.weight.toFixed(2)} ${item.uom}</span>
             </div>
-            <button class="remove-btn" onclick="removeFromCart(${index})">✕</button>
+            <button class="remove-btn" data-index="${index}" type="button">✕</button>
         </div>
     `).join('');
+
+    // Attach click handlers to remove buttons
+    container.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const index = parseInt(this.dataset.index);
+            removeFromCart(index);
+        });
+    });
 
     // Update totals
     const totalWeight = state.cart.reduce((sum, item) => sum + item.weight, 0);
