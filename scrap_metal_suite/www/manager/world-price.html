@@ -1,0 +1,133 @@
+{% extends "templates/web.html" %}
+
+{% block title %}World Price - Manager Portal{% endblock %}
+
+{% block page_content %}
+<div class="manager-portal">
+    {% include "scrap_metal_suite/www/manager/includes/sidebar.html" %}
+
+    <!-- Main Content -->
+    <main class="portal-main">
+        <div class="page-header">
+            <h1>World Metal Prices</h1>
+            <p class="subtitle">Track global commodity prices for reference</p>
+        </div>
+
+        <!-- LME Prices -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3>LME (London Metal Exchange) Prices</h3>
+                <span style="font-size: 0.8rem; color: #6c757d;">Last updated: {{ frappe.utils.formatdate(frappe.utils.nowdate()) }}</span>
+            </div>
+            <div class="card-body">
+                <div class="world-price-card">
+                    <div class="world-price-icon">🥇</div>
+                    <div class="world-price-info">
+                        <div class="world-price-name">Copper</div>
+                        <div class="world-price-market">LME Official</div>
+                    </div>
+                    <div class="world-price-value">
+                        <div class="world-price-amount">$8,945</div>
+                        <div class="world-price-unit">USD/Tonne</div>
+                    </div>
+                    <span class="price-change up" style="margin-left: 12px;">+1.2%</span>
+                </div>
+
+                <div class="world-price-card">
+                    <div class="world-price-icon">🥈</div>
+                    <div class="world-price-info">
+                        <div class="world-price-name">Aluminum</div>
+                        <div class="world-price-market">LME Official</div>
+                    </div>
+                    <div class="world-price-value">
+                        <div class="world-price-amount">$2,485</div>
+                        <div class="world-price-unit">USD/Tonne</div>
+                    </div>
+                    <span class="price-change down" style="margin-left: 12px;">-0.5%</span>
+                </div>
+
+                <div class="world-price-card">
+                    <div class="world-price-icon">⚙️</div>
+                    <div class="world-price-info">
+                        <div class="world-price-name">Steel (HRC)</div>
+                        <div class="world-price-market">China Export FOB</div>
+                    </div>
+                    <div class="world-price-value">
+                        <div class="world-price-amount">$520</div>
+                        <div class="world-price-unit">USD/Tonne</div>
+                    </div>
+                    <span class="price-change neutral" style="margin-left: 12px;">0.0%</span>
+                </div>
+
+                <div class="world-price-card">
+                    <div class="world-price-icon">🔶</div>
+                    <div class="world-price-info">
+                        <div class="world-price-name">Zinc</div>
+                        <div class="world-price-market">LME Official</div>
+                    </div>
+                    <div class="world-price-value">
+                        <div class="world-price-amount">$2,890</div>
+                        <div class="world-price-unit">USD/Tonne</div>
+                    </div>
+                    <span class="price-change up" style="margin-left: 12px;">+0.8%</span>
+                </div>
+
+                <div class="world-price-card">
+                    <div class="world-price-icon">🔷</div>
+                    <div class="world-price-info">
+                        <div class="world-price-name">Lead</div>
+                        <div class="world-price-market">LME Official</div>
+                    </div>
+                    <div class="world-price-value">
+                        <div class="world-price-amount">$2,125</div>
+                        <div class="world-price-unit">USD/Tonne</div>
+                    </div>
+                    <span class="price-change up" style="margin-left: 12px;">+0.3%</span>
+                </div>
+
+                <div class="world-price-card">
+                    <div class="world-price-icon">⚪</div>
+                    <div class="world-price-info">
+                        <div class="world-price-name">Nickel</div>
+                        <div class="world-price-market">LME Official</div>
+                    </div>
+                    <div class="world-price-value">
+                        <div class="world-price-amount">$16,250</div>
+                        <div class="world-price-unit">USD/Tonne</div>
+                    </div>
+                    <span class="price-change down" style="margin-left: 12px;">-1.5%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exchange Rate -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3>Exchange Rates</h3>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                    <div style="text-align: center; padding: 20px; background: #f8faf8; border-radius: 8px;">
+                        <div style="font-size: 0.85rem; color: #6c757d; margin-bottom: 4px;">USD/THB</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #212529;">฿34.85</div>
+                    </div>
+                    <div style="text-align: center; padding: 20px; background: #f8faf8; border-radius: 8px;">
+                        <div style="font-size: 0.85rem; color: #6c757d; margin-bottom: 4px;">EUR/THB</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #212529;">฿37.20</div>
+                    </div>
+                    <div style="text-align: center; padding: 20px; background: #f8faf8; border-radius: 8px;">
+                        <div style="font-size: 0.85rem; color: #6c757d; margin-bottom: 4px;">CNY/THB</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #212529;">฿4.82</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info -->
+        <div class="info-message">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            These are sample/placeholder prices. Connect to a real API (LME, Kitco, etc.) for live data.
+        </div>
+    </main>
+</div>
+{% endblock %}

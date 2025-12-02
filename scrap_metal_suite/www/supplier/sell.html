@@ -1,0 +1,32 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Sell - Supplier Portal{% endblock %}
+
+{% block page_content %}
+{% if error %}
+<div class="error-container">
+    <div class="error-box">
+        <h2>Access Error</h2>
+        <p>{{ error }}</p>
+        <a href="/" class="btn">Go Home</a>
+        <a href="/?cmd=web_logout" class="btn btn-outline">Logout</a>
+    </div>
+</div>
+{% elif supplier %}
+<div class="supplier-portal">
+    {% include "scrap_metal_suite/www/supplier/includes/sidebar.html" %}
+
+    <!-- Main Content -->
+    <main class="portal-main">
+        <div class="page-header">
+            <h1>Sell</h1>
+        </div>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            <p class="info-message">Create a new sale transaction here.</p>
+        </div>
+    </main>
+</div>
+{% endif %}
+{% endblock %}

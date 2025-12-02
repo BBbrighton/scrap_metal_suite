@@ -1,0 +1,97 @@
+{
+ "actions": [],
+ "autoname": "field:user",
+ "creation": "2025-12-01 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "user_full_name",
+  "column_break_1",
+  "pin_code",
+  "section_break_permissions",
+  "can_override_rate",
+  "can_void_purchase",
+  "can_close_any_session"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fetch_from": "user.full_name",
+   "fieldname": "user_full_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Full Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pin_code",
+   "fieldtype": "Password",
+   "in_list_view": 0,
+   "label": "PIN Code",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_permissions",
+   "fieldtype": "Section Break",
+   "label": "Permissions"
+  },
+  {
+   "default": "1",
+   "fieldname": "can_override_rate",
+   "fieldtype": "Check",
+   "label": "Can Override Rate"
+  },
+  {
+   "default": "0",
+   "fieldname": "can_void_purchase",
+   "fieldtype": "Check",
+   "label": "Can Void Purchase"
+  },
+  {
+   "default": "0",
+   "fieldname": "can_close_any_session",
+   "fieldtype": "Check",
+   "label": "Can Close Any Session"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-01 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "POS Authority Code",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

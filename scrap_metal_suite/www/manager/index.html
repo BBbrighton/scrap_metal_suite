@@ -1,0 +1,134 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Dashboard - Manager Portal{% endblock %}
+
+{% block page_content %}
+<div class="manager-portal">
+    {% include "scrap_metal_suite/www/manager/includes/sidebar.html" %}
+
+    <!-- Main Content -->
+    <main class="portal-main">
+        <div class="page-header">
+            <h1>Dashboard</h1>
+            <p class="subtitle">Overview of your scrap metal operations</p>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon green">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                </div>
+                <div class="kpi-value">{{ total_suppliers or 0 }}</div>
+                <div class="kpi-label">Total Suppliers</div>
+                <div class="kpi-change positive">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                    +{{ new_suppliers_month or 0 }} this month
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon blue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </div>
+                <div class="kpi-value">{{ total_purchases_formatted or '฿0' }}</div>
+                <div class="kpi-label">Total Purchases (THB)</div>
+                <div class="kpi-change positive">
+                    This month
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon orange">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                </div>
+                <div class="kpi-value">{{ total_weight_formatted or '0 T' }}</div>
+                <div class="kpi-label">Total Weight (Tons)</div>
+                <div class="kpi-change positive">
+                    This month
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon purple">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                </div>
+                <div class="kpi-value">{{ pending_registrations or 0 }}</div>
+                <div class="kpi-label">Pending Registrations</div>
+                <div class="kpi-change neutral">
+                    Awaiting approval
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity & Quick Actions -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+            <!-- Recent Suppliers -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h3>Recent Supplier Registrations</h3>
+                    <a href="/app/supplier-registration" class="btn btn-outline">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_registrations %}
+                    <table class="price-table">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reg in recent_registrations %}
+                            <tr>
+                                <td>{{ reg.company_name }}</td>
+                                <td>{{ frappe.utils.formatdate(reg.registration_date) }}</td>
+                                <td>
+                                    <span class="tier-badge {% if reg.status == 'Approved' %}vip{% elif reg.status == 'Pending' %}standard{% else %}premium{% endif %}">
+                                        {{ reg.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">No recent registrations</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h3>Quick Actions</h3>
+                </div>
+                <div class="card-body">
+                    <div class="quick-actions" style="flex-direction: column;">
+                        <a href="/manager/price" class="btn btn-primary" style="justify-content: center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                            Update Prices
+                        </a>
+                        <a href="/app/supplier-registration?status=Pending" class="btn btn-outline" style="justify-content: center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                            Review Registrations
+                        </a>
+                        <a href="/manager/world-price" class="btn btn-outline" style="justify-content: center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                            Check World Prices
+                        </a>
+                        <a href="/app/supplier" class="btn btn-outline" style="justify-content: center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                            Manage Suppliers
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

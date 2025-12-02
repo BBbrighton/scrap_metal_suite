@@ -29,7 +29,12 @@ app_license = "mit"
 # app_include_js = "/assets/scrap_metal_suite/js/scrap_metal_suite.js"
 
 # include js, css files in header of web template
-web_include_css = "/assets/scrap_metal_suite/css/supplier_registration.css"
+web_include_css = [
+    "/assets/scrap_metal_suite/css/supplier_registration.css",
+    "/assets/scrap_metal_suite/css/supplier_portal.css",
+    "/assets/scrap_metal_suite/css/manager_portal.css",
+    "/assets/scrap_metal_suite/css/pos.css"
+]
 # web_include_js = "/assets/scrap_metal_suite/js/scrap_metal_suite.js"
 
 # include custom scss in every website theme (without file extension ".scss")
@@ -60,9 +65,9 @@ web_include_css = "/assets/scrap_metal_suite/css/supplier_registration.css"
 # home_page = "login"
 
 # website user home page (by Role)
-# role_home_page = {
-# 	"Role": "home_page"
-# }
+role_home_page = {
+    "Supplier": "supplier"
+}
 
 # Generators
 # ----------

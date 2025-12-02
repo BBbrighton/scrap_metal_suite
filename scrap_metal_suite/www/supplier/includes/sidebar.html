@@ -1,0 +1,27 @@
+<!-- Supplier Portal Sidebar -->
+<aside class="portal-sidebar">
+    <div class="sidebar-header">
+        <div class="company-name">{{ supplier.supplier_name }}</div>
+        <div class="company-id">{{ supplier.name }}</div>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="/supplier" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+            Dashboard
+        </a>
+        <a href="/supplier/price" class="nav-item {% if active_page == 'price' %}active{% endif %}">
+            Price
+        </a>
+        <a href="/supplier/sell" class="nav-item {% if active_page == 'sell' %}active{% endif %}">
+            Sell
+        </a>
+        <a href="/supplier/invoice" class="nav-item {% if active_page == 'invoice' %}active{% endif %}">
+            Invoice
+        </a>
+        <a href="/supplier/dropoff" class="nav-item {% if active_page == 'dropoff' %}active{% endif %}">
+            Dropoff
+        </a>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="/?cmd=web_logout" class="logout-btn">Logout</a>
+    </div>
+</aside>

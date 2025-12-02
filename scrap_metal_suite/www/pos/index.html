@@ -1,0 +1,97 @@
+{% extends "templates/web.html" %}
+
+{% block title %}POS - Scrap Metal{% endblock %}
+
+{% block page_content %}
+<div class="pos-container">
+    {% if error %}
+    <div class="pos-error">
+        <div class="error-icon">⚠️</div>
+        <h2>Access Denied</h2>
+        <p>{{ error }}</p>
+        <a href="/" class="btn-pos">Go Home</a>
+    </div>
+    {% elif active_session %}
+    <!-- Resume existing session -->
+    <div class="pos-start">
+        <div class="pos-logo">
+            <h1>🏭 Scrap Metal POS</h1>
+        </div>
+        <div class="session-card active-session">
+            <h2>Active Session</h2>
+            <div class="session-info">
+                <div class="info-row">
+                    <span class="label">Session:</span>
+                    <span class="value">{{ active_session.name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Profile:</span>
+                    <span class="value">{{ active_session.pos_profile }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Opened:</span>
+                    <span class="value">{{ frappe.utils.format_datetime(active_session.opening_time, "hh:mm a") }}</span>
+                </div>
+            </div>
+            <a href="/pos/terminal?session={{ active_session.name }}" class="btn-pos btn-primary btn-large">
+                Resume Session
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <!-- Start new session -->
+    <div class="pos-start">
+        <div class="pos-logo">
+            <h1>🏭 Scrap Metal POS</h1>
+            <p>Select a profile to start your shift</p>
+        </div>
+
+        {% if pos_profiles %}
+        <div class="profile-grid">
+            {% for profile in pos_profiles %}
+            <div class="profile-card" data-profile="{{ profile.name }}">
+                <div class="profile-icon">📋</div>
+                <h3>{{ profile.profile_name or profile.name }}</h3>
+                <p class="price-list">{{ profile.price_list or "Standard Buying" }}</p>
+                <button class="btn-pos btn-primary" onclick="startSession('{{ profile.name }}')">
+                    Start Session
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-profiles">
+            <p>No POS profiles configured.</p>
+            <p>Please contact your administrator.</p>
+        </div>
+        {% endif %}
+
+        <div class="pos-footer">
+            <span class="operator">Operator: {{ frappe.session.user }}</span>
+            <a href="/?cmd=web_logout" class="logout-link">Logout</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+async function startSession(profileName) {
+    try {
+        const response = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.pos.open_session',
+            args: { pos_profile: profileName }
+        });
+
+        if (response.message && response.message.session) {
+            window.location.href = '/pos/terminal?session=' + response.message.session;
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: 'Error',
+            indicator: 'red',
+            message: error.message || 'Failed to start session'
+        });
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,900 @@
+{% extends "templates/web.html" %}
+
+{% block title %}POS Terminal{% endblock %}
+
+{% block style %}
+<style>
+/* Hide Frappe navigation and footer for fullscreen POS */
+.navbar, .web-footer, .footer, footer,
+.page-header, .page-head, header.navbar {
+    display: none !important;
+}
+body {
+    padding-top: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+}
+.main-section {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.web-content, .page-content, main {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="pos-terminal" id="posTerminal">
+    {% if error %}
+    <div class="pos-error">
+        <div class="error-icon">⚠️</div>
+        <h2>Error</h2>
+        <p>{{ error }}</p>
+        <a href="/pos" class="btn-pos">Back to POS</a>
+    </div>
+    {% else %}
+    <!-- Header Bar -->
+    <header class="terminal-header">
+        <div class="header-left">
+            <span class="session-badge">{{ session.name }}</span>
+            <span class="profile-name">{{ profile.profile_name }}</span>
+        </div>
+        <div class="header-center">
+            <span class="current-time" id="currentTime"></span>
+        </div>
+        <div class="header-right">
+            <button class="btn-header btn-theme" onclick="toggleTheme()" title="Toggle Theme">
+                <span id="themeIcon">☀️</span>
+            </button>
+            <button class="btn-header" onclick="showSessionSummary()">Summary</button>
+            <button class="btn-header btn-danger" onclick="confirmCloseSession()">Close Shift</button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="terminal-body">
+        <!-- Left Panel - Item Selection -->
+        <div class="panel panel-items">
+            <div class="panel-header">
+                <h2>Items</h2>
+            </div>
+            <div class="item-grid">
+                {% for item in pos_items %}
+                <button class="item-btn" onclick="selectItem('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.uom }}')">
+                    <span class="item-name">{{ item.item_name }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Right Panel - Current Transaction -->
+        <div class="panel panel-transaction">
+            <!-- Order Section with Scanner -->
+            <div class="order-section">
+                <div class="order-label-row">
+                    <label>Order ID</label>
+                    <button class="scan-btn" onclick="openScanner()" title="Scan Barcode/QR">
+                        <span>📷</span> Scan
+                    </button>
+                </div>
+                <div class="order-input-group">
+                    <input type="text" id="orderSearch" placeholder="Enter Order ID or scan..."
+                           oninput="searchOrder(this.value)" autocomplete="off">
+                    <div id="orderResults" class="order-results"></div>
+                </div>
+
+                <!-- Order Details Card (shown when order selected) -->
+                <div id="orderDetailsCard" class="order-details-card" style="display:none;">
+                    <div class="order-card-header">
+                        <span class="order-card-id" id="orderCardId"></span>
+                        <button class="clear-btn" onclick="clearOrder()">✕</button>
+                    </div>
+                    <div class="order-card-body">
+                        <div class="order-detail-row">
+                            <span class="detail-label">Supplier</span>
+                            <span class="detail-value" id="orderCardSupplier"></span>
+                        </div>
+                        <div class="order-detail-row">
+                            <span class="detail-label">Order Date</span>
+                            <span class="detail-value" id="orderCardDate"></span>
+                        </div>
+                        <div class="order-detail-row">
+                            <span class="detail-label">License Plate</span>
+                            <span class="detail-value" id="orderCardPlate"></span>
+                        </div>
+                        <div class="order-detail-row">
+                            <span class="detail-label">Status</span>
+                            <span class="detail-value" id="orderCardStatus"></span>
+                        </div>
+                    </div>
+                    <!-- Re-weight warning (shown when order already processed) -->
+                    <div id="reweightWarning" class="reweight-warning" style="display:none;">
+                        ⚠️ This order was already processed. Recording will create a re-weight entry.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart Items -->
+            <div class="cart-section">
+                <div class="cart-header">
+                    <h3>Cart</h3>
+                    <button class="clear-cart-btn" onclick="clearCart()">Clear All</button>
+                </div>
+                <div id="cartItems" class="cart-items">
+                    <div class="cart-empty">No items added</div>
+                </div>
+            </div>
+
+            <!-- Totals -->
+            <div class="totals-section">
+                <div class="total-row total-weight">
+                    <span>Total Weight:</span>
+                    <span id="totalWeight">0.00 Kg</span>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="action-section">
+                <button class="btn-pos btn-secondary" onclick="openRemarksModal()" id="remarksBtn" disabled>
+                    💬 Remarks
+                </button>
+                <button class="btn-pos btn-secondary" onclick="openPhotoCapture()" id="photoBtn" disabled>
+                    📸 Photo
+                </button>
+            </div>
+            <div class="action-section">
+                <button class="btn-pos btn-secondary btn-large" onclick="clearTransaction()">
+                    Cancel
+                </button>
+                <button class="btn-pos btn-success btn-large" onclick="recordWeight()" id="recordWeightBtn" disabled>
+                    Record Weight
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weight Input Modal -->
+    <div id="weightModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalItemName">Item Name</h3>
+                <button class="modal-close" onclick="closeWeightModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="weight-display">
+                    <input type="number" id="weightInput" step="0.01" min="0" placeholder="0.00"
+                           onkeyup="if(event.key==='Enter')addToCart()">
+                    <span class="weight-uom" id="modalUom">Kg</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeWeightModal()">Cancel</button>
+                <button class="btn-pos btn-primary" onclick="addToCart()">Add to Cart</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanner Modal -->
+    <div id="scannerModal" class="modal" style="display:none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Scan Order Barcode/QR</h3>
+                <button class="modal-close" onclick="closeScanner()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="scanner-container">
+                    <video id="scannerVideo" autoplay playsinline></video>
+                    <div class="scanner-overlay">
+                        <div class="scanner-frame"></div>
+                    </div>
+                </div>
+                <div class="scanner-instructions">
+                    Point camera at barcode or QR code
+                </div>
+                <div class="manual-entry">
+                    <label>Or enter manually:</label>
+                    <input type="text" id="manualOrderInput" placeholder="Enter Order ID..."
+                           onkeyup="if(event.key==='Enter')submitManualOrder()">
+                    <button class="btn-pos btn-primary" onclick="submitManualOrder()">Search</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remarks Modal -->
+    <div id="remarksModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Remarks</h3>
+                <button class="modal-close" onclick="closeRemarksModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <textarea id="remarksInput" placeholder="Enter remarks for this order..." rows="4"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeRemarksModal()">Cancel</button>
+                <button class="btn-pos btn-primary" onclick="saveRemarks()">Save Remarks</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Capture Modal -->
+    <div id="photoModal" class="modal" style="display:none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Capture Photo</h3>
+                <button class="modal-close" onclick="closePhotoCapture()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="camera-container">
+                    <video id="cameraVideo" autoplay playsinline></video>
+                    <canvas id="photoCanvas" style="display:none;"></canvas>
+                    <img id="capturedPhoto" style="display:none;">
+                </div>
+                <div class="photo-controls">
+                    <button class="btn-pos btn-primary btn-large" onclick="capturePhoto()" id="captureBtn">
+                        📸 Capture
+                    </button>
+                    <button class="btn-pos btn-secondary" onclick="retakePhoto()" id="retakeBtn" style="display:none;">
+                        🔄 Retake
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closePhotoCapture()">Cancel</button>
+                <button class="btn-pos btn-success" onclick="savePhoto()" id="savePhotoBtn" disabled>Save Photo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Summary Modal -->
+    <div id="summaryModal" class="modal" style="display:none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Session Summary</h3>
+                <button class="modal-close" onclick="closeSummaryModal()">✕</button>
+            </div>
+            <div class="modal-body" id="summaryContent">
+                Loading...
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeSummaryModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Close Session Modal -->
+    <div id="closeSessionModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Close Session</h3>
+                <button class="modal-close" onclick="closeCloseSessionModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to close this session?</p>
+                <div id="closeSessionSummary"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeCloseSessionModal()">Cancel</button>
+                <button class="btn-pos btn-danger" onclick="closeSession()">Close Session</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// State
+const state = {
+    session: '{{ session.name }}',
+    order: null,
+    cart: [],
+    currentItem: null,
+    remarks: '',
+    capturedPhotoData: null,
+    theme: localStorage.getItem('posTheme') || 'dark',
+    scannerStream: null,
+    cameraStream: null
+};
+
+// Initialize theme
+document.addEventListener('DOMContentLoaded', () => {
+    applyTheme(state.theme);
+});
+
+// Theme Toggle
+function toggleTheme() {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('posTheme', state.theme);
+    applyTheme(state.theme);
+}
+
+function applyTheme(theme) {
+    const terminal = document.getElementById('posTerminal');
+    const themeIcon = document.getElementById('themeIcon');
+
+    if (theme === 'light') {
+        terminal.classList.add('light-theme');
+        themeIcon.textContent = '🌙';
+    } else {
+        terminal.classList.remove('light-theme');
+        themeIcon.textContent = '☀️';
+    }
+}
+
+// API helper function
+async function callAPI(method, args = {}) {
+    const response = await fetch(`/api/method/${method}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Frappe-CSRF-Token': frappe.csrf_token
+        },
+        body: JSON.stringify(args)
+    });
+
+    const data = await response.json();
+
+    if (data.exc) {
+        throw new Error(data.exc);
+    }
+
+    return data;
+}
+
+// Update clock
+function updateClock() {
+    const now = new Date();
+    document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// Scanner Functions
+async function openScanner() {
+    const modal = document.getElementById('scannerModal');
+    const video = document.getElementById('scannerVideo');
+    modal.style.display = 'flex';
+
+    try {
+        state.scannerStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }
+        });
+        video.srcObject = state.scannerStream;
+
+        // Start scanning (simplified - in production use a library like ZXing)
+        startBarcodeScanning();
+    } catch (err) {
+        console.error('Camera error:', err);
+        frappe.msgprint('Camera not available. Please enter Order ID manually.');
+    }
+}
+
+function closeScanner() {
+    const modal = document.getElementById('scannerModal');
+    const video = document.getElementById('scannerVideo');
+
+    if (state.scannerStream) {
+        state.scannerStream.getTracks().forEach(track => track.stop());
+        state.scannerStream = null;
+    }
+    video.srcObject = null;
+    modal.style.display = 'none';
+}
+
+function startBarcodeScanning() {
+    // Simplified barcode detection - in production use BarcodeDetector API or ZXing library
+    if ('BarcodeDetector' in window) {
+        const barcodeDetector = new BarcodeDetector();
+        const video = document.getElementById('scannerVideo');
+
+        const scanInterval = setInterval(async () => {
+            if (!state.scannerStream) {
+                clearInterval(scanInterval);
+                return;
+            }
+
+            try {
+                const barcodes = await barcodeDetector.detect(video);
+                if (barcodes.length > 0) {
+                    clearInterval(scanInterval);
+                    const code = barcodes[0].rawValue;
+                    closeScanner();
+                    searchAndSelectOrder(code);
+                }
+            } catch (err) {
+                // Continue scanning
+            }
+        }, 500);
+    }
+}
+
+function submitManualOrder() {
+    const input = document.getElementById('manualOrderInput');
+    const orderId = input.value.trim();
+    if (orderId) {
+        closeScanner();
+        searchAndSelectOrder(orderId);
+    }
+}
+
+async function searchAndSelectOrder(query) {
+    try {
+        const data = await callAPI('scrap_metal_suite.api.v1.pos.lookup_order', { query: query });
+
+        if (data.message && data.message.length > 0) {
+            const o = data.message[0];
+            selectOrder(o.name, o.order_id, o.supplier, o.supplier_name || '', o.license_plate || '', o.order_date || '', o.status || 'Pending');
+        } else {
+            frappe.msgprint('Order not found: ' + query);
+        }
+    } catch (error) {
+        console.error('Order search error:', error);
+        frappe.msgprint('Error searching for order');
+    }
+}
+
+// Order Search
+let searchTimeout;
+async function searchOrder(query) {
+    clearTimeout(searchTimeout);
+    const resultsDiv = document.getElementById('orderResults');
+
+    if (query.length < 2) {
+        resultsDiv.innerHTML = '';
+        resultsDiv.style.display = 'none';
+        return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+        try {
+            const data = await callAPI('scrap_metal_suite.api.v1.pos.lookup_order', { query: query });
+
+            if (data.message && data.message.length > 0) {
+                resultsDiv.innerHTML = data.message.map(o => `
+                    <div class="order-result" onclick="selectOrder('${o.name}', '${o.order_id || ''}', '${o.supplier}', '${o.supplier_name || ''}', '${o.license_plate || ''}', '${o.order_date || ''}', '${o.status || 'Pending'}')">
+                        <span class="order-id">${o.order_id || o.name}</span>
+                        <span class="order-details">${o.supplier_name || o.supplier} ${o.license_plate ? '| ' + o.license_plate : ''} ${o.status === 'Processed' ? '| ✓ Processed' : ''}</span>
+                    </div>
+                `).join('');
+                resultsDiv.style.display = 'block';
+            } else {
+                resultsDiv.innerHTML = '<div class="no-results">No orders found</div>';
+                resultsDiv.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Order search error:', error);
+            resultsDiv.innerHTML = '<div class="no-results">Error searching</div>';
+            resultsDiv.style.display = 'block';
+        }
+    }, 300);
+}
+
+function selectOrder(name, orderId, supplier, supplierName, licensePlate, orderDate, status) {
+    state.order = {
+        name: name,
+        orderId: orderId || name,
+        supplier: supplier,
+        supplierName: supplierName,
+        licensePlate: licensePlate,
+        orderDate: orderDate,
+        status: status || 'Pending'
+    };
+
+    // Hide search input
+    document.getElementById('orderSearch').style.display = 'none';
+    document.getElementById('orderResults').style.display = 'none';
+
+    // Show order details card
+    const card = document.getElementById('orderDetailsCard');
+    document.getElementById('orderCardId').textContent = orderId || name;
+    document.getElementById('orderCardSupplier').textContent = supplierName || supplier;
+    document.getElementById('orderCardDate').textContent = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
+    document.getElementById('orderCardPlate').textContent = licensePlate || '-';
+
+    // Show status with styling
+    const statusEl = document.getElementById('orderCardStatus');
+    statusEl.textContent = status || 'Pending';
+    statusEl.className = 'detail-value status-' + (status || 'Pending').toLowerCase();
+
+    // Show re-weight warning if order already processed
+    const reweightWarning = document.getElementById('reweightWarning');
+    if (status === 'Processed') {
+        reweightWarning.style.display = 'block';
+    } else {
+        reweightWarning.style.display = 'none';
+    }
+
+    card.style.display = 'block';
+
+    updateButtonStates();
+}
+
+function clearOrder() {
+    state.order = null;
+    state.remarks = '';
+    state.capturedPhotoData = null;
+    document.getElementById('orderSearch').value = '';
+    document.getElementById('orderSearch').style.display = 'block';
+    document.getElementById('orderDetailsCard').style.display = 'none';
+    updateButtonStates();
+}
+
+// Item Selection
+function selectItem(code, name, uom) {
+    state.currentItem = { code, name, uom };
+    document.getElementById('modalItemName').textContent = name;
+    document.getElementById('modalUom').textContent = uom;
+    document.getElementById('weightInput').value = '';
+    document.getElementById('weightModal').style.display = 'flex';
+    document.getElementById('weightInput').focus();
+}
+
+function closeWeightModal() {
+    document.getElementById('weightModal').style.display = 'none';
+    state.currentItem = null;
+}
+
+// Cart Management
+function addToCart() {
+    const weight = parseFloat(document.getElementById('weightInput').value);
+
+    if (!weight || weight <= 0) {
+        frappe.msgprint('Please enter a valid weight');
+        return;
+    }
+
+    state.cart.push({
+        item_code: state.currentItem.code,
+        item_name: state.currentItem.name,
+        weight: weight,
+        uom: state.currentItem.uom
+    });
+
+    renderCart();
+    closeWeightModal();
+    updateButtonStates();
+}
+
+function renderCart() {
+    const container = document.getElementById('cartItems');
+    if (state.cart.length === 0) {
+        container.innerHTML = '<div class="cart-empty">No items added</div>';
+        document.getElementById('totalWeight').textContent = '0.00 Kg';
+        return;
+    }
+
+    container.innerHTML = state.cart.map((item, index) => `
+        <div class="cart-item">
+            <div class="item-info">
+                <span class="item-name">${item.item_name}</span>
+                <span class="item-details">${item.weight.toFixed(2)} ${item.uom}</span>
+            </div>
+            <button class="remove-btn" onclick="removeFromCart(${index})">✕</button>
+        </div>
+    `).join('');
+
+    // Update totals
+    const totalWeight = state.cart.reduce((sum, item) => sum + item.weight, 0);
+    document.getElementById('totalWeight').textContent = totalWeight.toFixed(2) + ' Kg';
+}
+
+function removeFromCart(index) {
+    state.cart.splice(index, 1);
+    renderCart();
+    updateButtonStates();
+}
+
+function clearCart() {
+    state.cart = [];
+    renderCart();
+    updateButtonStates();
+}
+
+function clearTransaction() {
+    clearCart();
+    clearOrder();
+}
+
+function updateButtonStates() {
+    const hasOrder = !!state.order;
+    const hasItems = state.cart.length > 0;
+
+    document.getElementById('recordWeightBtn').disabled = !hasOrder || !hasItems;
+    document.getElementById('remarksBtn').disabled = !hasOrder;
+    document.getElementById('photoBtn').disabled = !hasOrder;
+}
+
+// Remarks Functions
+function openRemarksModal() {
+    if (!state.order) return;
+    document.getElementById('remarksInput').value = state.remarks || '';
+    document.getElementById('remarksModal').style.display = 'flex';
+}
+
+function closeRemarksModal() {
+    document.getElementById('remarksModal').style.display = 'none';
+}
+
+function saveRemarks() {
+    state.remarks = document.getElementById('remarksInput').value.trim();
+    closeRemarksModal();
+    frappe.show_alert({
+        message: 'Remarks saved',
+        indicator: 'green'
+    }, 2);
+}
+
+// Photo Capture Functions
+async function openPhotoCapture() {
+    if (!state.order) return;
+
+    const modal = document.getElementById('photoModal');
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('photoCanvas');
+    const capturedImg = document.getElementById('capturedPhoto');
+
+    // Reset state
+    video.style.display = 'block';
+    capturedImg.style.display = 'none';
+    document.getElementById('captureBtn').style.display = 'inline-block';
+    document.getElementById('retakeBtn').style.display = 'none';
+    document.getElementById('savePhotoBtn').disabled = true;
+
+    modal.style.display = 'flex';
+
+    try {
+        state.cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        video.srcObject = state.cameraStream;
+    } catch (err) {
+        console.error('Camera error:', err);
+        frappe.msgprint('Camera not available');
+        closePhotoCapture();
+    }
+}
+
+function closePhotoCapture() {
+    const modal = document.getElementById('photoModal');
+    const video = document.getElementById('cameraVideo');
+
+    if (state.cameraStream) {
+        state.cameraStream.getTracks().forEach(track => track.stop());
+        state.cameraStream = null;
+    }
+    video.srcObject = null;
+    modal.style.display = 'none';
+}
+
+function capturePhoto() {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('photoCanvas');
+    const capturedImg = document.getElementById('capturedPhoto');
+
+    // Set canvas size to video size
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw video frame to canvas
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    // Convert to data URL
+    state.capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
+
+    // Show captured image
+    capturedImg.src = state.capturedPhotoData;
+    video.style.display = 'none';
+    capturedImg.style.display = 'block';
+
+    // Update buttons
+    document.getElementById('captureBtn').style.display = 'none';
+    document.getElementById('retakeBtn').style.display = 'inline-block';
+    document.getElementById('savePhotoBtn').disabled = false;
+}
+
+function retakePhoto() {
+    const video = document.getElementById('cameraVideo');
+    const capturedImg = document.getElementById('capturedPhoto');
+
+    state.capturedPhotoData = null;
+
+    video.style.display = 'block';
+    capturedImg.style.display = 'none';
+
+    document.getElementById('captureBtn').style.display = 'inline-block';
+    document.getElementById('retakeBtn').style.display = 'none';
+    document.getElementById('savePhotoBtn').disabled = true;
+}
+
+function savePhoto() {
+    if (state.capturedPhotoData) {
+        closePhotoCapture();
+        frappe.show_alert({
+            message: 'Photo captured and ready to attach',
+            indicator: 'green'
+        }, 2);
+    }
+}
+
+// Record Weight
+async function recordWeight() {
+    if (!state.order || state.cart.length === 0) return;
+
+    try {
+        const data = await callAPI('scrap_metal_suite.api.v1.pos.create_scrap_weight', {
+            session: state.session,
+            pos_order: state.order.name,
+            items: JSON.stringify(state.cart.map(item => ({
+                item_code: item.item_code,
+                weight: item.weight,
+                uom: item.uom
+            }))),
+            remarks: state.remarks || null
+        });
+
+        if (data.message) {
+            // If photo was captured, attach it
+            if (state.capturedPhotoData) {
+                await attachPhoto(data.message.scrap_weight);
+            }
+
+            const reweightMsg = data.message.is_reweight ? ' (Re-weight)' : '';
+            frappe.show_alert({
+                message: `Weight ${data.message.scrap_weight} recorded${reweightMsg}! Total: ${data.message.total_weight.toFixed(2)} Kg`,
+                indicator: 'green'
+            }, 5);
+
+            // Clear for next transaction
+            clearTransaction();
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: 'Error',
+            indicator: 'red',
+            message: error.message || 'Failed to record weight'
+        });
+    }
+}
+
+async function attachPhoto(docname) {
+    if (!state.capturedPhotoData) return;
+
+    try {
+        // Convert base64 to blob
+        const response = await fetch(state.capturedPhotoData);
+        const blob = await response.blob();
+
+        // Create FormData
+        const formData = new FormData();
+        formData.append('file', blob, `photo_${Date.now()}.jpg`);
+        formData.append('doctype', 'Scrap Weight');
+        formData.append('docname', docname);
+        formData.append('is_private', '0');
+
+        await fetch('/api/method/upload_file', {
+            method: 'POST',
+            headers: {
+                'X-Frappe-CSRF-Token': frappe.csrf_token
+            },
+            body: formData
+        });
+    } catch (err) {
+        console.error('Photo upload error:', err);
+    }
+}
+
+// Session Management
+async function showSessionSummary() {
+    document.getElementById('summaryModal').style.display = 'flex';
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.get_session_summary', {
+            session: state.session
+        });
+
+        if (response.message) {
+            const data = response.message;
+            const weightCount = data.totals.weight_count || 0;
+            const totalWeight = parseFloat(data.totals.total_weight) || 0;
+            document.getElementById('summaryContent').innerHTML = `
+                <div class="summary-stats">
+                    <div class="stat-card">
+                        <span class="stat-value">${weightCount}</span>
+                        <span class="stat-label">Weights Recorded</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">${totalWeight.toFixed(2)} Kg</span>
+                        <span class="stat-label">Total Weight</span>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Summary error:', error);
+        document.getElementById('summaryContent').innerHTML = '<p>Error loading summary</p>';
+    }
+}
+
+function closeSummaryModal() {
+    document.getElementById('summaryModal').style.display = 'none';
+}
+
+async function confirmCloseSession() {
+    document.getElementById('closeSessionModal').style.display = 'flex';
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.get_session_summary', {
+            session: state.session
+        });
+
+        if (response.message) {
+            const data = response.message;
+            const weightCount = data.totals.weight_count || 0;
+            const totalWeight = parseFloat(data.totals.total_weight) || 0;
+            document.getElementById('closeSessionSummary').innerHTML = `
+                <div class="close-summary">
+                    <p><strong>Weights Recorded:</strong> ${weightCount}</p>
+                    <p><strong>Total Weight:</strong> ${totalWeight.toFixed(2)} Kg</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading summary:', error);
+    }
+}
+
+function closeCloseSessionModal() {
+    document.getElementById('closeSessionModal').style.display = 'none';
+}
+
+async function closeSession() {
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.close_session', {
+            session: state.session
+        });
+
+        if (response.message) {
+            frappe.show_alert({
+                message: 'Session closed successfully!',
+                indicator: 'green'
+            }, 3);
+
+            setTimeout(() => {
+                window.location.href = '/pos';
+            }, 1000);
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: 'Error',
+            indicator: 'red',
+            message: error.message || 'Failed to close session'
+        });
+    }
+}
+
+// Close modals on outside click
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            // Stop any active streams
+            if (state.scannerStream) {
+                state.scannerStream.getTracks().forEach(track => track.stop());
+                state.scannerStream = null;
+            }
+            if (state.cameraStream) {
+                state.cameraStream.getTracks().forEach(track => track.stop());
+                state.cameraStream = null;
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Price Announcement - Manager Portal{% endblock %}
+
+{% block page_content %}
+<div class="manager-portal">
+    {% include "scrap_metal_suite/www/manager/includes/sidebar.html" %}
+
+    <!-- Main Content -->
+    <main class="portal-main">
+        <div class="page-header">
+            <h1>Price Announcement</h1>
+            <p class="subtitle">Manage buying prices for scrap metals by tier</p>
+        </div>
+
+        <!-- Price Tier Tabs -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3>Current Buying Prices</h3>
+                <div class="quick-actions">
+                    <a href="/app/item-price" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Add New Price
+                    </a>
+                </div>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <table class="price-table">
+                    <thead>
+                        <tr>
+                            <th>Material</th>
+                            <th>Standard Price</th>
+                            <th>VIP Price</th>
+                            <th>Premium Price</th>
+                            <th>Unit</th>
+                            <th>Last Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if prices %}
+                            {% for item in prices %}
+                            <tr>
+                                <td><strong>{{ item.item_name }}</strong></td>
+                                <td>
+                                    <span class="price-value">฿{{ item.standard_price or '-' }}</span>
+                                </td>
+                                <td>
+                                    <span class="price-value">฿{{ item.vip_price or '-' }}</span>
+                                </td>
+                                <td>
+                                    <span class="price-value">฿{{ item.premium_price or '-' }}</span>
+                                </td>
+                                <td>{{ item.uom or 'Kg' }}</td>
+                                <td>{{ frappe.utils.formatdate(item.modified) if item.modified else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <!-- Sample data for demonstration -->
+                            <tr>
+                                <td><strong>Copper Wire</strong></td>
+                                <td><span class="price-value">฿280</span></td>
+                                <td><span class="price-value">฿295</span></td>
+                                <td><span class="price-value">฿310</span></td>
+                                <td>Kg</td>
+                                <td>{{ frappe.utils.formatdate(frappe.utils.nowdate()) }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Aluminum Scrap</strong></td>
+                                <td><span class="price-value">฿65</span></td>
+                                <td><span class="price-value">฿70</span></td>
+                                <td><span class="price-value">฿75</span></td>
+                                <td>Kg</td>
+                                <td>{{ frappe.utils.formatdate(frappe.utils.nowdate()) }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Steel/Iron</strong></td>
+                                <td><span class="price-value">฿12</span></td>
+                                <td><span class="price-value">฿13</span></td>
+                                <td><span class="price-value">฿14</span></td>
+                                <td>Kg</td>
+                                <td>{{ frappe.utils.formatdate(frappe.utils.nowdate()) }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Brass</strong></td>
+                                <td><span class="price-value">฿150</span></td>
+                                <td><span class="price-value">฿160</span></td>
+                                <td><span class="price-value">฿170</span></td>
+                                <td>Kg</td>
+                                <td>{{ frappe.utils.formatdate(frappe.utils.nowdate()) }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Stainless Steel</strong></td>
+                                <td><span class="price-value">฿45</span></td>
+                                <td><span class="price-value">฿48</span></td>
+                                <td><span class="price-value">฿52</span></td>
+                                <td>Kg</td>
+                                <td>{{ frappe.utils.formatdate(frappe.utils.nowdate()) }}</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Price Tier Legend -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3>Price Tiers Explained</h3>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                    <div style="padding: 16px; background: #f5f5f5; border-radius: 8px;">
+                        <span class="tier-badge standard" style="margin-bottom: 8px;">Standard</span>
+                        <p style="margin: 8px 0 0; font-size: 0.85rem; color: #666;">
+                            Default pricing for all registered suppliers
+                        </p>
+                    </div>
+                    <div style="padding: 16px; background: #fff8e1; border-radius: 8px;">
+                        <span class="tier-badge vip" style="margin-bottom: 8px;">VIP</span>
+                        <p style="margin: 8px 0 0; font-size: 0.85rem; color: #666;">
+                            Better rates for regular suppliers with good track record
+                        </p>
+                    </div>
+                    <div style="padding: 16px; background: #fce4ec; border-radius: 8px;">
+                        <span class="tier-badge premium" style="margin-bottom: 8px;">Premium</span>
+                        <p style="margin: 8px 0 0; font-size: 0.85rem; color: #666;">
+                            Best rates for high-volume, long-term partners
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info -->
+        <div class="info-message">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            Prices are automatically shown to suppliers based on their assigned tier. Update prices in ERPNext Item Price list.
+        </div>
+    </main>
+</div>
+{% endblock %}

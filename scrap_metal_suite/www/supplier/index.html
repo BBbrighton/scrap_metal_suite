@@ -1,0 +1,54 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Dashboard - Supplier Portal{% endblock %}
+
+{% block page_content %}
+{% if error %}
+<div class="error-container">
+    <div class="error-box">
+        <h2>Access Error</h2>
+        <p>{{ error }}</p>
+        <a href="/" class="btn">Go Home</a>
+        <a href="/?cmd=web_logout" class="btn btn-outline">Logout</a>
+    </div>
+</div>
+{% elif supplier %}
+<div class="supplier-portal">
+    {% include "scrap_metal_suite/www/supplier/includes/sidebar.html" %}
+
+    <!-- Main Content -->
+    <main class="portal-main">
+        <div class="page-header">
+            <h1>Dashboard</h1>
+        </div>
+
+        <!-- Company Info Bar -->
+        <div class="company-info-bar">
+            <div class="info-item">
+                <span class="label">Company</span>
+                <span class="value">{{ supplier.supplier_name }}</span>
+            </div>
+            {% if registration %}
+            <div class="info-item">
+                <span class="label">Registration No.</span>
+                <span class="value">{{ registration.name }}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Registration Date</span>
+                <span class="value">{{ frappe.utils.formatdate(registration.registration_date) }}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Approval Date</span>
+                <span class="value">{{ frappe.utils.formatdate(registration.approval_date) if registration.approval_date else '-' }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            <p class="info-message">Welcome to your supplier dashboard. Use the sidebar to navigate.</p>
+        </div>
+    </main>
+</div>
+{% endif %}
+{% endblock %}
