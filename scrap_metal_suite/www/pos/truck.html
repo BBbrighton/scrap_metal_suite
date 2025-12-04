@@ -52,6 +52,10 @@ body {
             <span class="session-badge">{{ session.name }}</span>
             <span class="profile-name">Truck Scale</span>
             <span class="operator-name">{{ operator_name }}</span>
+            <span class="scale-badge" id="scaleBadge" style="display:none;">
+                <span class="scale-icon">&#9878;</span>
+                <span id="scaleNameDisplay"></span>
+            </span>
         </div>
         <div class="header-center">
             <span class="current-time" id="currentTime"></span>
@@ -299,6 +303,74 @@ body {
             </div>
         </div>
     </div>
+
+    <!-- Scale Selection Modal (mandatory, no close button) -->
+    <div id="scaleModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Select Truck Scale</h3>
+            </div>
+            <div class="modal-body">
+                <p class="scale-instruction">Scan scale QR code or select from dropdown</p>
+
+                <!-- QR Scan Button -->
+                <div class="scale-scan-section">
+                    <button class="btn-pos btn-primary btn-large" onclick="openScaleScanner()" id="scaleQrBtn">
+                        &#128247; Scan Scale QR
+                    </button>
+                </div>
+
+                <div class="scale-divider">
+                    <span>OR</span>
+                </div>
+
+                <!-- Dropdown Selection -->
+                <div class="scale-select-section">
+                    <label>Select from list:</label>
+                    <select id="scaleDropdown" class="scale-dropdown">
+                        <option value="">-- Select Scale --</option>
+                    </select>
+                </div>
+
+                <!-- Scale Info Display (after selection) -->
+                <div id="selectedScaleInfo" class="selected-scale-info" style="display:none;">
+                    <div class="scale-info-row">
+                        <span class="info-label">Scale:</span>
+                        <span class="info-value" id="selectedScaleName"></span>
+                    </div>
+                    <div class="scale-info-row">
+                        <span class="info-label">Type:</span>
+                        <span class="info-value" id="selectedScaleType"></span>
+                    </div>
+                    <div class="scale-info-row">
+                        <span class="info-label">Location:</span>
+                        <span class="info-value" id="selectedScaleLocation"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-success btn-large" onclick="confirmScaleSelection()" id="confirmScaleBtn" disabled>
+                    Confirm Scale
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scale Scanner Modal -->
+    <div id="scaleScannnerModal" class="modal" style="display:none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Scan Scale QR</h3>
+                <button class="modal-close" onclick="closeScaleScanner()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div id="scale-qr-reader" class="scanner-container"></div>
+                <div id="scaleScannerStatus" class="scanner-instructions">
+                    Point camera at scale QR code
+                </div>
+            </div>
+        </div>
+    </div>
     {% endif %}
 </div>
 
@@ -312,6 +384,9 @@ const state = {
     remarks: '',
     capturedPhotoData: null,
     cameraStream: null,
+    scale: null,
+    selectedScale: null,
+    scales: [],
     weights: {
         gross_weight: null,
         gross_weight_time: null,
@@ -328,10 +403,13 @@ const state = {
 };
 
 // ===== Initialization =====
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     applyTheme(state.theme);
     updateClock();
     setInterval(updateClock, 1000);
+
+    // Check if scale is already set for this session
+    await checkSessionScale();
 });
 
 // ===== Theme Functions =====
@@ -1083,6 +1161,9 @@ function updatePhotoButton() {
 // ===== Modal Click Handler =====
 document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {
+        // Don't allow closing scale modal by clicking outside
+        if (modal.id === 'scaleModal') return;
+
         if (e.target === modal) {
             // Close photo modal properly to stop camera
             if (modal.id === 'photoModal') {
@@ -1093,6 +1174,267 @@ document.querySelectorAll('.modal').forEach(modal => {
         }
     });
 });
+
+// ===== Scale Functions =====
+async function checkSessionScale() {
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.get_active_session');
+
+        if (response.message && response.message.scale) {
+            // Scale already set
+            state.scale = {
+                name: response.message.scale,
+                scale_name: response.message.scale_name,
+                scale_type: response.message.scale_type,
+                usage_type: response.message.scale_usage_type,
+                location: response.message.scale_location
+            };
+            updateScaleDisplay();
+        } else {
+            // No scale set - show selection modal
+            await loadScales();
+            showScaleModal();
+        }
+    } catch (error) {
+        console.error('Error checking session scale:', error);
+        // Show modal anyway
+        await loadScales();
+        showScaleModal();
+    }
+}
+
+async function loadScales() {
+    try {
+        // Load only Truck scales for truck terminal
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.get_scales', {
+            usage_type: 'Truck'
+        });
+
+        console.log('Scales API response:', response);
+
+        if (response.message && Array.isArray(response.message)) {
+            state.scales = response.message;
+            populateScaleDropdown();
+
+            if (state.scales.length === 0) {
+                console.warn('No truck scales found in database');
+                frappe.msgprint({
+                    title: 'No Scales Found',
+                    indicator: 'orange',
+                    message: 'No truck scales found. Please contact administrator to set up scales.'
+                });
+            }
+        } else {
+            console.warn('Unexpected scales response:', response);
+            state.scales = [];
+            populateScaleDropdown();
+        }
+    } catch (error) {
+        console.error('Error loading scales:', error);
+        frappe.msgprint({
+            title: 'Error',
+            indicator: 'red',
+            message: 'Failed to load scales: ' + (error.message || error)
+        });
+    }
+}
+
+let scaleDropdownListenerAdded = false;
+
+function populateScaleDropdown() {
+    const dropdown = document.getElementById('scaleDropdown');
+    dropdown.innerHTML = '<option value="">-- Select Truck Scale --</option>';
+
+    if (state.scales.length === 0) {
+        const option = document.createElement('option');
+        option.disabled = true;
+        option.textContent = 'No truck scales available';
+        dropdown.appendChild(option);
+        return;
+    }
+
+    state.scales.forEach(scale => {
+        const option = document.createElement('option');
+        option.value = scale.name;
+        option.textContent = `${scale.scale_name} - ${scale.location || scale.scale_type}`;
+
+        if (!scale.is_active) {
+            option.disabled = true;
+            option.textContent += ' (Not Active)';
+            option.style.color = '#888';
+        }
+
+        dropdown.appendChild(option);
+    });
+
+    // Add change listener only once
+    if (!scaleDropdownListenerAdded) {
+        dropdown.addEventListener('change', onScaleDropdownChange);
+        scaleDropdownListenerAdded = true;
+    }
+}
+
+function onScaleDropdownChange() {
+    const dropdown = document.getElementById('scaleDropdown');
+    const scaleName = dropdown.value;
+
+    if (scaleName) {
+        const scale = state.scales.find(s => s.name === scaleName);
+        if (scale) {
+            state.selectedScale = scale;
+            showSelectedScaleInfo(scale);
+            document.getElementById('confirmScaleBtn').disabled = false;
+        }
+    } else {
+        state.selectedScale = null;
+        document.getElementById('selectedScaleInfo').style.display = 'none';
+        document.getElementById('confirmScaleBtn').disabled = true;
+    }
+}
+
+function showSelectedScaleInfo(scale) {
+    document.getElementById('selectedScaleName').textContent = scale.scale_name;
+    document.getElementById('selectedScaleType').textContent = scale.scale_type;
+    document.getElementById('selectedScaleLocation').textContent = scale.location || '-';
+    document.getElementById('selectedScaleInfo').style.display = 'block';
+}
+
+function showScaleModal() {
+    document.getElementById('scaleModal').style.display = 'flex';
+}
+
+let scaleHtml5QrCode = null;
+
+async function openScaleScanner() {
+    const modal = document.getElementById('scaleScannnerModal');
+    modal.style.display = 'flex';
+
+    if (scaleHtml5QrCode) {
+        try {
+            await scaleHtml5QrCode.stop();
+        } catch (e) {}
+        scaleHtml5QrCode = null;
+    }
+
+    document.getElementById('scale-qr-reader').innerHTML = '';
+    document.getElementById('scaleScannerStatus').textContent = 'Starting camera...';
+
+    try {
+        scaleHtml5QrCode = new Html5Qrcode("scale-qr-reader");
+
+        const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+        };
+
+        await scaleHtml5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            onScaleScanSuccess,
+            () => {}
+        );
+
+        document.getElementById('scaleScannerStatus').textContent = 'Point camera at scale QR code';
+    } catch (err) {
+        console.error('Scale scanner error:', err);
+        document.getElementById('scaleScannerStatus').textContent = 'Camera not available';
+    }
+}
+
+async function onScaleScanSuccess(decodedText) {
+    // Beep
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+        oscillator.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.1);
+    } catch (e) {}
+
+    closeScaleScanner();
+
+    // Look up the scale
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.get_scale_by_id', {
+            scale_id: decodedText
+        });
+
+        if (response.message && response.message.scale) {
+            const scale = response.message.scale;
+
+            // Check if it's the right type
+            if (scale.usage_type !== 'Truck') {
+                frappe.msgprint({
+                    title: 'Error',
+                    indicator: 'red',
+                    message: 'This is not a truck scale. Please scan a truck scale.'
+                });
+                return;
+            }
+
+            state.selectedScale = scale;
+            showSelectedScaleInfo(scale);
+            document.getElementById('scaleDropdown').value = scale.name;
+            document.getElementById('confirmScaleBtn').disabled = false;
+        } else if (response.message && response.message.error) {
+            frappe.msgprint({
+                title: 'Error',
+                indicator: 'red',
+                message: response.message.error
+            });
+        }
+    } catch (error) {
+        console.error('Scale lookup error:', error);
+        frappe.msgprint('Error searching for scale');
+    }
+}
+
+async function closeScaleScanner() {
+    if (scaleHtml5QrCode) {
+        try {
+            await scaleHtml5QrCode.stop();
+        } catch (e) {}
+        scaleHtml5QrCode = null;
+    }
+    document.getElementById('scaleScannnerModal').style.display = 'none';
+}
+
+async function confirmScaleSelection() {
+    if (!state.selectedScale) {
+        frappe.msgprint('Please select a scale to continue');
+        return;
+    }
+
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.set_session_scale', {
+            session: state.session,
+            scale: state.selectedScale.name
+        });
+
+        if (response.message) {
+            state.scale = state.selectedScale;
+            document.getElementById('scaleModal').style.display = 'none';
+            updateScaleDisplay();
+            frappe.show_alert({ message: 'Scale set successfully', indicator: 'green' }, 3);
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: 'Error',
+            indicator: 'red',
+            message: error.message || 'Failed to set scale'
+        });
+    }
+}
+
+function updateScaleDisplay() {
+    if (state.scale) {
+        document.getElementById('scaleNameDisplay').textContent = state.scale.scale_name;
+        document.getElementById('scaleBadge').style.display = 'inline-flex';
+    }
+}
 </script>
 
 {% endblock %}

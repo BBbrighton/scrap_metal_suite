@@ -79,9 +79,23 @@ def get_active_session():
     session = frappe.db.get_value(
         "POS Session",
         {"operator": frappe.session.user, "status": "Open"},
-        ["name", "pos_profile", "opening_time", "total_purchases", "total_weight"],
+        ["name", "pos_profile", "opening_time", "total_purchases", "total_weight", "scale"],
         as_dict=True
     )
+
+    # If session has a scale, get scale details
+    if session and session.scale:
+        scale_info = frappe.db.get_value(
+            "Scale",
+            session.scale,
+            ["scale_name", "scale_type", "usage_type", "location"],
+            as_dict=True
+        )
+        if scale_info:
+            session.scale_name = scale_info.scale_name
+            session.scale_type = scale_info.scale_type
+            session.scale_usage_type = scale_info.usage_type
+            session.scale_location = scale_info.location
 
     return session
 
@@ -616,6 +630,143 @@ def mark_reweighed(pos_order, reweight_type):
         "order_id": order.name,
         "is_truck_reweighed": order.is_truck_reweighed,
         "is_scrap_reweighed": order.is_scrap_reweighed
+    }
+
+
+@frappe.whitelist()
+def get_scales(usage_type=None, scale_type=None):
+    """
+    Get list of all scales with their status.
+    Active scales are selectable, inactive are greyed out.
+
+    Args:
+        usage_type: Filter by usage type - 'Scrap' or 'Truck' (recommended)
+        scale_type: Optional filter by scale type (e.g., 'Weighbridge', 'Platform')
+
+    Returns:
+        list: Scales with name, type, location, is_active
+    """
+    check_pos_operator()
+
+    filters = {}
+    if usage_type:
+        filters["usage_type"] = usage_type
+    if scale_type:
+        filters["scale_type"] = scale_type
+
+    scales = frappe.get_all(
+        "Scale",
+        filters=filters,
+        fields=["name", "scale_name", "scale_type", "usage_type", "location", "max_capacity_kg", "is_active"],
+        order_by="scale_name asc"
+    )
+
+    return scales
+
+
+@frappe.whitelist()
+def get_scale_by_id(scale_id):
+    """
+    Get scale details by ID (used after QR scan).
+    Extracts scale name from URL if needed.
+
+    Args:
+        scale_id: Scale name or URL containing scale name
+
+    Returns:
+        dict: Scale details or error
+    """
+    check_pos_operator()
+
+    # Extract scale name from URL if needed
+    # URL format: https://yoursite.com/scale/SCALE-001
+    if '/scale/' in scale_id:
+        scale_id = scale_id.split('/scale/')[-1].split('?')[0].strip()
+
+    # Clean up the scale ID
+    scale_id = scale_id.strip().upper()
+
+    if not scale_id:
+        return {"error": "Invalid scale ID"}
+
+    # Try to find scale
+    scale = frappe.db.get_value(
+        "Scale",
+        {"scale_name": scale_id},
+        ["name", "scale_name", "scale_type", "usage_type", "location", "max_capacity_kg", "is_active"],
+        as_dict=True
+    )
+
+    if not scale:
+        # Also try by document name
+        scale = frappe.db.get_value(
+            "Scale",
+            scale_id,
+            ["name", "scale_name", "scale_type", "usage_type", "location", "max_capacity_kg", "is_active"],
+            as_dict=True
+        )
+
+    if not scale:
+        return {"error": f"Scale '{scale_id}' not found"}
+
+    if not scale.is_active:
+        return {"error": f"Scale '{scale.scale_name}' is not active", "scale": scale}
+
+    return {"scale": scale}
+
+
+@frappe.whitelist()
+def set_session_scale(session, scale):
+    """
+    Set the scale for a POS session.
+    Can only be set once per session.
+
+    Args:
+        session: POS Session name
+        scale: Scale name
+
+    Returns:
+        dict: Updated session info
+    """
+    check_pos_operator()
+
+    session_doc = frappe.get_doc("POS Session", session)
+
+    # Verify ownership
+    if session_doc.operator != frappe.session.user:
+        user_roles = frappe.get_roles(frappe.session.user)
+        if "System Manager" not in user_roles:
+            frappe.throw(_("You can only modify your own sessions"))
+
+    # Check if scale already set
+    if session_doc.scale:
+        frappe.throw(_("Scale already set for this session. Close session and open a new one to use a different scale."))
+
+    # Validate scale exists and is active
+    scale_doc = frappe.db.get_value(
+        "Scale",
+        scale,
+        ["name", "scale_name", "is_active", "scale_type", "usage_type", "location"],
+        as_dict=True
+    )
+
+    if not scale_doc:
+        frappe.throw(_("Scale '{0}' not found").format(scale))
+
+    if not scale_doc.is_active:
+        frappe.throw(_("Scale '{0}' is not active").format(scale))
+
+    # Set scale on session
+    session_doc.scale = scale
+    session_doc.save()
+
+    return {
+        "session": session_doc.name,
+        "scale": scale_doc.name,
+        "scale_name": scale_doc.scale_name,
+        "scale_type": scale_doc.scale_type,
+        "usage_type": scale_doc.usage_type,
+        "location": scale_doc.location
     }
 
 

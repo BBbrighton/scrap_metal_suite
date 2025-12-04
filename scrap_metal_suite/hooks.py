@@ -254,6 +254,9 @@ fixtures = [
     {
         "dt": "Custom Field",
         "filters": [["module", "=", "Scrap Metal Suite"]]
+    },
+    {
+        "dt": "Scale"
     }
 ]
 

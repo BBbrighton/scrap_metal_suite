@@ -1,0 +1,164 @@
+{
+ "actions": [],
+ "autoname": "field:scale_name",
+ "creation": "2025-12-04 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "scale_name",
+  "scale_type",
+  "usage_type",
+  "column_break_1",
+  "location",
+  "is_active",
+  "section_break_details",
+  "max_capacity_kg",
+  "column_break_2",
+  "asset_link",
+  "section_break_calibration",
+  "last_calibration_date",
+  "calibration_certificate",
+  "column_break_3",
+  "next_calibration_date",
+  "section_break_notes",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "scale_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scale Name",
+   "reqd": 1,
+   "unique": 1,
+   "description": "Unique identifier for this scale (e.g., SCALE-001)"
+  },
+  {
+   "fieldname": "scale_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scale Type",
+   "options": "Platform\nWeighbridge\nHanging\nFloor\nBench",
+   "reqd": 1
+  },
+  {
+   "fieldname": "usage_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Usage Type",
+   "options": "Scrap\nTruck",
+   "reqd": 1,
+   "description": "Scrap = for weighing scrap items, Truck = for weighing trucks (weighbridge)"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Location",
+   "description": "Physical location (e.g., Main Yard, Warehouse A)"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Is Active",
+   "description": "Uncheck to disable this scale for selection"
+  },
+  {
+   "fieldname": "section_break_details",
+   "fieldtype": "Section Break",
+   "label": "Scale Details"
+  },
+  {
+   "fieldname": "max_capacity_kg",
+   "fieldtype": "Float",
+   "label": "Max Capacity (kg)",
+   "description": "Maximum weight capacity in kilograms"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "asset_link",
+   "fieldtype": "Link",
+   "label": "Asset",
+   "options": "Asset",
+   "description": "Optional link to ERPNext Asset for accounting"
+  },
+  {
+   "fieldname": "section_break_calibration",
+   "fieldtype": "Section Break",
+   "label": "Calibration",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "last_calibration_date",
+   "fieldtype": "Date",
+   "label": "Last Calibration Date"
+  },
+  {
+   "fieldname": "calibration_certificate",
+   "fieldtype": "Attach",
+   "label": "Calibration Certificate"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "next_calibration_date",
+   "fieldtype": "Date",
+   "label": "Next Calibration Date"
+  },
+  {
+   "fieldname": "section_break_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-04 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "Scale",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "POS Operator"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

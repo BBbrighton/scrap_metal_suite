@@ -8,6 +8,7 @@
   "naming_series",
   "pos_profile",
   "operator",
+  "scale",
   "column_break_1",
   "status",
   "opening_time",
@@ -44,6 +45,15 @@
    "label": "Operator",
    "options": "User",
    "reqd": 1
+  },
+  {
+   "fieldname": "scale",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scale",
+   "options": "Scale",
+   "description": "Scale used for this session. Selected when entering terminal."
   },
   {
    "fieldname": "column_break_1",
@@ -109,7 +119,7 @@
    "link_fieldname": "session"
   }
  ],
- "modified": "2025-12-01 12:00:00.000000",
+ "modified": "2025-12-04 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "POS Session",

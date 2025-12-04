@@ -25,7 +25,7 @@ def get_context(context):
     session = frappe.db.get_value(
         "POS Session",
         session_name,
-        ["name", "pos_profile", "operator", "status", "opening_time"],
+        ["name", "pos_profile", "operator", "status", "opening_time", "scale"],
         as_dict=True
     )
 
@@ -40,6 +40,14 @@ def get_context(context):
     if session.operator != frappe.session.user:
         context.error = "This session belongs to another operator"
         return context
+
+    # Check if session has a scale set and validate its type
+    if session.scale:
+        scale_usage_type = frappe.db.get_value("Scale", session.scale, "usage_type")
+        if scale_usage_type and scale_usage_type != "Scrap":
+            # Session has a Truck scale - redirect to truck terminal
+            frappe.local.flags.redirect_location = f"/pos/truck?session={session_name}"
+            raise frappe.Redirect
 
     context.session = session
 

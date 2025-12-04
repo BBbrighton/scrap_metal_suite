@@ -1,0 +1,57 @@
+[
+  {
+    "doctype": "Scale",
+    "name": "SCALE-001",
+    "scale_name": "SCALE-001",
+    "scale_type": "Platform",
+    "usage_type": "Scrap",
+    "location": "Main Yard - Platform 1",
+    "max_capacity_kg": 5000,
+    "is_active": 1,
+    "notes": "Primary scrap weighing scale"
+  },
+  {
+    "doctype": "Scale",
+    "name": "SCALE-002",
+    "scale_name": "SCALE-002",
+    "scale_type": "Platform",
+    "usage_type": "Scrap",
+    "location": "Main Yard - Platform 2",
+    "max_capacity_kg": 5000,
+    "is_active": 1,
+    "notes": "Secondary scrap weighing scale"
+  },
+  {
+    "doctype": "Scale",
+    "name": "TRUCK-001",
+    "scale_name": "TRUCK-001",
+    "scale_type": "Weighbridge",
+    "usage_type": "Truck",
+    "location": "Entry Gate - Weighbridge",
+    "max_capacity_kg": 60000,
+    "is_active": 1,
+    "notes": "Main truck weighbridge at entry"
+  },
+  {
+    "doctype": "Scale",
+    "name": "TRUCK-002",
+    "scale_name": "TRUCK-002",
+    "scale_type": "Weighbridge",
+    "usage_type": "Truck",
+    "location": "Exit Gate - Weighbridge",
+    "max_capacity_kg": 60000,
+    "is_active": 1,
+    "notes": "Truck weighbridge at exit"
+  },
+  {
+    "doctype": "Scale",
+    "name": "SCALE-003",
+    "scale_name": "SCALE-003",
+    "scale_type": "Hanging",
+    "usage_type": "Scrap",
+    "location": "Warehouse A",
+    "max_capacity_kg": 500,
+    "is_active": 0,
+    "notes": "Small items scale - currently out for calibration"
+  }
+]
