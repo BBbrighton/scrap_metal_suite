@@ -59,9 +59,11 @@ def get_context(context):
     profile = frappe.get_doc("POS Profile Scrap", session.pos_profile)
     context.profile = profile
 
-    # Get items for display (weight only, no rate)
+    # Get items for display (weight only, no rate) with categories
     context.pos_items = []
-    for item in sorted(profile.items, key=lambda x: x.display_order or 0):
+    categories = set()
+
+    for item in profile.items:
         item_doc = frappe.db.get_value(
             "Item",
             item.item_code,
@@ -69,11 +71,22 @@ def get_context(context):
             as_dict=True
         )
         if item_doc:
+            category = getattr(item, "category", None) or ""
+            if category:
+                categories.add(category)
             context.pos_items.append({
                 "item_code": item.item_code,
                 "item_name": item_doc.item_name,
                 "uom": item_doc.stock_uom or "Kg",
-                "display_order": item.display_order
+                "display_order": item.display_order or 9999,
+                "category": category
             })
+
+    # Sort: by category (alphabetically), then by display_order within category
+    # Items without display_order (9999) go to end of their category
+    context.pos_items.sort(key=lambda x: (x["category"] or "zzz", x["display_order"]))
+
+    # Sort categories alphabetically
+    context.categories = sorted(list(categories))
 
     return context

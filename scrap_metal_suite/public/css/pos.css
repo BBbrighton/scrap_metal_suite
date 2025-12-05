@@ -337,7 +337,7 @@
 .order-section label {
     color: #94a3b8;
     font-size: 0.85rem;
-    display: block;
+    display: inline;
     margin-bottom: 8px;
 }
 
@@ -391,7 +391,7 @@
 .order-result .order-id {
     color: #3b82f6;
     font-weight: 600;
-    display: block;
+    display: inline;
 }
 
 .order-result .order-details {
@@ -511,7 +511,7 @@
 
 .cart-item .item-name {
     color: #fff;
-    display: block;
+    display: inline;
     font-weight: 500;
 }
 
@@ -763,7 +763,7 @@
 .rate-display label {
     color: #94a3b8;
     font-size: 0.85rem;
-    display: block;
+    display: inline;
     margin-bottom: 8px;
 }
 
@@ -815,7 +815,7 @@
 .override-section label {
     color: #fbbf24;
     font-size: 0.85rem;
-    display: block;
+    display: inline;
     margin-bottom: 8px;
 }
 
@@ -864,7 +864,7 @@
 }
 
 .stat-value {
-    display: block;
+    display: inline;
     font-size: 1.75rem;
     font-weight: 700;
     color: #fff;
@@ -1324,7 +1324,7 @@
 .camera-container img {
     width: 100%;
     height: auto;
-    display: block;
+    display: inline;
     max-height: 400px;
     object-fit: contain;
 }
@@ -1406,7 +1406,7 @@
 }
 
 .truck-weight-card label {
-    display: block;
+    display: inline;
     color: #94a3b8;
     font-size: 0.75rem;
     margin-bottom: 6px;
@@ -1820,14 +1820,14 @@
 }
 
 .variance-label {
-    display: block;
+    display: inline;
     color: #64748b;
     font-size: 0.8rem;
     margin-bottom: 8px;
 }
 
 .variance-val {
-    display: block;
+    display: inline;
     color: #fff;
     font-size: 1.25rem;
     font-weight: 600;
@@ -3062,7 +3062,7 @@
 }
 
 .scale-select-section label {
-    display: block;
+    display: inline;
     color: #94a3b8;
     font-size: 0.9rem;
     margin-bottom: 8px;
@@ -4007,5 +4007,153 @@
     .pos-container,
     .pos-terminal {
         display: none !important;
+    }
+}
+
+/* ===== X-DESK Branding ===== */
+h1 .pos-brand,
+.pos-logo .pos-brand {
+    display: inline;
+    color: #94a3b8;
+    font-size: 0.95rem;
+    font-weight: 400;
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+}
+
+.pos-container.light-theme h1 .pos-brand,
+.pos-logo .pos-brand {
+    display: inline;
+    color: #64748b;
+}
+
+.brand-badge {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.pos-terminal.light-theme .brand-badge {
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+}
+
+@media (max-width: 768px) {
+    h1 .pos-brand,
+.pos-logo .pos-brand {
+    display: inline;
+        font-size: 0.85rem;
+    }
+
+    .brand-badge {
+        padding: 3px 8px;
+        font-size: 0.65rem;
+    }
+}
+
+/* ===== Category Tabs ===== */
+.category-tabs {
+    display: flex !important;
+    gap: 10px;
+    padding: 8px 16px 16px 16px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+button.category-tab {
+    padding: 14px 24px !important;
+    border: 2px solid rgba(255, 255, 255, 0.25) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #c0c8d4 !important;
+    border-radius: 25px !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+    flex-shrink: 0;
+    min-width: 80px;
+    min-height: 50px;
+    text-align: center;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    outline: none;
+}
+
+button.category-tab:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    color: #fff !important;
+    transform: translateY(-1px);
+}
+
+button.category-tab.active {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important;
+    border-color: transparent !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Light theme category tabs */
+.pos-terminal.light-theme button.category-tab {
+    border-color: rgba(0, 0, 0, 0.15) !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+    color: #475569 !important;
+}
+
+.pos-terminal.light-theme button.category-tab:hover {
+    background: rgba(0, 0, 0, 0.1) !important;
+    border-color: rgba(0, 0, 0, 0.3) !important;
+    color: #1e293b !important;
+}
+
+.pos-terminal.light-theme button.category-tab.active {
+    background: linear-gradient(135deg, #2563eb, #7c3aed) !important;
+    border-color: transparent !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* Tablet responsive */
+@media (max-width: 1024px) {
+    .category-tabs {
+        padding: 6px 12px 14px 12px;
+        gap: 8px;
+    }
+
+    button.category-tab {
+        padding: 12px 20px !important;
+        font-size: 0.95rem !important;
+        min-height: 48px;
+    }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .category-tabs {
+        padding: 4px 10px 12px 10px;
+        gap: 6px;
+    }
+
+    button.category-tab {
+        padding: 10px 16px !important;
+        font-size: 0.9rem !important;
+        border-radius: 20px !important;
+        min-height: 44px;
+    }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+    button.category-tab {
+        padding: 8px 14px !important;
+        font-size: 0.85rem !important;
+        min-height: 40px;
     }
 }

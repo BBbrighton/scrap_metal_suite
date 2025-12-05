@@ -51,6 +51,7 @@ body {
     <header class="terminal-header">
         <div class="header-left">
             <a href="/pos" class="btn-back-small">&#8592;</a>
+            <span class="brand-badge">X-DESK</span>
             <span class="session-badge">{{ session.name }}</span>
             <span class="profile-name">{{ profile.profile_name }}</span>
             <span class="operator-name">{{ operator_name }}</span>
@@ -70,20 +71,32 @@ body {
                 <span id="themeIcon">&#9728;</span>
             </button>
             <button class="btn-header" onclick="showSessionSummary()" data-i18n="summary">Summary</button>
-            <button class="btn-header btn-danger" onclick="confirmCloseSession()" data-i18n="closeShift">Close Shift</button>
+            <button class="btn-header btn-danger" onclick="confirmCloseSession()" data-i18n="closeSession">Close Session</button>
         </div>
     </header>
 
     <!-- Main Content -->
     <div class="terminal-body">
         <!-- Left Panel - Item Selection -->
-        <div class="panel panel-items">
+        <div class="panel panel-items" id="itemsPanel">
             <div class="panel-header">
                 <h2 data-i18n="items">Items</h2>
             </div>
-            <div class="item-grid">
+            {% if categories %}
+            <div class="category-tabs" id="categoryTabs">
+                <button class="category-tab active" data-category="" onclick="filterCategory(this, '')">
+                    <span data-i18n="all">All</span>
+                </button>
+                {% for cat in categories %}
+                <button class="category-tab" data-category="{{ cat }}" onclick="filterCategory(this, '{{ cat }}')">
+                    {{ cat }}
+                </button>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div class="item-grid" id="itemGrid">
                 {% for item in pos_items %}
-                <button class="item-btn" onclick="selectItem('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.uom }}')">
+                <button class="item-btn" data-category="{{ item.category }}" onclick="selectItem('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.uom }}')">
                     <span class="item-name">{{ item.item_name }}</span>
                 </button>
                 {% endfor %}
@@ -670,6 +683,24 @@ function clearOrder() {
     document.getElementById('orderSearch').style.display = 'block';
     document.getElementById('orderDetailsCard').style.display = 'none';
     updateButtonStates();
+}
+
+// ===== Item Selection =====
+// ===== Category Filter =====
+function filterCategory(btn, category) {
+    // Update active tab
+    document.querySelectorAll(".category-tab").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    
+    // Filter items
+    document.querySelectorAll(".item-btn").forEach(item => {
+        const itemCategory = item.getAttribute("data-category") || "";
+        if (category === "" || itemCategory === category) {
+            item.style.display = "";
+        } else {
+            item.style.display = "none";
+        }
+    });
 }
 
 // ===== Item Selection =====

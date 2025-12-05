@@ -50,6 +50,7 @@ body {
     <header class="terminal-header">
         <div class="header-left">
             <a href="/pos" class="btn-back-small">&#8592;</a>
+            <span class="brand-badge">X-DESK</span>
             <span class="session-badge">{{ session.name }}</span>
             <span class="profile-name">Truck Scale</span>
             <span class="operator-name">{{ operator_name }}</span>
@@ -69,7 +70,7 @@ body {
             <button class="btn-header btn-theme" onclick="toggleTheme()" title="Toggle Theme">
                 <span id="themeIcon">&#9728;</span>
             </button>
-            <button class="btn-header btn-danger" onclick="confirmEndSession()">End Session</button>
+            <button class="btn-header btn-danger" onclick="confirmCloseSession()" data-i18n="closeSession">Close Session</button>
         </div>
     </header>
 
@@ -246,19 +247,19 @@ body {
         </div>
     </div>
 
-    <!-- End Session Modal -->
-    <div id="endSessionModal" class="modal" style="display:none;">
+    <!-- Close Session Modal -->
+    <div id="closeSessionModal" class="modal" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>End Session</h3>
-                <button class="modal-close" onclick="closeEndSessionModal()">&#10005;</button>
+                <h3 data-i18n="closeSession">Close Session</h3>
+                <button class="modal-close" onclick="closeCloseSessionModal()">&#10005;</button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to end this session?</p>
+                <p data-i18n="confirmCloseSession">Are you sure you want to close this session?</p>
             </div>
             <div class="modal-footer">
-                <button class="btn-pos btn-secondary" onclick="closeEndSessionModal()">Cancel</button>
-                <button class="btn-pos btn-danger" onclick="endSession()">End Session</button>
+                <button class="btn-pos btn-secondary" onclick="closeCloseSessionModal()">Cancel</button>
+                <button class="btn-pos btn-danger" onclick="closeSession()" data-i18n="closeSession">Close Session</button>
             </div>
         </div>
     </div>
@@ -497,8 +498,8 @@ function updateTranslations() {
     if (orderSearch) orderSearch.placeholder = t('enterOrderId');
 
     // End session button
-    const endSessionBtn = document.querySelector('.btn-header.btn-danger');
-    if (endSessionBtn) endSessionBtn.textContent = t('endSession');
+    const closeSessionBtn = document.querySelector('.btn-header.btn-danger');
+    if (closeSessionBtn) closeSessionBtn.textContent = t('closeSession');
 
     // Scale modal translations
     const scaleModalTitle = document.querySelector('#scaleModal .modal-header h3');
@@ -574,17 +575,17 @@ function updateTranslations() {
     if (weightModalSave) weightModalSave.textContent = t('saveWeight');
 
     // End session modal
-    const endSessionModalTitle = document.querySelector('#endSessionModal .modal-header h3');
-    if (endSessionModalTitle) endSessionModalTitle.textContent = t('endSession');
+    const closeSessionModalTitle = document.querySelector('#closeSessionModal .modal-header h3');
+    if (closeSessionModalTitle) closeSessionModalTitle.textContent = t('closeSession');
 
-    const endSessionModalText = document.querySelector('#endSessionModal .modal-body p');
-    if (endSessionModalText) endSessionModalText.textContent = t('confirmEndSession');
+    const closeSessionModalText = document.querySelector('#closeSessionModal .modal-body p');
+    if (closeSessionModalText) closeSessionModalText.textContent = t('confirmCloseSession');
 
-    const endSessionCancelBtn = document.querySelector('#endSessionModal .modal-footer .btn-secondary');
-    if (endSessionCancelBtn) endSessionCancelBtn.textContent = t('cancel');
+    const closeSessionCancelBtn = document.querySelector('#closeSessionModal .modal-footer .btn-secondary');
+    if (closeSessionCancelBtn) closeSessionCancelBtn.textContent = t('cancel');
 
-    const endSessionConfirmBtn = document.querySelector('#endSessionModal .modal-footer .btn-danger');
-    if (endSessionConfirmBtn) endSessionConfirmBtn.textContent = t('endSession');
+    const closeSessionConfirmBtn = document.querySelector('#closeSessionModal .modal-footer .btn-danger');
+    if (closeSessionConfirmBtn) closeSessionConfirmBtn.textContent = t('closeSession');
 
     // Remarks modal
     const remarksModalTitle = document.querySelector('#remarksModal .modal-header h3');
@@ -1099,15 +1100,15 @@ async function saveWeight() {
 }
 
 // ===== Session Management =====
-function confirmEndSession() {
-    document.getElementById('endSessionModal').style.display = 'flex';
+function confirmCloseSession() {
+    document.getElementById('closeSessionModal').style.display = 'flex';
 }
 
-function closeEndSessionModal() {
-    document.getElementById('endSessionModal').style.display = 'none';
+function closeCloseSessionModal() {
+    document.getElementById('closeSessionModal').style.display = 'none';
 }
 
-async function endSession() {
+async function closeSession() {
     try {
         const response = await callAPI('scrap_metal_suite.api.v1.pos.close_session', {
             session: state.session
