@@ -12,15 +12,19 @@
   "column_break_1",
   "order_date",
   "license_plate",
-  "scale",
+  "scrap_scale",
   "section_break_details",
   "purchase_order",
   "notes",
+  "section_break_items",
+  "items",
   "section_break_truck_weight",
   "gross_weight",
+  "gross_weight_scale",
   "gross_weight_time",
   "column_break_truck_1",
   "tare_weight",
+  "tare_weight_scale",
   "tare_weight_time",
   "section_break_truck_calc",
   "net_truck_weight",
@@ -96,12 +100,12 @@
    "label": "License Plate"
   },
   {
-   "fieldname": "scale",
+   "fieldname": "scrap_scale",
    "fieldtype": "Link",
-   "label": "Scale",
+   "label": "Scrap Scale",
    "options": "Scale",
    "read_only": 1,
-   "description": "Scale used for weighing (inherited from session)"
+   "description": "Scrap scale used for item weighing (inherited from session)"
   },
   {
    "fieldname": "section_break_details",
@@ -120,6 +124,19 @@
    "label": "Notes"
   },
   {
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Scrap Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Scrap Weight Item",
+   "read_only": 1,
+   "description": "Consolidated items from all scrap weight records (for printing)"
+  },
+  {
    "fieldname": "section_break_truck_weight",
    "fieldtype": "Section Break",
    "label": "Truck Weight Verification"
@@ -129,6 +146,14 @@
    "fieldtype": "Float",
    "label": "Gross Weight (kg)",
    "description": "Weight of truck with scrap (weighed first)"
+  },
+  {
+   "fieldname": "gross_weight_scale",
+   "fieldtype": "Link",
+   "label": "Gross Weight Scale",
+   "options": "Scale",
+   "read_only": 1,
+   "description": "Truck scale used for entry/gross weight"
   },
   {
    "fieldname": "gross_weight_time",
@@ -145,6 +170,14 @@
    "fieldtype": "Float",
    "label": "Tare Weight (kg)",
    "description": "Weight of empty truck (weighed after unloading)"
+  },
+  {
+   "fieldname": "tare_weight_scale",
+   "fieldtype": "Link",
+   "label": "Tare Weight Scale",
+   "options": "Scale",
+   "read_only": 1,
+   "description": "Truck scale used for exit/tare weight"
   },
   {
    "fieldname": "tare_weight_time",

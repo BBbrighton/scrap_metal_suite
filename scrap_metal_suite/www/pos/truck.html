@@ -1065,7 +1065,8 @@ async function saveWeight() {
         const response = await callAPI('scrap_metal_suite.api.v1.pos.record_truck_weight', {
             pos_order: state.order.name,
             weight_type: state.weightType,
-            weight: weight
+            weight: weight,
+            scale: state.scale ? state.scale.name : null
         });
 
         if (response.message) {

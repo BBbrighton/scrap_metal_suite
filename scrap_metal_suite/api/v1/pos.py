@@ -290,11 +290,15 @@ def get_order_details(order_id):
         "purchase_order": order.purchase_order,
         "notes": order.notes,
         "status": order.status,
+        # Scale fields
+        "scrap_scale": getattr(order, 'scrap_scale', None),
         # Truck weight fields
         "gross_weight": order.gross_weight,
         "gross_weight_time": order.gross_weight_time,
+        "gross_weight_scale": getattr(order, 'gross_weight_scale', None),
         "tare_weight": order.tare_weight,
         "tare_weight_time": order.tare_weight_time,
+        "tare_weight_scale": getattr(order, 'tare_weight_scale', None),
         "net_truck_weight": order.net_truck_weight,
         "total_scrap_weight": order.total_scrap_weight,
         "weight_variance": order.weight_variance,
@@ -330,9 +334,14 @@ def create_scrap_weight(session, pos_order, items, remarks=None):
     if not items:
         frappe.throw(_("At least one item is required"))
 
-    # Validate session is open
-    session_status = frappe.db.get_value("POS Session", session, "status")
-    if session_status != "Open":
+    # Validate session is open and get scale
+    session_data = frappe.db.get_value(
+        "POS Session",
+        session,
+        ["status", "scale", "pos_profile"],
+        as_dict=True
+    )
+    if not session_data or session_data.status != "Open":
         frappe.throw(_("Session {0} is not open").format(session))
 
     # Validate POS Order exists
@@ -366,6 +375,8 @@ def create_scrap_weight(session, pos_order, items, remarks=None):
         "supplier": order_data.supplier,
         "posting_date": nowdate(),
         "session": session,
+        "pos_profile": session_data.pos_profile,
+        "scale": session_data.scale,
         "remarks": remarks,
         "is_reweight": is_reweight,
         "items": weight_items
@@ -473,7 +484,7 @@ def get_session_summary(session):
 
 
 @frappe.whitelist()
-def record_truck_weight(pos_order, weight_type, weight, remarks=None):
+def record_truck_weight(pos_order, weight_type, weight, scale=None, remarks=None):
     """
     Record truck gross or tare weight for a POS Order.
 
@@ -481,6 +492,7 @@ def record_truck_weight(pos_order, weight_type, weight, remarks=None):
         pos_order: POS Order name
         weight_type: 'gross' or 'tare'
         weight: Weight in kg
+        scale: Scale name used for this weighing (optional)
         remarks: Optional remarks/notes
 
     Returns:
@@ -497,13 +509,17 @@ def record_truck_weight(pos_order, weight_type, weight, remarks=None):
 
     order = frappe.get_doc("POS Order", pos_order)
 
-    # Record the weight with timestamp
+    # Record the weight with timestamp and scale
     if weight_type == 'gross':
         order.gross_weight = weight
         order.gross_weight_time = frappe.utils.now_datetime()
+        if scale:
+            order.gross_weight_scale = scale
     else:
         order.tare_weight = weight
         order.tare_weight_time = frappe.utils.now_datetime()
+        if scale:
+            order.tare_weight_scale = scale
 
     # Update remarks if provided (field may not exist if migration not run)
     if remarks and hasattr(order, 'truck_weight_remarks'):
@@ -523,8 +539,10 @@ def record_truck_weight(pos_order, weight_type, weight, remarks=None):
         "order_id": order.name,
         "gross_weight": order.gross_weight,
         "gross_weight_time": order.gross_weight_time,
+        "gross_weight_scale": getattr(order, 'gross_weight_scale', None),
         "tare_weight": order.tare_weight,
         "tare_weight_time": order.tare_weight_time,
+        "tare_weight_scale": getattr(order, 'tare_weight_scale', None),
         "net_truck_weight": order.net_truck_weight,
         "total_scrap_weight": getattr(order, 'total_scrap_weight', None),
         "weight_variance": getattr(order, 'weight_variance', None),
@@ -798,9 +816,11 @@ def get_weight_verification(pos_order):
         "POS Order",
         pos_order,
         [
-            "name", "gross_weight", "gross_weight_time",
-            "tare_weight", "tare_weight_time", "net_truck_weight",
-            "total_scrap_weight", "weight_variance", "weight_variance_percent",
+            "name", "scrap_scale",
+            "gross_weight", "gross_weight_scale", "gross_weight_time",
+            "tare_weight", "tare_weight_scale", "tare_weight_time",
+            "net_truck_weight", "total_scrap_weight",
+            "weight_variance", "weight_variance_percent",
             "is_truck_reweighed", "is_scrap_reweighed",
             "truck_weight_remarks", "truck_weight_photo"
         ],

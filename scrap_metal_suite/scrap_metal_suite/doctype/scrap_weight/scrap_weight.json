@@ -19,6 +19,7 @@
   "operator",
   "column_break_3",
   "pos_profile",
+  "scale",
   "section_break_items",
   "items",
   "section_break_totals",
@@ -125,6 +126,14 @@
    "label": "POS Profile",
    "options": "POS Profile Scrap",
    "read_only": 1
+  },
+  {
+   "fieldname": "scale",
+   "fieldtype": "Link",
+   "label": "Scale",
+   "options": "Scale",
+   "read_only": 1,
+   "description": "Scrap scale used for this weighing (inherited from session)"
   },
   {
    "fieldname": "section_break_items",
