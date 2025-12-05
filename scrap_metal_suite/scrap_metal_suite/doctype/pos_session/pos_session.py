@@ -63,3 +63,15 @@ class POSSession(Document):
             "total_amount": self.total_amount,
             "total_weight": self.total_weight
         }
+
+    def on_update(self):
+        """Handle scale release when session is closed"""
+        if self.status == "Closed" and self.scale:
+            # Check if scale is still marked as in use by this session
+            in_use_by = frappe.db.get_value("Scale", self.scale, "in_use_by_session")
+            if in_use_by == self.name:
+                # Use get_doc for activity tracking
+                scale_doc = frappe.get_doc("Scale", self.scale)
+                scale_doc.in_use = 0
+                scale_doc.in_use_by_session = None
+                scale_doc.save()

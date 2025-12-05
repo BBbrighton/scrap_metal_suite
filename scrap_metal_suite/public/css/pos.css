@@ -43,9 +43,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 100vh;
-    padding: 40px 20px;
+    padding: 60px 20px 40px;
 }
 
 .pos-logo {
@@ -281,6 +281,9 @@
 .item-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-auto-rows: max-content;
+    align-content: start;
+    align-items: start;
     gap: 12px;
     padding: 20px;
     overflow-y: auto;
@@ -297,8 +300,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    min-height: 100px;
+    height: 100px;
+    align-self: start;
 }
 
 .item-btn:hover {
@@ -483,7 +488,7 @@
 .cart-empty {
     color: #64748b;
     text-align: center;
-    padding: 40px 20px;
+    padding: 60px 20px 40px;
 }
 
 .cart-item {
@@ -1326,7 +1331,7 @@
 
 .photo-controls {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 12px;
     margin-bottom: 16px;
 }
@@ -1593,7 +1598,7 @@
 /* Order Search in Truck Weight Screen */
 .truck-order-search {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     flex: 1;
     padding: 40px;
@@ -2057,6 +2062,9 @@
 
 /* ===== Language Button ===== */
 .btn-lang {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     background: #f59e0b;
     border: none;
     color: #000;
@@ -2073,6 +2081,9 @@
 }
 
 .pos-terminal.light-theme .btn-lang {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     background: #f59e0b;
     color: #000;
 }
@@ -2087,24 +2098,37 @@
 .terminal-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: min-content;
+    align-content: start;
+    align-items: start;
     gap: 24px;
     max-width: 700px;
     width: 100%;
     margin-bottom: 32px;
+    flex: 0 0 auto;
 }
 
 .terminal-card {
     background: rgba(255, 255, 255, 0.08);
     border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
+    border-radius: 16px;
     padding: 40px 32px;
     text-align: center;
     transition: all 0.3s ease;
+    height: fit-content;
+    min-height: 200px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
 }
 
 .terminal-card:hover {
     transform: translateY(-6px);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .terminal-card.scrap-terminal {
@@ -2112,7 +2136,6 @@
 }
 
 .terminal-card.scrap-terminal:hover {
-    background: rgba(59, 130, 246, 0.2);
     border-color: #3b82f6;
 }
 
@@ -2121,26 +2144,25 @@
 }
 
 .terminal-card.truck-terminal:hover {
-    background: rgba(34, 197, 94, 0.2);
     border-color: #22c55e;
 }
 
 .terminal-icon {
-    font-size: 4rem;
-    margin-bottom: 16px;
+    font-size: 3rem;
+    margin-bottom: 6px;
 }
 
 .terminal-card h3 {
     color: #ffffff;
     font-size: 1.4rem;
-    margin: 0 0 8px 0;
+    margin: 0 0 4px 0;
     font-weight: 600;
 }
 
 .terminal-card p {
     color: #cbd5e1;
-    font-size: 0.95rem;
-    margin-bottom: 24px;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
 }
 
 .terminal-card .btn-pos {
@@ -2159,6 +2181,132 @@
     background: rgba(255, 255, 255, 0.08);
     border-radius: 8px;
     color: #cbd5e1;
+}
+
+/* ===== Settings Bar ===== */
+.pos-settings-bar {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btn-setting {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.btn-setting:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-setting span {
+    font-size: 1rem;
+}
+
+/* ===== Light Theme for Landing Page ===== */
+.pos-container.light-theme {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.pos-container.light-theme .pos-start {
+    background: transparent;
+}
+
+.pos-container.light-theme .pos-logo h1 {
+    color: #1e293b;
+}
+
+.pos-container.light-theme .pos-logo p {
+    color: #64748b;
+}
+
+.pos-container.light-theme .session-active-label {
+    color: #16a34a;
+}
+
+.pos-container.light-theme .terminal-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.pos-container.light-theme .terminal-card:hover {
+    background: #ffffff;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.pos-container.light-theme .terminal-card h3 {
+    color: #1e293b;
+}
+
+.pos-container.light-theme .terminal-card p {
+    color: #64748b;
+}
+
+.pos-container.light-theme .terminal-card.scrap-terminal {
+    border-color: #3b82f6;
+}
+
+.pos-container.light-theme .terminal-card.truck-terminal {
+    border-color: #22c55e;
+}
+
+.pos-container.light-theme .session-info-bar .info-item {
+    background: #ffffff;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.pos-container.light-theme .btn-setting {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    color: #475569;
+}
+
+.pos-container.light-theme .btn-setting:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.pos-container.light-theme .pos-footer {
+    color: #64748b;
+}
+
+.pos-container.light-theme .logout-link {
+    color: #dc2626;
+}
+
+
+.pos-container.light-theme .profile-dropdown {
+    background: #ffffff;
+    color: #1e293b;
+    border-color: #e2e8f0;
+}
+
+.pos-container.light-theme .profile-selector {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.pos-container.light-theme .profile-selector label {
+    color: #475569;
+}
+
+.pos-container.light-theme .terminal-icon {
+    filter: none;
+}
+
+.pos-container.light-theme .operator {
+    color: #475569;
 }
 
 /* Back button small for terminal header */
@@ -2191,14 +2339,14 @@
 }
 
 /* ===== Truck Terminal Page ===== */
-.truck-terminal {
+.pos-container > .truck-terminal {
     display: flex;
     flex-direction: column;
     height: 100vh;
     background: #0f172a;
 }
 
-.truck-terminal.light-theme {
+.pos-container > .truck-terminal.light-theme {
     background: #f1f5f9;
 }
 
@@ -2237,7 +2385,7 @@
 
 .truck-search-section {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     flex: 1;
     padding: 40px;
@@ -2380,7 +2528,7 @@
     }
 
     .terminal-card {
-        padding: 32px 24px;
+        padding: 40px 32px;
     }
 
     .terminal-icon {
@@ -2794,13 +2942,9 @@
 }
 
 /* Action Section for Remarks and Photo */
-.action-section {
-    display: flex;
-    gap: 12px;
-    padding: 16px 20px;
-    justify-content: center;
-    border-top: 1px solid #334155;
-    margin-top: 16px;
+.action-section + .action-section {
+    border-top: none;
+    padding-top: 0;
 }
 
 .action-section .btn-pos {
@@ -2842,7 +2986,7 @@
 
 .photo-controls {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 12px;
     padding: 16px 0;
 }

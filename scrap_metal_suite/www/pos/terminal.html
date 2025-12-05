@@ -4,6 +4,8 @@
 
 {% block head_include %}
 <!-- QR/Barcode Scanner Library (self-hosted for offline support) -->
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css">
+<script src="/assets/scrap_metal_suite/js/pos-translations.js"></script>
 <script src="/assets/scrap_metal_suite/js/html5-qrcode.min.js"></script>
 {% endblock %}
 
@@ -371,140 +373,7 @@ body {
 
 <script>
 // ===== Translations =====
-const translations = {
-    en: {
-        items: 'Items',
-        orderId: 'Order ID',
-        scan: 'Scan',
-        enterOrderId: 'Enter Order ID or scan...',
-        supplier: 'Supplier',
-        orderDate: 'Order Date',
-        licensePlate: 'License Plate',
-        status: 'Status',
-        reweightWarning: 'This order was already processed. Recording will create a re-weight entry.',
-        cart: 'Cart',
-        clearAll: 'Clear All',
-        noItemsAdded: 'No items added',
-        totalWeight: 'Total Weight:',
-        remarks: 'Remarks',
-        photo: 'Photo',
-        cancel: 'Cancel',
-        recordWeight: 'Record Weight',
-        addToCart: 'Add to Cart',
-        scanOrderBarcode: 'Scan Order Barcode/QR',
-        pointCamera: 'Point camera at barcode or QR code',
-        orEnterManually: 'Or enter manually:',
-        search: 'Search',
-        addRemarks: 'Add Remarks',
-        enterRemarks: 'Enter remarks for this order...',
-        saveRemarks: 'Save Remarks',
-        capturePhoto: 'Capture Photo',
-        capture: 'Capture',
-        retake: 'Retake',
-        savePhoto: 'Save Photo',
-        sessionSummary: 'Session Summary',
-        close: 'Close',
-        closeSession: 'Close Session',
-        confirmCloseSession: 'Are you sure you want to close this session?',
-        summary: 'Summary',
-        closeShift: 'Close Shift',
-        weightsRecorded: 'Weights Recorded',
-        orderNotFound: 'Order not found',
-        errorSearching: 'Error searching for order',
-        noOrdersFound: 'No orders found',
-        cameraNotAvailable: 'Camera not available',
-        startingCamera: 'Starting camera...',
-        pleaseEnterWeight: 'Please enter a valid weight',
-        remarksSaved: 'Remarks saved',
-        photoReady: 'Photo captured and ready to attach',
-        weightRecorded: 'Weight recorded',
-        reweight: 'Re-weight',
-        total: 'Total',
-        sessionClosed: 'Session closed successfully!',
-        error: 'Error',
-        failedToRecord: 'Failed to record weight',
-        failedToClose: 'Failed to close session',
-        selectScale: 'Select Scale',
-        scanOrSelectScale: 'Scan scale QR code or select from dropdown',
-        scanScaleQR: 'Scan Scale QR',
-        or: 'OR',
-        selectFromList: 'Select from list:',
-        scaleName: 'Scale:',
-        scaleType: 'Type:',
-        location: 'Location:',
-        confirmScale: 'Confirm Scale',
-        pointCameraAtScale: 'Point camera at scale QR code',
-        scaleNotActive: 'This scale is not active',
-        scaleRequired: 'Please select a scale to continue',
-        scaleSetSuccess: 'Scale set successfully'
-    },
-    th: {
-        items: 'รายการสินค้า',
-        orderId: 'รหัสออเดอร์',
-        scan: 'สแกน',
-        enterOrderId: 'กรอกรหัสออเดอร์หรือสแกน...',
-        supplier: 'ผู้ขาย',
-        orderDate: 'วันที่สั่ง',
-        licensePlate: 'ป้ายทะเบียน',
-        status: 'สถานะ',
-        reweightWarning: 'ออเดอร์นี้ถูกบันทึกแล้ว การบันทึกจะเป็นการชั่งซ้ำ',
-        cart: 'ตะกร้า',
-        clearAll: 'ล้างทั้งหมด',
-        noItemsAdded: 'ยังไม่มีรายการ',
-        totalWeight: 'น้ำหนักรวม:',
-        remarks: 'หมายเหตุ',
-        photo: 'ถ่ายรูป',
-        cancel: 'ยกเลิก',
-        recordWeight: 'บันทึกน้ำหนัก',
-        addToCart: 'เพิ่มลงตะกร้า',
-        scanOrderBarcode: 'สแกนบาร์โค้ด/QR ออเดอร์',
-        pointCamera: 'เล็งกล้องไปที่บาร์โค้ดหรือ QR โค้ด',
-        orEnterManually: 'หรือกรอกเอง:',
-        search: 'ค้นหา',
-        addRemarks: 'เพิ่มหมายเหตุ',
-        enterRemarks: 'กรอกหมายเหตุสำหรับออเดอร์นี้...',
-        saveRemarks: 'บันทึกหมายเหตุ',
-        capturePhoto: 'ถ่ายรูป',
-        capture: 'ถ่าย',
-        retake: 'ถ่ายใหม่',
-        savePhoto: 'บันทึกรูป',
-        sessionSummary: 'สรุปเซสชั่น',
-        close: 'ปิด',
-        closeSession: 'ปิดเซสชั่น',
-        confirmCloseSession: 'คุณต้องการปิดเซสชั่นนี้หรือไม่?',
-        summary: 'สรุป',
-        closeShift: 'ปิดกะ',
-        weightsRecorded: 'จำนวนครั้งที่ชั่ง',
-        orderNotFound: 'ไม่พบออเดอร์',
-        errorSearching: 'เกิดข้อผิดพลาดในการค้นหา',
-        noOrdersFound: 'ไม่พบออเดอร์',
-        cameraNotAvailable: 'ไม่สามารถเข้าถึงกล้อง',
-        startingCamera: 'กำลังเปิดกล้อง...',
-        pleaseEnterWeight: 'กรุณากรอกน้ำหนักที่ถูกต้อง',
-        remarksSaved: 'บันทึกหมายเหตุแล้ว',
-        photoReady: 'ถ่ายรูปแล้ว พร้อมแนบ',
-        weightRecorded: 'บันทึกน้ำหนักแล้ว',
-        reweight: 'ชั่งซ้ำ',
-        total: 'รวม',
-        sessionClosed: 'ปิดเซสชั่นสำเร็จ!',
-        error: 'ข้อผิดพลาด',
-        failedToRecord: 'ไม่สามารถบันทึกน้ำหนักได้',
-        failedToClose: 'ไม่สามารถปิดเซสชั่นได้',
-        selectScale: 'เลือกเครื่องชั่ง',
-        scanOrSelectScale: 'สแกน QR เครื่องชั่งหรือเลือกจากรายการ',
-        scanScaleQR: 'สแกน QR เครื่องชั่ง',
-        or: 'หรือ',
-        selectFromList: 'เลือกจากรายการ:',
-        scaleName: 'เครื่องชั่ง:',
-        scaleType: 'ประเภท:',
-        location: 'ตำแหน่ง:',
-        confirmScale: 'ยืนยันเครื่องชั่ง',
-        pointCameraAtScale: 'เล็งกล้องไปที่ QR เครื่องชั่ง',
-        scaleNotActive: 'เครื่องชั่งนี้ไม่พร้อมใช้งาน',
-        scaleRequired: 'กรุณาเลือกเครื่องชั่งเพื่อดำเนินการต่อ',
-        scaleSetSuccess: 'ตั้งค่าเครื่องชั่งสำเร็จ'
-    }
-};
+// Using unified translation file: pos-translations.js
 
 // ===== State =====
 const state = {
@@ -525,6 +394,8 @@ const state = {
 
 // ===== Initialization =====
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize unified translation system
+    POS_I18N.init(state.language);
     applyTheme(state.theme);
     applyLanguage(state.language);
     updateClock();
@@ -536,12 +407,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ===== Language Functions =====
 function t(key) {
-    return translations[state.language][key] || translations['en'][key] || key;
+    return POS_I18N.t(key);
 }
 
 function toggleLanguage() {
-    state.language = state.language === 'en' ? 'th' : 'en';
-    localStorage.setItem('posLanguage', state.language);
+    state.language = POS_I18N.toggleLanguage();
     applyLanguage(state.language);
 }
 
@@ -1234,6 +1104,10 @@ function populateScaleDropdown() {
             option.disabled = true;
             option.textContent += ` (${t('scaleNotActive')})`;
             option.style.color = '#888';
+        } else if (scale.in_use) {
+            option.disabled = true;
+            option.textContent += ` (${t('scaleInUse')})`;
+            option.style.color = '#f59e0b';
         }
 
         dropdown.appendChild(option);

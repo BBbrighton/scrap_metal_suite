@@ -4,6 +4,7 @@
 
 {% block head_include %}
 <link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css">
+<script src="/assets/scrap_metal_suite/js/pos-translations.js"></script>
 <script src="/assets/scrap_metal_suite/js/html5-qrcode.min.js"></script>
 {% endblock %}
 
@@ -61,6 +62,10 @@ body {
             <span class="current-time" id="currentTime"></span>
         </div>
         <div class="header-right">
+            <button class="btn-header btn-lang" onclick="toggleLanguage()" title="Toggle Language">
+                <span id="langIcon">&#127760;</span>
+                <span id="langLabel">EN</span>
+            </button>
             <button class="btn-header btn-theme" onclick="toggleTheme()" title="Toggle Theme">
                 <span id="themeIcon">&#9728;</span>
             </button>
@@ -375,6 +380,11 @@ body {
 </div>
 
 <script>
+// ===== Translation wrapper =====
+function t(key) {
+    return POS_I18N.t(key);
+}
+
 // ===== State =====
 const state = {
     session: '{{ session.name }}',
@@ -404,13 +414,211 @@ const state = {
 
 // ===== Initialization =====
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize unified translation system
+    POS_I18N.init();
     applyTheme(state.theme);
+    applyLanguage();
     updateClock();
     setInterval(updateClock, 1000);
 
     // Check if scale is already set for this session
     await checkSessionScale();
 });
+
+
+// ===== Language Functions =====
+function toggleLanguage() {
+    POS_I18N.toggleLanguage();
+    applyLanguage();
+}
+
+function applyLanguage() {
+    const lang = POS_I18N.getLanguage();
+    const langLabel = document.getElementById('langLabel');
+    if (langLabel) {
+        langLabel.textContent = lang.toUpperCase();
+    }
+    updateTranslations();
+}
+
+function updateTranslations() {
+    // Panel header
+    const panelHeader = document.querySelector('.panel-items .panel-header h2');
+    if (panelHeader) panelHeader.innerHTML = '&#128666; ' + t('truckWeights');
+
+    // Empty state
+    const emptyStateText = document.querySelector('#weightEmptyState p');
+    if (emptyStateText) emptyStateText.textContent = t('selectOrderToRecordWeights');
+
+    // Weight card headers
+    const grossHeader = document.querySelector('.gross-card .weight-card-header');
+    if (grossHeader) grossHeader.textContent = t('grossWeight');
+
+    const tareHeader = document.querySelector('.tare-card .weight-card-header');
+    if (tareHeader) tareHeader.textContent = t('tareWeight');
+
+    const netHeader = document.querySelector('.net-card .weight-card-header');
+    if (netHeader) netHeader.textContent = t('netWeight');
+
+    // Buttons - only update if not showing recorded state
+    const btnGross = document.getElementById('btnGross');
+    if (btnGross && !state.weights.gross_weight) {
+        btnGross.textContent = t('recordGross');
+    }
+
+    const btnTare = document.getElementById('btnTare');
+    if (btnTare && !state.weights.tare_weight) {
+        btnTare.textContent = t('recordTare');
+    }
+
+    // Remarks and Photo buttons
+    const remarksBtn = document.getElementById('remarksBtn');
+    if (remarksBtn) {
+        const hasRemarks = state.weights.truck_weight_remarks;
+        remarksBtn.innerHTML = '&#128172; ' + t('remarks') + (hasRemarks ? ' &#10004;' : '');
+    }
+
+    const photoBtn = document.getElementById('photoBtn');
+    if (photoBtn) {
+        const hasPhoto = state.weights.truck_weight_photo;
+        photoBtn.innerHTML = '&#128247; ' + t('photo') + (hasPhoto ? ' &#10004;' : '');
+    }
+
+    // Order section label
+    const orderLabel = document.querySelector('.order-label-row label');
+    if (orderLabel) orderLabel.textContent = t('orderId');
+
+    // Scan button
+    const scanBtn = document.querySelector('.scan-btn');
+    if (scanBtn) scanBtn.innerHTML = '<span>&#128247;</span> ' + t('scan');
+
+    // Order search placeholder
+    const orderSearch = document.getElementById('orderSearch');
+    if (orderSearch) orderSearch.placeholder = t('enterOrderId');
+
+    // End session button
+    const endSessionBtn = document.querySelector('.btn-header.btn-danger');
+    if (endSessionBtn) endSessionBtn.textContent = t('endSession');
+
+    // Scale modal translations
+    const scaleModalTitle = document.querySelector('#scaleModal .modal-header h3');
+    if (scaleModalTitle) scaleModalTitle.textContent = t('selectScale');
+
+    const scaleInstruction = document.querySelector('.scale-instruction');
+    if (scaleInstruction) scaleInstruction.textContent = t('scanOrSelectScale');
+
+    const scaleQrBtn = document.getElementById('scaleQrBtn');
+    if (scaleQrBtn) scaleQrBtn.innerHTML = '&#128247; ' + t('scanScaleQR');
+
+    const scaleSelectLabel = document.querySelector('.scale-select-section label');
+    if (scaleSelectLabel) scaleSelectLabel.textContent = t('selectFromList');
+
+    const confirmScaleBtn = document.getElementById('confirmScaleBtn');
+    if (confirmScaleBtn) confirmScaleBtn.textContent = t('confirmScale');
+    // Order Details Card labels
+    const orderDetailLabels = document.querySelectorAll('#orderDetailsCard .detail-label');
+    if (orderDetailLabels.length >= 3) {
+        orderDetailLabels[0].textContent = t('supplier');
+        orderDetailLabels[1].textContent = t('orderDate');
+        orderDetailLabels[2].textContent = t('licensePlate');
+    }
+
+    // Variance Panel header and labels
+    const varianceHeader = document.querySelector('#variancePanel .panel-header h3');
+    if (varianceHeader) varianceHeader.textContent = t('weightVerification');
+
+    const varianceLabels = document.querySelectorAll('#variancePanel .variance-label');
+    if (varianceLabels.length >= 3) {
+        varianceLabels[0].textContent = t('netTruckWeight');
+        varianceLabels[1].textContent = t('totalScrapWeight');
+        varianceLabels[2].textContent = t('variance');
+    }
+
+    // Scrap Panel header and total label
+    const scrapHeader = document.querySelector('#scrapPanel .panel-header h3');
+    if (scrapHeader) scrapHeader.textContent = t('scrapWeightRecords');
+
+    const scrapTotalLabel = document.querySelector('#scrapPanel .scrap-total span:first-child');
+    if (scrapTotalLabel) scrapTotalLabel.textContent = t('total');
+
+    // Net weight label (Gross - Tare)
+    const netLabel = document.querySelector('.net-card .weight-card-label');
+    if (netLabel) netLabel.textContent = t('grossWeight') + ' - ' + t('tareWeight');
+
+    // Scale info labels
+    const scaleInfoLabels = document.querySelectorAll('#selectedScaleInfo .info-label');
+    if (scaleInfoLabels.length >= 3) {
+        scaleInfoLabels[0].textContent = t('scaleName');
+        scaleInfoLabels[1].textContent = t('scaleType');
+        scaleInfoLabels[2].textContent = t('location');
+    }
+
+    // Scanner modal
+    const scannerModalTitle = document.querySelector('#scannerModal .modal-header h3');
+    if (scannerModalTitle) scannerModalTitle.textContent = t('scanOrderBarcode');
+
+    const manualEntryLabel = document.querySelector('#scannerModal .manual-entry label');
+    if (manualEntryLabel) manualEntryLabel.textContent = t('orEnterManually');
+
+    const manualInput = document.getElementById('manualOrderInput');
+    if (manualInput) manualInput.placeholder = t('enterOrderId');
+
+    const manualSearchBtn = document.querySelector('#scannerModal .manual-entry .btn-pos');
+    if (manualSearchBtn) manualSearchBtn.textContent = t('search');
+
+    // Weight modal buttons
+    const weightModalCancel = document.querySelector('#weightModal .modal-footer .btn-secondary');
+    if (weightModalCancel) weightModalCancel.textContent = t('cancel');
+
+    const weightModalSave = document.querySelector('#weightModal .modal-footer .btn-primary');
+    if (weightModalSave) weightModalSave.textContent = t('saveWeight');
+
+    // End session modal
+    const endSessionModalTitle = document.querySelector('#endSessionModal .modal-header h3');
+    if (endSessionModalTitle) endSessionModalTitle.textContent = t('endSession');
+
+    const endSessionModalText = document.querySelector('#endSessionModal .modal-body p');
+    if (endSessionModalText) endSessionModalText.textContent = t('confirmEndSession');
+
+    const endSessionCancelBtn = document.querySelector('#endSessionModal .modal-footer .btn-secondary');
+    if (endSessionCancelBtn) endSessionCancelBtn.textContent = t('cancel');
+
+    const endSessionConfirmBtn = document.querySelector('#endSessionModal .modal-footer .btn-danger');
+    if (endSessionConfirmBtn) endSessionConfirmBtn.textContent = t('endSession');
+
+    // Remarks modal
+    const remarksModalTitle = document.querySelector('#remarksModal .modal-header h3');
+    if (remarksModalTitle) remarksModalTitle.textContent = t('truckWeightRemarks');
+
+    const remarksInputEl = document.getElementById('remarksInput');
+    if (remarksInputEl) remarksInputEl.placeholder = t('enterRemarks');
+
+    const remarksCancelBtn = document.querySelector('#remarksModal .modal-footer .btn-secondary');
+    if (remarksCancelBtn) remarksCancelBtn.textContent = t('cancel');
+
+    const remarksSaveBtn = document.querySelector('#remarksModal .modal-footer .btn-primary');
+    if (remarksSaveBtn) remarksSaveBtn.textContent = t('saveRemarks');
+
+    // Photo modal
+    const photoModalTitle = document.querySelector('#photoModal .modal-header h3');
+    if (photoModalTitle) photoModalTitle.textContent = t('capturePhoto');
+
+    const captureBtn = document.getElementById('captureBtn');
+    if (captureBtn) captureBtn.innerHTML = '&#128247; ' + t('capture');
+
+    const retakeBtn = document.getElementById('retakeBtn');
+    if (retakeBtn) retakeBtn.innerHTML = '&#128260; ' + t('retake');
+
+    const photoCancelBtn = document.querySelector('#photoModal .modal-footer .btn-secondary');
+    if (photoCancelBtn) photoCancelBtn.textContent = t('cancel');
+
+    const photoSaveBtn = document.getElementById('savePhotoBtn');
+    if (photoSaveBtn) photoSaveBtn.textContent = t('savePhoto');
+
+    // Scale scanner modal
+    const scaleScannerTitle = document.querySelector('#scaleScannnerModal .modal-header h3');
+    if (scaleScannerTitle) scaleScannerTitle.textContent = t('scanScaleQRCode');
+}
 
 // ===== Theme Functions =====
 function toggleTheme() {
@@ -703,26 +911,26 @@ function updateWeightDisplay() {
     const grossEl = document.getElementById('grossValue');
     const grossTimeEl = document.getElementById('grossTime');
     if (w.gross_weight) {
-        grossEl.textContent = w.gross_weight.toFixed(2) + ' Kg';
+        grossEl.textContent = w.gross_weight.toFixed(2) + ' ' + t('kg');
         grossTimeEl.textContent = w.gross_weight_time ? new Date(w.gross_weight_time).toLocaleString() : '';
-        document.getElementById('btnGross').textContent = 'Update Gross';
+        document.getElementById('btnGross').textContent = t('updateGross');
     } else {
         grossEl.textContent = '--';
         grossTimeEl.textContent = '';
-        document.getElementById('btnGross').textContent = 'Record Gross';
+        document.getElementById('btnGross').textContent = t('recordGross');
     }
 
     // Tare weight
     const tareEl = document.getElementById('tareValue');
     const tareTimeEl = document.getElementById('tareTime');
     if (w.tare_weight) {
-        tareEl.textContent = w.tare_weight.toFixed(2) + ' Kg';
+        tareEl.textContent = w.tare_weight.toFixed(2) + ' ' + t('kg');
         tareTimeEl.textContent = w.tare_weight_time ? new Date(w.tare_weight_time).toLocaleString() : '';
-        document.getElementById('btnTare').textContent = 'Update Tare';
+        document.getElementById('btnTare').textContent = t('updateTare');
     } else {
         tareEl.textContent = '--';
         tareTimeEl.textContent = '';
-        document.getElementById('btnTare').textContent = 'Record Tare';
+        document.getElementById('btnTare').textContent = t('recordTare');
     }
 
     // Net weight
@@ -807,8 +1015,8 @@ function resetWeights() {
     document.getElementById('tareValue').textContent = '--';
     document.getElementById('tareTime').textContent = '';
     document.getElementById('netValue').textContent = '--';
-    document.getElementById('btnGross').textContent = 'Record Gross';
-    document.getElementById('btnTare').textContent = 'Record Tare';
+    document.getElementById('btnGross').textContent = t('recordGross');
+    document.getElementById('btnTare').textContent = t('recordTare');
 }
 
 // ===== Weight Modal =====
@@ -822,11 +1030,11 @@ function openWeightModal(weightType) {
     const input = document.getElementById('weightInput');
 
     if (weightType === 'gross') {
-        title.textContent = 'Record Gross Weight';
-        hint.textContent = 'Weigh the truck WITH scrap loaded';
+        title.textContent = t('recordGrossWeight');
+        hint.textContent = t('weighTruckWithLoad');
     } else {
-        title.textContent = 'Record Tare Weight';
-        hint.textContent = 'Weigh the EMPTY truck after unloading';
+        title.textContent = t('recordTareWeight');
+        hint.textContent = t('weighEmptyTruck');
     }
 
     input.value = '';
@@ -977,10 +1185,10 @@ async function saveRemarks() {
 function updateRemarksButton() {
     const btn = document.getElementById('remarksBtn');
     if (state.weights.truck_weight_remarks) {
-        btn.innerHTML = '&#128172; Remarks &#10004;';
+        btn.innerHTML = '&#128172; ' + t('remarks') + ' &#10004;';
         btn.classList.add('has-content');
     } else {
-        btn.innerHTML = '&#128172; Remarks';
+        btn.innerHTML = '&#128172; ' + t('remarks');
         btn.classList.remove('has-content');
     }
 }
@@ -1150,10 +1358,10 @@ function b64toBlob(b64Data, contentType) {
 function updatePhotoButton() {
     const btn = document.getElementById('photoBtn');
     if (state.weights.truck_weight_photo) {
-        btn.innerHTML = '&#128247; Photo &#10004;';
+        btn.innerHTML = '&#128247; ' + t('photo') + ' &#10004;';
         btn.classList.add('has-content');
     } else {
-        btn.innerHTML = '&#128247; Photo';
+        btn.innerHTML = '&#128247; ' + t('photo');
         btn.classList.remove('has-content');
     }
 }
@@ -1260,8 +1468,12 @@ function populateScaleDropdown() {
 
         if (!scale.is_active) {
             option.disabled = true;
-            option.textContent += ' (Not Active)';
+            option.textContent += ` (${t('scaleNotActive')})`;
             option.style.color = '#888';
+        } else if (scale.in_use) {
+            option.disabled = true;
+            option.textContent += ` (${t('scaleInUse')})`;
+            option.style.color = '#f59e0b';
         }
 
         dropdown.appendChild(option);

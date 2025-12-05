@@ -657,7 +657,7 @@ def get_scales(usage_type=None, scale_type=None):
     scales = frappe.get_all(
         "Scale",
         filters=filters,
-        fields=["name", "scale_name", "scale_type", "usage_type", "location", "max_capacity_kg", "is_active"],
+        fields=["name", "scale_name", "scale_type", "usage_type", "location", "max_capacity_kg", "is_active", "in_use", "in_use_by_session"],
         order_by="scale_name asc"
     )
 
@@ -720,6 +720,7 @@ def set_session_scale(session, scale):
     """
     Set the scale for a POS session.
     Can only be set once per session.
+    Marks the scale as in_use to prevent other sessions from using it.
 
     Args:
         session: POS Session name
@@ -743,30 +744,40 @@ def set_session_scale(session, scale):
         frappe.throw(_("Scale already set for this session. Close session and open a new one to use a different scale."))
 
     # Validate scale exists and is active
-    scale_doc = frappe.db.get_value(
+    scale_data = frappe.db.get_value(
         "Scale",
         scale,
-        ["name", "scale_name", "is_active", "scale_type", "usage_type", "location"],
+        ["name", "scale_name", "is_active", "in_use", "in_use_by_session", "scale_type", "usage_type", "location"],
         as_dict=True
     )
 
-    if not scale_doc:
+    if not scale_data:
         frappe.throw(_("Scale '{0}' not found").format(scale))
 
-    if not scale_doc.is_active:
+    if not scale_data.is_active:
         frappe.throw(_("Scale '{0}' is not active").format(scale))
+
+    # Check if scale is already in use by another session
+    if scale_data.in_use and scale_data.in_use_by_session:
+        frappe.throw(_("Scale '{0}' is already in use by session {1}").format(scale, scale_data.in_use_by_session))
 
     # Set scale on session
     session_doc.scale = scale
     session_doc.save()
 
+    # Mark scale as in use (use get_doc for activity tracking)
+    scale_doc = frappe.get_doc("Scale", scale)
+    scale_doc.in_use = 1
+    scale_doc.in_use_by_session = session
+    scale_doc.save()
+
     return {
         "session": session_doc.name,
-        "scale": scale_doc.name,
-        "scale_name": scale_doc.scale_name,
-        "scale_type": scale_doc.scale_type,
-        "usage_type": scale_doc.usage_type,
-        "location": scale_doc.location
+        "scale": scale_data.name,
+        "scale_name": scale_data.scale_name,
+        "scale_type": scale_data.scale_type,
+        "usage_type": scale_data.usage_type,
+        "location": scale_data.location
     }
 
 

@@ -4,6 +4,7 @@
 
 {% block head_include %}
 <link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css">
+<script src="/assets/scrap_metal_suite/js/pos-translations.js"></script>
 {% endblock %}
 
 {% block style %}
@@ -20,7 +21,7 @@ html, body {
 }
 body {
     padding-top: 0 !important;
-    background: #1a1a2e !important;
+    background: #1a1a2e; transition: background 0.3s ease;
 }
 .main-section {
     padding: 0 !important;
@@ -35,99 +36,7 @@ body {
     padding: 0 !important;
     margin: 0 !important;
 }
-
-/* Terminal Grid - Critical styles inline for reliability */
-.pos-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    min-height: 100vh;
-    width: 100vw;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    overflow-y: auto;
-}
-.pos-start {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 40px 20px;
-}
-.pos-logo {
-    text-align: center;
-    margin-bottom: 48px;
-}
-.pos-logo h1 {
-    font-size: 2.5rem;
-    color: #fff;
-    margin: 0;
-    font-weight: 700;
-}
-.pos-logo p {
-    color: #cbd5e1;
-    margin-top: 8px;
-    font-size: 1.1rem;
-}
-.terminal-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
-    max-width: 700px;
-    width: 100%;
-    margin-bottom: 32px;
-}
-.terminal-card {
-    background: rgba(255, 255, 255, 0.08);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
-    padding: 40px 32px;
-    text-align: center;
-    transition: all 0.3s ease;
-}
-.terminal-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-}
-.terminal-card.scrap-terminal {
-    border-color: rgba(59, 130, 246, 0.5);
-}
-.terminal-card.scrap-terminal:hover {
-    background: rgba(59, 130, 246, 0.2);
-    border-color: #3b82f6;
-}
-.terminal-card.truck-terminal {
-    border-color: rgba(34, 197, 94, 0.5);
-}
-.terminal-card.truck-terminal:hover {
-    background: rgba(34, 197, 94, 0.2);
-    border-color: #22c55e;
-}
-.terminal-icon {
-    font-size: 4rem;
-    margin-bottom: 16px;
-}
-.terminal-card h3 {
-    color: #ffffff;
-    font-size: 1.4rem;
-    margin: 0 0 8px 0;
-    font-weight: 600;
-}
-.terminal-card p {
-    color: #cbd5e1;
-    font-size: 0.95rem;
-    margin-bottom: 24px;
-}
-.terminal-card .btn-pos {
-    width: 100%;
-}
-@media (max-width: 768px) {
-    .terminal-grid {
-        grid-template-columns: 1fr;
-    }
-}
+/* All other styles loaded from pos.css */
 </style>
 {% endblock %}
 
@@ -143,7 +52,7 @@ body {
     {% else %}
     <div class="pos-start">
         <div class="pos-logo">
-            <h1>&#127981; Scrap Metal POS</h1>
+            <h1>&#127981; SMT POS by X-DESK</h1>
             {% if active_session %}
             <p class="session-active-label">Active Session: {{ active_session.name }}</p>
             {% else %}
@@ -165,34 +74,29 @@ body {
 
         <!-- Terminal selection grid - always visible -->
         <div class="terminal-grid">
-            <div class="terminal-card scrap-terminal">
+            {% if active_session %}
+            <a href="/pos/terminal?session={{ active_session.name }}" class="terminal-card scrap-terminal">
                 <div class="terminal-icon">&#9878;</div>
                 <h3>Scrap Weighing</h3>
                 <p>Record scrap weights by item</p>
-                {% if active_session %}
-                <a href="/pos/terminal?session={{ active_session.name }}" class="btn-pos btn-primary btn-large">
-                    Enter Terminal
-                </a>
-                {% else %}
-                <button class="btn-pos btn-primary btn-large" onclick="startSession('scrap')">
-                    Start Scrap Terminal
-                </button>
-                {% endif %}
-            </div>
-            <div class="terminal-card truck-terminal">
+            </a>
+            <a href="/pos/truck?session={{ active_session.name }}" class="terminal-card truck-terminal">
                 <div class="terminal-icon">&#128666;</div>
                 <h3>Truck Scale</h3>
                 <p>Record gross/tare truck weights</p>
-                {% if active_session %}
-                <a href="/pos/truck?session={{ active_session.name }}" class="btn-pos btn-success btn-large">
-                    Enter Truck Scale
-                </a>
-                {% else %}
-                <button class="btn-pos btn-success btn-large" onclick="startSession('truck')">
-                    Start Truck Scale
-                </button>
-                {% endif %}
+            </a>
+            {% else %}
+            <div class="terminal-card scrap-terminal" onclick="startSession('scrap')">
+                <div class="terminal-icon">&#9878;</div>
+                <h3>Scrap Weighing</h3>
+                <p>Record scrap weights by item</p>
             </div>
+            <div class="terminal-card truck-terminal" onclick="startSession('truck')">
+                <div class="terminal-icon">&#128666;</div>
+                <h3>Truck Scale</h3>
+                <p>Record gross/tare truck weights</p>
+            </div>
+            {% endif %}
         </div>
 
         {% if active_session %}
@@ -201,6 +105,17 @@ body {
             <span class="info-item">Opened: {{ frappe.utils.format_datetime(active_session.opening_time, "hh:mm a") }}</span>
         </div>
         {% endif %}
+
+        <!-- Settings Bar -->
+        <div class="pos-settings-bar">
+            <button class="btn-setting" onclick="toggleLanguage()" title="Toggle Language">
+                <span id="langIcon">🌐</span>
+                <span id="langLabel">EN</span>
+            </button>
+            <button class="btn-setting" onclick="toggleTheme()" title="Toggle Theme">
+                <span id="themeIcon">🌙</span>
+            </button>
+        </div>
 
         <div class="pos-footer">
             <span class="operator">Operator: {{ frappe.session.user }}</span>
@@ -211,6 +126,82 @@ body {
 </div>
 
 <script>
+// Initialize translations and theme
+document.addEventListener('DOMContentLoaded', () => {
+    POS_I18N.init();
+    initTheme();
+    applyLanguage();
+});
+
+// Theme management
+let currentTheme = localStorage.getItem('posTheme') || 'dark';
+
+function initTheme() {
+    applyTheme(currentTheme);
+}
+
+function applyTheme(theme) {
+    const container = document.querySelector('.pos-container');
+    const themeIcon = document.getElementById('themeIcon');
+
+    if (!container) {
+        console.error('Container not found');
+        return;
+    }
+
+    if (theme === 'light') {
+        container.classList.add('light-theme');
+        container.style.background = 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)';
+        document.body.style.background = '#f1f5f9';
+        if (themeIcon) themeIcon.textContent = '☀️';
+    } else {
+        container.classList.remove('light-theme');
+        container.style.background = 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)';
+        document.body.style.background = '#1a1a2e';
+        if (themeIcon) themeIcon.textContent = '🌙';
+    }
+}
+
+function toggleTheme() {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('posTheme', currentTheme);
+    applyTheme(currentTheme);
+}
+
+// Language management
+function applyLanguage() {
+    const lang = POS_I18N.getLanguage();
+    const langLabel = document.getElementById('langLabel');
+    if (langLabel) {
+        langLabel.textContent = lang.toUpperCase();
+    }
+
+    // Update translatable elements
+    updateTranslations();
+}
+
+function toggleLanguage() {
+    POS_I18N.toggleLanguage();
+    applyLanguage();
+}
+
+function updateTranslations() {
+    // Update terminal cards
+    const scrapTitle = document.querySelector('.scrap-terminal h3');
+    const scrapDesc = document.querySelector('.scrap-terminal p');
+    const truckTitle = document.querySelector('.truck-terminal h3');
+    const truckDesc = document.querySelector('.truck-terminal p');
+
+    if (scrapTitle) scrapTitle.textContent = POS_I18N.t('scrapWeighing');
+    if (scrapDesc) scrapDesc.textContent = POS_I18N.t('scrapWeighingDesc');
+    if (truckTitle) truckTitle.textContent = POS_I18N.t('truckScale');
+    if (truckDesc) truckDesc.textContent = POS_I18N.t('truckScaleDesc');
+
+    // Update subtitle if no active session
+    const subtitle = document.querySelector('.pos-logo p:not(.session-active-label)');
+    if (subtitle) subtitle.textContent = POS_I18N.t('selectTerminal');
+}
+
 // Get the default profile (first one or from dropdown)
 function getSelectedProfile() {
     const dropdown = document.getElementById('profileSelect');
