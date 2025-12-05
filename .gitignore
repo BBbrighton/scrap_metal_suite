@@ -5,3 +5,9 @@
 tags
 node_modules
 __pycache__
+.vscode/
+
+# Design/planning docs (local only)
+FUTURE_ENHANCEMENTS.md
+PLAN_*.md
+*_DESIGN.md

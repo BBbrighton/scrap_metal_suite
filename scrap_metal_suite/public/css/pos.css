@@ -3202,3 +3202,810 @@
     width: 100% !important;
     border-radius: 12px;
 }
+/* ============================================
+   POS RESPONSIVE IMPROVEMENTS - Dec 2025
+   ============================================ */
+
+/* ===== Tablet Breakpoint (769px - 1024px) ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+    /* Landing Page - Tablet */
+    .pos-start {
+        padding: 40px 24px 32px;
+    }
+
+    .pos-logo h1 {
+        font-size: 2rem;
+    }
+
+    .terminal-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        max-width: 600px;
+    }
+
+    .terminal-card {
+        padding: 32px 24px;
+    }
+
+    /* Terminal Header - Tablet */
+    .terminal-header {
+        padding: 10px 16px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .header-left {
+        gap: 10px;
+    }
+
+    .header-right {
+        gap: 8px;
+    }
+
+    .btn-header {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    .session-badge {
+        padding: 4px 10px;
+        font-size: 0.8rem;
+    }
+
+    .profile-name,
+    .operator-name {
+        font-size: 0.8rem;
+    }
+
+    /* Terminal Body - Tablet */
+    .panel-transaction {
+        width: 350px;
+    }
+
+    .item-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+        padding: 16px;
+    }
+
+    .item-btn {
+        padding: 16px 12px;
+        height: 90px;
+    }
+
+    .item-btn .item-name {
+        font-size: 0.9rem;
+    }
+
+    /* Truck Terminal - Tablet */
+    .weight-card {
+        padding: 20px;
+    }
+
+    .weight-card-value {
+        font-size: 1.75rem;
+    }
+
+    .weight-card-value.large {
+        font-size: 2rem;
+    }
+}
+
+/* ===== Mobile Breakpoint Enhanced (max-width: 768px) ===== */
+@media (max-width: 768px) {
+    /* Landing Page - Mobile */
+    .pos-start {
+        padding: 24px 16px 20px;
+        justify-content: flex-start;
+        min-height: 100vh;
+    }
+
+    .pos-logo {
+        margin-bottom: 32px;
+    }
+
+    .pos-logo h1 {
+        font-size: 1.5rem;
+    }
+
+    .pos-logo p {
+        font-size: 0.95rem;
+    }
+
+    .terminal-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .terminal-card {
+        padding: 28px 24px;
+    }
+
+    .terminal-icon {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+    }
+
+    .terminal-card h3 {
+        font-size: 1.15rem;
+    }
+
+    .terminal-card p {
+        font-size: 0.85rem;
+    }
+
+    .pos-settings-bar {
+        margin-top: 24px;
+    }
+
+    .pos-footer {
+        margin-top: 32px;
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .profile-selector {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 16px;
+        margin-bottom: 24px;
+    }
+
+    .profile-dropdown {
+        width: 100%;
+        min-width: unset;
+    }
+
+    /* Terminal Header - Mobile: Reorganized */
+    .terminal-header {
+        flex-direction: column;
+        padding: 8px 12px;
+        gap: 8px;
+    }
+
+    .header-left {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .header-center {
+        order: -1;
+        width: 100%;
+        text-align: center;
+        font-size: 1rem;
+        padding: 4px 0;
+        border-bottom: 1px solid #334155;
+        margin-bottom: 4px;
+    }
+
+    .header-right {
+        width: 100%;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .btn-header {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+    }
+
+    .session-badge {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+
+    .profile-name {
+        display: none;
+    }
+
+    .operator-name {
+        font-size: 0.75rem;
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .scale-badge {
+        padding: 3px 8px;
+        font-size: 0.7rem;
+        margin-left: 0;
+    }
+
+    .btn-back-small {
+        padding: 6px 10px;
+        font-size: 1rem;
+    }
+
+    /* Terminal Body - Mobile */
+    .terminal-body {
+        flex-direction: column;
+    }
+
+    .panel-items {
+        border-right: none;
+        border-bottom: 1px solid #334155;
+        max-height: 45vh;
+        min-height: 200px;
+    }
+
+    .panel-transaction {
+        width: 100%;
+        flex: 1;
+        min-height: 55vh;
+    }
+
+    .panel-header {
+        padding: 12px 16px;
+    }
+
+    .panel-header h2 {
+        font-size: 1rem;
+    }
+
+    /* Item Grid - Mobile */
+    .item-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .item-btn {
+        padding: 12px 8px;
+        height: 75px;
+        border-radius: 10px;
+    }
+
+    .item-btn .item-name {
+        font-size: 0.8rem;
+    }
+
+    .item-btn .item-rate {
+        font-size: 0.75rem;
+    }
+
+    /* Order Section - Mobile */
+    .order-section {
+        padding: 12px 16px;
+    }
+
+    .order-section label {
+        font-size: 0.8rem;
+    }
+
+    .order-section input {
+        padding: 10px 14px;
+        font-size: 0.95rem;
+    }
+
+    .order-label-row {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .scan-btn {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    /* Order Details Card - Mobile */
+    .order-details-card {
+        margin-top: 10px;
+    }
+
+    .order-card-header {
+        padding: 10px 12px;
+    }
+
+    .order-card-id {
+        font-size: 1rem;
+    }
+
+    .order-card-body {
+        padding: 10px 12px;
+    }
+
+    .order-detail-row {
+        padding: 6px 0;
+    }
+
+    .detail-label {
+        font-size: 0.75rem;
+    }
+
+    .detail-value {
+        font-size: 0.85rem;
+    }
+
+    /* Cart Section - Mobile */
+    .cart-header {
+        padding: 10px 16px;
+    }
+
+    .cart-header h3 {
+        font-size: 0.95rem;
+    }
+
+    .cart-items {
+        padding: 10px 16px;
+        max-height: 150px;
+    }
+
+    .cart-item {
+        padding: 10px;
+    }
+
+    .cart-item .item-name {
+        font-size: 0.9rem;
+    }
+
+    .cart-item .item-details {
+        font-size: 0.8rem;
+    }
+
+    .cart-item .remove-btn {
+        padding: 6px 10px;
+        min-width: 36px;
+        min-height: 36px;
+    }
+
+    /* Totals - Mobile */
+    .totals-section {
+        padding: 12px 16px;
+    }
+
+    .total-row {
+        font-size: 0.9rem;
+    }
+
+    .total-row.total-amount {
+        font-size: 1.1rem;
+    }
+
+    /* Action Section - Mobile */
+    .action-section {
+        padding: 10px 16px;
+        gap: 8px;
+    }
+
+    .btn-pos {
+        padding: 12px 16px;
+        font-size: 0.9rem;
+    }
+
+    .btn-pos.btn-large {
+        padding: 14px 20px;
+        font-size: 1rem;
+    }
+
+    /* Modals - Mobile */
+    .modal-content {
+        width: 95%;
+        max-width: none;
+        max-height: 95vh;
+        margin: 10px;
+        border-radius: 12px;
+    }
+
+    .modal-content.modal-large {
+        max-width: none;
+    }
+
+    .modal-header {
+        padding: 16px 20px;
+    }
+
+    .modal-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .modal-body {
+        padding: 16px 20px;
+    }
+
+    .modal-footer {
+        padding: 12px 20px;
+        gap: 10px;
+    }
+
+    .modal-footer .btn-pos {
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* Weight Modal - Mobile */
+    .weight-display input {
+        font-size: 1.75rem;
+        padding: 14px;
+    }
+
+    .weight-uom {
+        font-size: 1.1rem;
+    }
+
+    /* Summary Stats - Mobile */
+    .summary-stats {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+    }
+
+    /* Truck Terminal - Mobile */
+    .weight-panel-content {
+        padding: 12px;
+    }
+
+    .weight-cards-panel {
+        gap: 12px;
+    }
+
+    .weight-card {
+        padding: 16px;
+    }
+
+    .weight-card-header {
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+    }
+
+    .weight-card-value {
+        font-size: 1.5rem;
+        margin-bottom: 6px;
+    }
+
+    .weight-card-value.large {
+        font-size: 1.75rem;
+    }
+
+    .weight-card-time {
+        font-size: 0.8rem;
+        margin-bottom: 12px;
+    }
+
+    .btn-record {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+    }
+
+    /* Variance Panel - Mobile */
+    .variance-panel {
+        margin-top: 12px;
+    }
+
+    .variance-panel .panel-header {
+        padding: 10px 12px;
+    }
+
+    .variance-panel .panel-header h3 {
+        font-size: 0.9rem;
+    }
+
+    .variance-content {
+        padding: 12px;
+    }
+
+    .variance-row {
+        padding: 6px 0;
+    }
+
+    .variance-label {
+        font-size: 0.85rem;
+    }
+
+    .variance-value {
+        font-size: 0.9rem;
+    }
+
+    /* Scrap Panel - Mobile */
+    .scrap-panel {
+        margin-top: 12px;
+    }
+
+    .scrap-panel .panel-header {
+        padding: 10px 12px;
+    }
+
+    .scrap-panel .panel-header h3 {
+        font-size: 0.9rem;
+    }
+
+    .scrap-list {
+        max-height: 120px;
+    }
+
+    .scrap-item {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    .scrap-total {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    /* Scale Modal - Mobile */
+    .scale-instruction {
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+    }
+
+    .scale-scan-section .btn-pos {
+        width: 100%;
+    }
+
+    .scale-divider {
+        margin: 20px 0;
+    }
+
+    .scale-dropdown {
+        padding: 12px 14px;
+        font-size: 0.95rem;
+    }
+
+    .selected-scale-info {
+        padding: 12px;
+    }
+
+    .scale-info-row {
+        padding: 6px 0;
+    }
+
+    .scale-info-row .info-label {
+        font-size: 0.85rem;
+    }
+
+    .scale-info-row .info-value {
+        font-size: 0.9rem;
+    }
+
+    /* Scanner Container - Mobile */
+    .scanner-container {
+        min-height: 250px;
+    }
+
+    .scanner-instructions {
+        font-size: 0.9rem;
+        padding: 12px;
+    }
+
+    .manual-entry {
+        padding: 12px;
+    }
+
+    .manual-entry label {
+        font-size: 0.85rem;
+    }
+
+    .manual-entry input {
+        padding: 10px 12px;
+        font-size: 0.95rem;
+    }
+
+    /* Camera Container - Mobile */
+    .camera-container {
+        max-height: 300px;
+    }
+
+    .photo-controls {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .photo-controls .btn-pos {
+        padding: 12px 20px;
+    }
+
+    /* Reweight Warning - Mobile */
+    .reweight-warning {
+        font-size: 0.8rem;
+        padding: 10px 12px;
+    }
+}
+
+/* ===== Small Mobile (max-width: 400px) ===== */
+@media (max-width: 400px) {
+    .pos-logo h1 {
+        font-size: 1.25rem;
+    }
+
+    .terminal-card {
+        padding: 24px 20px;
+    }
+
+    .terminal-icon {
+        font-size: 2rem;
+    }
+
+    .terminal-card h3 {
+        font-size: 1rem;
+    }
+
+    .item-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .item-btn {
+        height: 70px;
+        padding: 10px 6px;
+    }
+
+    .item-btn .item-name {
+        font-size: 0.75rem;
+    }
+
+    .btn-header {
+        padding: 6px 8px;
+        font-size: 0.75rem;
+    }
+
+    .header-right .btn-header:not(.btn-danger) span {
+        display: none;
+    }
+
+    .weight-card-value {
+        font-size: 1.25rem;
+    }
+
+    .weight-card-value.large {
+        font-size: 1.5rem;
+    }
+}
+
+/* ===== Landscape Mobile ===== */
+@media (max-width: 768px) and (orientation: landscape) {
+    .pos-start {
+        padding: 16px;
+    }
+
+    .pos-logo {
+        margin-bottom: 16px;
+    }
+
+    .pos-logo h1 {
+        font-size: 1.25rem;
+    }
+
+    .terminal-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        max-width: 500px;
+    }
+
+    .terminal-card {
+        padding: 20px 16px;
+    }
+
+    .terminal-icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+    }
+
+    .terminal-card h3 {
+        font-size: 1rem;
+        margin-bottom: 4px;
+    }
+
+    .terminal-card p {
+        font-size: 0.75rem;
+    }
+
+    .panel-items {
+        max-height: 40vh;
+    }
+
+    .panel-transaction {
+        min-height: 60vh;
+    }
+
+    .modal-content {
+        max-height: 90vh;
+    }
+}
+
+/* ===== Touch-friendly improvements ===== */
+@media (hover: none) and (pointer: coarse) {
+    /* Larger touch targets */
+    .item-btn {
+        min-height: 70px;
+    }
+
+    .btn-pos {
+        min-height: 44px;
+    }
+
+    .btn-header {
+        min-height: 40px;
+    }
+
+    .cart-item .remove-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .scan-btn {
+        min-height: 40px;
+        padding: 10px 14px;
+    }
+
+    .clear-btn {
+        min-width: 40px;
+        min-height: 40px;
+        font-size: 1.25rem;
+    }
+
+    .modal-close {
+        min-width: 44px;
+        min-height: 44px;
+        font-size: 1.75rem;
+    }
+
+    /* Prevent text selection on touch */
+    .item-btn,
+    .btn-pos,
+    .btn-header,
+    .terminal-card,
+    .scan-btn {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Active states for touch feedback */
+    .item-btn:active {
+        transform: scale(0.96);
+        opacity: 0.9;
+    }
+
+    .btn-pos:active:not(:disabled) {
+        transform: scale(0.98);
+        opacity: 0.9;
+    }
+
+    .terminal-card:active {
+        transform: scale(0.98);
+    }
+}
+
+/* ===== Light Theme - Mobile Fixes ===== */
+@media (max-width: 768px) {
+    .pos-terminal.light-theme .header-center {
+        border-bottom-color: #e2e8f0;
+    }
+
+    .pos-terminal.light-theme .panel-items {
+        border-bottom-color: #e2e8f0;
+    }
+
+    .pos-container.light-theme .pos-footer {
+        color: #64748b;
+    }
+
+    .pos-container.light-theme .pos-footer .operator {
+        color: #475569;
+    }
+}
+
+/* ===== Print Styles (hide POS on print) ===== */
+@media print {
+    .pos-container,
+    .pos-terminal {
+        display: none !important;
+    }
+}
