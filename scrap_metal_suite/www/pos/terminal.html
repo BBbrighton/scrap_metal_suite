@@ -87,6 +87,9 @@ body {
                 <button class="category-tab active" data-category="" onclick="filterCategory(this, '')">
                     <span data-i18n="all">All</span>
                 </button>
+                <button class="category-tab from-order-tab" data-category="fromOrder" onclick="filterCategory(this, 'fromOrder')" id="fromOrderTab" style="display:none;">
+                    <span data-i18n="fromOrder">From Order</span>
+                </button>
                 {% for cat in categories %}
                 <button class="category-tab" data-category="{{ cat }}" onclick="filterCategory(this, '{{ cat }}')">
                     {{ cat }}
@@ -96,7 +99,7 @@ body {
             {% endif %}
             <div class="item-grid" id="itemGrid">
                 {% for item in pos_items %}
-                <button class="item-btn" data-category="{{ item.category }}" onclick="selectItem('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.uom }}')">
+                <button class="item-btn" data-category="{{ item.category }}" data-item-code="{{ item.item_code }}" onclick="selectItem('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.uom }}')">
                     <span class="item-name">{{ item.item_name }}</span>
                 </button>
                 {% endfor %}
@@ -105,6 +108,12 @@ body {
 
         <!-- Right Panel - Current Transaction -->
         <div class="panel panel-transaction">
+            <!-- Reweight Warning Banner -->
+            <div id="reweightBanner" class="reweight-banner" style="display:none;">
+                <span class="reweight-icon">&#9888;</span>
+                <span data-i18n="reweightWarning">Previous weighing loaded. Changes will be marked as reweight.</span>
+            </div>
+
             <!-- Order Section with Scanner -->
             <div class="order-section">
                 <div class="order-label-row">
@@ -122,11 +131,15 @@ body {
 
                 <!-- Order Details Card (shown when order selected) -->
                 <div id="orderDetailsCard" class="order-details-card" style="display:none;">
-                    <div class="order-card-header">
-                        <span class="order-card-id" id="orderCardId"></span>
-                        <button class="clear-btn" onclick="clearOrder()">&#10005;</button>
+                    <div class="order-card-header" onclick="toggleOrderDetails(event)">
+                        <div class="order-card-title">
+                            <span class="collapse-indicator" id="orderCollapseIndicator">▼</span>
+                            <span class="order-card-id" id="orderCardId"></span>
+                        </div>
+                        <div class="order-summary" id="orderSummary"></div>
+                        <button class="clear-btn" onclick="clearOrder(); event.stopPropagation();">&#10005;</button>
                     </div>
-                    <div class="order-card-body">
+                    <div class="order-card-body" id="orderCardBody">
                         <div class="order-detail-row">
                             <span class="detail-label" data-i18n="supplier">Supplier</span>
                             <span class="detail-value" id="orderCardSupplier"></span>
@@ -136,12 +149,27 @@ body {
                             <span class="detail-value" id="orderCardDate"></span>
                         </div>
                         <div class="order-detail-row">
+                            <span class="detail-label" data-i18n="dropoffDate">Drop-off Date</span>
+                            <span class="detail-value" id="orderCardDropoffDate"></span>
+                        </div>
+                        <div class="order-detail-row">
                             <span class="detail-label" data-i18n="licensePlate">License Plate</span>
                             <span class="detail-value" id="orderCardPlate"></span>
                         </div>
                         <div class="order-detail-row">
                             <span class="detail-label" data-i18n="status">Status</span>
                             <span class="detail-value" id="orderCardStatus"></span>
+                        </div>
+                        <!-- Order Items Collapsible Section -->
+                        <div class="order-items-section" id="orderItemsSection" style="display:none;">
+                            <div class="order-items-header" onclick="toggleOrderItems()">
+                                <span class="order-items-title">
+                                    <span data-i18n="expectedItems">Expected Items</span>
+                                    <span class="order-items-count" id="orderItemsCount">0</span>
+                                </span>
+                                <span class="order-items-toggle" id="orderItemsToggle">▼</span>
+                            </div>
+                            <div class="order-items-list" id="orderItemsList"></div>
                         </div>
                     </div>
                     <!-- Re-weight warning (shown when order already processed) -->
@@ -153,9 +181,13 @@ body {
 
             <!-- Cart Items -->
             <div class="cart-section">
-                <div class="cart-header">
-                    <h3 data-i18n="cart">Cart</h3>
-                    <button class="clear-cart-btn" onclick="clearCart()" data-i18n="clearAll">Clear All</button>
+                <div class="cart-header" onclick="toggleCart(event)">
+                    <h3>
+                        <span class="collapse-toggle" id="cartCollapseToggle">▼</span>
+                        <span data-i18n="cart">Cart</span>
+                        <span class="cart-count" id="cartCount">0</span>
+                    </h3>
+                    <button class="clear-cart-btn" onclick="clearCart(); event.stopPropagation();" data-i18n="clearAll">Clear All</button>
                 </div>
                 <div id="cartItems" class="cart-items">
                     <div class="cart-empty" data-i18n="noItemsAdded">No items added</div>
@@ -183,7 +215,7 @@ body {
                 <button class="btn-pos btn-secondary btn-large" onclick="clearTransaction()" data-i18n="cancel">
                     Cancel
                 </button>
-                <button class="btn-pos btn-success btn-large" onclick="recordWeight()" id="recordWeightBtn" disabled data-i18n="recordWeight">
+                <button class="btn-pos btn-success btn-large" onclick="showConfirmModal()" id="recordWeightBtn" disabled data-i18n="recordWeight">
                     Record Weight
                 </button>
             </div>
@@ -296,6 +328,80 @@ body {
         </div>
     </div>
 
+    <!-- Weight Confirmation Modal -->
+    <div id="confirmWeightModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-i18n="confirmRecording">Confirm Recording</h3>
+                <button class="modal-close" onclick="closeConfirmModal()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Order Info -->
+                <div class="confirm-order-info">
+                    <div class="confirm-row">
+                        <span class="confirm-label" data-i18n="orderId">Order ID</span>
+                        <span class="confirm-value" id="confirmOrderId"></span>
+                    </div>
+                    <div class="confirm-row">
+                        <span class="confirm-label" data-i18n="supplier">Supplier</span>
+                        <span class="confirm-value" id="confirmSupplier"></span>
+                    </div>
+                </div>
+
+                <!-- Recording Info -->
+                <div class="confirm-record-info">
+                    <div class="confirm-row">
+                        <span class="confirm-label" data-i18n="dateTime">Date & Time</span>
+                        <span class="confirm-value" id="confirmDateTime"></span>
+                    </div>
+                    <div class="confirm-row">
+                        <span class="confirm-label" data-i18n="recordedBy">Recorded By</span>
+                        <span class="confirm-value" id="confirmRecordedBy"></span>
+                    </div>
+                </div>
+
+                <!-- Items Summary -->
+                <div class="confirm-items-section">
+                    <h4 data-i18n="items">Items</h4>
+                    <div class="confirm-items-list" id="confirmItemsList"></div>
+                    <div class="confirm-total">
+                        <span data-i18n="totalWeight">Total Weight:</span>
+                        <span id="confirmTotalWeight"></span>
+                    </div>
+                </div>
+
+                <!-- Remarks (read-only display) -->
+                <div class="confirm-remarks-section" id="confirmRemarksSection" style="display:none;">
+                    <label data-i18n="remarks">Remarks</label>
+                    <div class="confirm-remarks-display" id="confirmRemarksDisplay"></div>
+                </div>
+
+                <!-- Photo Status -->
+                <div class="confirm-photo-status" id="confirmPhotoStatus">
+                    <span class="photo-icon">&#128247;</span>
+                    <span id="confirmPhotoCount">0</span>
+                    <span data-i18n="photosAttached">photo(s) attached</span>
+                </div>
+
+                <!-- Reweight Section (only shown for reweight) -->
+                <div class="confirm-reweight-section" id="confirmReweightSection" style="display:none;">
+                    <div class="reweight-warning-box">
+                        <span class="reweight-icon">&#9888;</span>
+                        <span data-i18n="reweightNotice">This will update the previous weighing record.</span>
+                    </div>
+                    <div class="reweight-reason-input">
+                        <label data-i18n="reweightReason">Reason for reweight</label>
+                        <textarea id="confirmReweightReason" data-i18n-placeholder="enterReweightReason" placeholder="Enter reason for reweight..." rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeConfirmModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn-pos btn-success" onclick="confirmAndRecord()" id="confirmRecordBtn" data-i18n="confirmRecord">Confirm & Record</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Close Session Modal -->
     <div id="closeSessionModal" class="modal" style="display:none;">
         <div class="modal-content">
@@ -394,6 +500,9 @@ const state = {
     language: localStorage.getItem('posLanguage') || 'en',
     theme: localStorage.getItem('posTheme') || 'dark',
     order: null,
+    orderItems: [],  // Items from the order (expected items)
+    existingScrapWeight: null,  // Existing Scrap Weight doc for reweight
+    isReweight: false,  // Whether this is a reweight scenario
     cart: [],
     currentItem: null,
     remarks: '',
@@ -661,7 +770,7 @@ function selectOrder(name, orderId, supplier, supplierName, licensePlate, orderD
     const card = document.getElementById('orderDetailsCard');
     document.getElementById('orderCardId').textContent = orderId || name;
     document.getElementById('orderCardSupplier').textContent = supplierName || supplier;
-    document.getElementById('orderCardDate').textContent = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
+    document.getElementById('orderCardDate').textContent = orderDate ? new Date(orderDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
     document.getElementById('orderCardPlate').textContent = licensePlate || '-';
 
     const statusEl = document.getElementById('orderCardStatus');
@@ -672,16 +781,208 @@ function selectOrder(name, orderId, supplier, supplierName, licensePlate, orderD
     reweightWarning.style.display = status === 'Processed' ? 'block' : 'none';
 
     card.style.display = 'block';
+
+    // Fetch full order details including dropoff_date and order_items
+    fetchOrderDetails(name);
+
     updateButtonStates();
+}
+
+// Fetch order details from API
+async function fetchOrderDetails(orderName) {
+    try {
+        const response = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.pos.get_order_details',
+            args: { order_id: orderName }
+        });
+
+        if (response.message) {
+            const details = response.message;
+
+            // Update dropoff date
+            const dropoffEl = document.getElementById('orderCardDropoffDate');
+            if (dropoffEl) {
+                dropoffEl.textContent = details.dropoff_date ? new Date(details.dropoff_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+            }
+
+            // Update order items section
+            renderOrderItems(details.order_items || []);
+
+            // Check for existing scrap weight (reweight scenario)
+            if (details.existing_scrap_weight) {
+                state.existingScrapWeight = details.existing_scrap_weight;
+                state.isReweight = true;
+                await loadExistingScrapWeight(details.existing_scrap_weight);
+                showReweightBanner(true);
+            } else {
+                state.existingScrapWeight = null;
+                state.isReweight = false;
+                showReweightBanner(false);
+            }
+        }
+    } catch (err) {
+        console.error('Failed to fetch order details:', err);
+    }
+}
+
+// Load existing scrap weight items into cart
+async function loadExistingScrapWeight(scrapWeightId) {
+    try {
+        const response = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.pos.load_scrap_weight',
+            args: { scrap_weight_id: scrapWeightId }
+        });
+
+        if (response.message) {
+            const data = response.message;
+
+            // Load items into cart
+            state.cart = data.items.map(item => ({
+                item_code: item.item_code,
+                item_name: item.item_name,
+                weight: parseFloat(item.weight),
+                uom: item.uom || 'Kg'
+            }));
+
+            // Load remarks
+            state.remarks = data.remarks || '';
+
+            // Update UI
+            renderCart();
+            updateButtonStates();
+
+            frappe.show_alert({
+                message: t('previousWeighingLoaded'),
+                indicator: 'yellow'
+            }, 3);
+        }
+    } catch (err) {
+        console.error('Failed to load existing scrap weight:', err);
+    }
+}
+
+// Show/hide reweight warning banner
+function showReweightBanner(show) {
+    const banner = document.getElementById('reweightBanner');
+    if (banner) {
+        banner.style.display = show ? 'flex' : 'none';
+    }
+}
+
+// Render order items in collapsible section
+function renderOrderItems(items) {
+    const section = document.getElementById('orderItemsSection');
+    const list = document.getElementById('orderItemsList');
+    const countEl = document.getElementById('orderItemsCount');
+    const fromOrderTab = document.getElementById('fromOrderTab');
+
+    // Store in state for filtering
+    state.orderItems = items || [];
+
+    // Show/hide "From Order" tab
+    if (fromOrderTab) {
+        fromOrderTab.style.display = (items && items.length > 0) ? '' : 'none';
+    }
+
+    if (!items || items.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+    countEl.textContent = items.length;
+
+    let html = '';
+    items.forEach(item => {
+        const weight = item.weight ? parseFloat(item.weight).toFixed(2) + ' ' + (item.uom || 'Kg') : '-';
+        html += `
+            <div class="order-item-row">
+                <span class="order-item-name">${item.item_name || item.item_code}</span>
+                <span class="order-item-weight">${weight}</span>
+            </div>
+        `;
+    });
+
+    list.innerHTML = html;
+}
+
+// Toggle order items expansion
+function toggleOrderItems() {
+    const list = document.getElementById('orderItemsList');
+    const toggle = document.getElementById('orderItemsToggle');
+
+    list.classList.toggle('expanded');
+    toggle.classList.toggle('expanded');
+}
+
+// Toggle order details collapse/expand
+function toggleOrderDetails(event) {
+    // Don't toggle if clicking clear button
+    if (event.target.classList.contains('clear-btn')) return;
+
+    const body = document.getElementById('orderCardBody');
+    const indicator = document.getElementById('orderCollapseIndicator');
+    const summary = document.getElementById('orderSummary');
+
+    body.classList.toggle('collapsed');
+    indicator.classList.toggle('collapsed');
+
+    // Update summary when collapsed
+    if (body.classList.contains('collapsed')) {
+        const supplier = document.getElementById('orderCardSupplier').textContent;
+        const plate = document.getElementById('orderCardPlate').textContent;
+        summary.textContent = supplier + (plate && plate !== '-' ? ' • ' + plate : '');
+        summary.style.display = 'block';
+    } else {
+        summary.style.display = 'none';
+    }
+}
+
+// Toggle cart collapse/expand
+function toggleCart(event) {
+    // Don't toggle if clicking clear button
+    if (event.target.classList.contains('clear-cart-btn')) return;
+
+    const items = document.getElementById('cartItems');
+    const toggle = document.getElementById('cartCollapseToggle');
+
+    items.classList.toggle('collapsed');
+    toggle.classList.toggle('collapsed');
+}
+
+// Update cart count badge
+function updateCartCount() {
+    const countEl = document.getElementById('cartCount');
+    if (countEl) {
+        countEl.textContent = state.cart.length;
+    }
 }
 
 function clearOrder() {
     state.order = null;
+    state.orderItems = [];
+    state.existingScrapWeight = null;
+    state.isReweight = false;
     state.remarks = '';
     state.capturedPhotoData = null;
     document.getElementById('orderSearch').value = '';
     document.getElementById('orderSearch').style.display = 'block';
     document.getElementById('orderDetailsCard').style.display = 'none';
+
+    // Hide reweight banner
+    showReweightBanner(false);
+
+    // Hide From Order tab and reset to All
+    const fromOrderTab = document.getElementById('fromOrderTab');
+    if (fromOrderTab) {
+        fromOrderTab.style.display = 'none';
+    }
+    // Reset filter to "All" if currently on "From Order"
+    const allTab = document.querySelector('.category-tab[data-category=""]');
+    if (allTab && !allTab.classList.contains('active')) {
+        filterCategory(allTab, '');
+    }
+
     updateButtonStates();
 }
 
@@ -691,8 +992,24 @@ function filterCategory(btn, category) {
     // Update active tab
     document.querySelectorAll(".category-tab").forEach(t => t.classList.remove("active"));
     btn.classList.add("active");
-    
-    // Filter items
+
+    // Special handling for "From Order" filter
+    if (category === 'fromOrder') {
+        // Get item codes from order items
+        const orderItemCodes = state.orderItems.map(i => i.item_code);
+
+        document.querySelectorAll(".item-btn").forEach(item => {
+            const itemCode = item.getAttribute("data-item-code") || "";
+            if (orderItemCodes.includes(itemCode)) {
+                item.style.display = "";
+            } else {
+                item.style.display = "none";
+            }
+        });
+        return;
+    }
+
+    // Regular category filter
     document.querySelectorAll(".item-btn").forEach(item => {
         const itemCategory = item.getAttribute("data-category") || "";
         if (category === "" || itemCategory === category) {
@@ -703,7 +1020,6 @@ function filterCategory(btn, category) {
     });
 }
 
-// ===== Item Selection =====
 function selectItem(code, name, uom) {
     state.currentItem = { code, name, uom };
     document.getElementById('modalItemName').textContent = name;
@@ -767,6 +1083,9 @@ function renderCart() {
 
     const totalWeight = state.cart.reduce((sum, item) => sum + item.weight, 0);
     document.getElementById('totalWeight').textContent = totalWeight.toFixed(2) + ' Kg';
+
+    // Update cart count badge
+    updateCartCount();
 }
 
 function removeFromCart(index) {
@@ -890,12 +1209,95 @@ function savePhoto() {
     }
 }
 
+// ===== Confirmation Modal =====
+function showConfirmModal() {
+    if (!state.order || state.cart.length === 0) return;
+
+    // Populate order info
+    document.getElementById('confirmOrderId').textContent = state.order.orderId || state.order.name;
+    document.getElementById('confirmSupplier').textContent = state.order.supplierName || state.order.supplier;
+
+    // Populate date/time and operator name
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    document.getElementById('confirmDateTime').textContent = dateStr + ' ' + timeStr;
+    document.getElementById('confirmRecordedBy').textContent = frappe.session.user_fullname || frappe.session.user;
+
+    // Show/hide reweight section and update button text
+    const reweightSection = document.getElementById('confirmReweightSection');
+    const confirmBtn = document.getElementById('confirmRecordBtn');
+    if (state.isReweight) {
+        reweightSection.style.display = 'block';
+        document.getElementById('confirmReweightReason').value = '';
+        confirmBtn.setAttribute('data-i18n', 'confirmUpdate');
+        confirmBtn.textContent = t('confirmUpdate');
+    } else {
+        reweightSection.style.display = 'none';
+        confirmBtn.setAttribute('data-i18n', 'confirmRecord');
+        confirmBtn.textContent = t('confirmRecord');
+    }
+
+    // Populate items list
+    const itemsList = document.getElementById('confirmItemsList');
+    let html = '';
+    state.cart.forEach(item => {
+        html += `
+            <div class="confirm-item-row">
+                <span class="confirm-item-name">${item.item_name}</span>
+                <span class="confirm-item-weight">${item.weight.toFixed(2)} ${item.uom}</span>
+            </div>
+        `;
+    });
+    itemsList.innerHTML = html;
+
+    // Calculate and show total
+    const totalWeight = state.cart.reduce((sum, item) => sum + item.weight, 0);
+    document.getElementById('confirmTotalWeight').textContent = totalWeight.toFixed(2) + ' Kg';
+
+    // Show remarks if any (read-only)
+    const remarksSection = document.getElementById('confirmRemarksSection');
+    const remarksDisplay = document.getElementById('confirmRemarksDisplay');
+    if (state.remarks && state.remarks.trim()) {
+        remarksDisplay.textContent = state.remarks;
+        remarksSection.style.display = 'block';
+    } else {
+        remarksSection.style.display = 'none';
+    }
+
+    // Show photo count
+    const photoCount = state.capturedPhotoData ? 1 : 0;
+    document.getElementById('confirmPhotoCount').textContent = photoCount;
+    const photoStatus = document.getElementById('confirmPhotoStatus');
+    photoStatus.classList.toggle('has-photos', photoCount > 0);
+
+    // Show modal
+    document.getElementById('confirmWeightModal').style.display = 'flex';
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmWeightModal').style.display = 'none';
+}
+
+async function confirmAndRecord() {
+    // Get reweight reason if applicable
+    if (state.isReweight) {
+        state.reweightReason = document.getElementById('confirmReweightReason').value.trim();
+    }
+
+    // Close modal first
+    closeConfirmModal();
+
+    // Now record the weight
+    await recordWeight();
+}
+
 // ===== Record Weight =====
 async function recordWeight() {
     if (!state.order || state.cart.length === 0) return;
 
     try {
-        const data = await callAPI('scrap_metal_suite.api.v1.pos.create_scrap_weight', {
+        const args = {
             session: state.session,
             pos_order: state.order.name,
             items: JSON.stringify(state.cart.map(item => ({
@@ -904,7 +1306,15 @@ async function recordWeight() {
                 uom: item.uom
             }))),
             remarks: state.remarks || null
-        });
+        };
+
+        // Add reweight params if applicable
+        if (state.existingScrapWeight) {
+            args.existing_scrap_weight = state.existingScrapWeight;
+            args.reweight_reason = state.reweightReason || null;
+        }
+
+        const data = await callAPI('scrap_metal_suite.api.v1.pos.create_scrap_weight', args);
 
         if (data.message) {
             if (state.capturedPhotoData) {

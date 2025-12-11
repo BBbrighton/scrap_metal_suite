@@ -11,11 +11,14 @@
   "supplier_name",
   "column_break_1",
   "order_date",
+  "dropoff_date",
   "license_plate",
   "scrap_scale",
   "section_break_details",
   "purchase_order",
   "notes",
+  "section_break_order_items",
+  "order_items",
   "section_break_items",
   "items",
   "section_break_truck_weight",
@@ -91,7 +94,15 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Order Date",
-   "reqd": 1
+   "reqd": 1,
+   "description": "Should match with the Purchase Order date"
+  },
+  {
+   "fieldname": "dropoff_date",
+   "fieldtype": "Date",
+   "label": "Drop-off Date",
+   "reqd": 1,
+   "description": "Date when supplier will drop off the scrap"
   },
   {
    "fieldname": "license_plate",
@@ -124,17 +135,30 @@
    "label": "Notes"
   },
   {
+   "fieldname": "section_break_order_items",
+   "fieldtype": "Section Break",
+   "label": "Order Items",
+   "description": "In the future, this will be automatically fetched from the Purchase Order"
+  },
+  {
+   "fieldname": "order_items",
+   "fieldtype": "Table",
+   "label": "Order Items",
+   "options": "POS Order Item",
+   "description": "Items expected in this order. Only Scrap Metal item group allowed."
+  },
+  {
    "fieldname": "section_break_items",
    "fieldtype": "Section Break",
-   "label": "Scrap Items"
+   "label": "Scrap Items (Weighed)"
   },
   {
    "fieldname": "items",
    "fieldtype": "Table",
-   "label": "Items",
-   "options": "Scrap Weight Item",
+   "label": "Weighed Items",
+   "options": "POS Order Weighed Item",
    "read_only": 1,
-   "description": "Consolidated items from all scrap weight records (for printing)"
+   "description": "Items from linked Scrap Weight records. Updated automatically when Scrap Weight is saved."
   },
   {
    "fieldname": "section_break_truck_weight",
@@ -295,7 +319,7 @@
    "link_fieldname": "pos_order"
   }
  ],
- "modified": "2025-12-04 10:00:00.000000",
+ "modified": "2025-12-11 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "POS Order",

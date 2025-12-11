@@ -169,15 +169,13 @@ def lookup_order(query):
 
     Search logic:
     1. First try exact match on name, order_id, or license_plate (no date restriction)
-    2. If no exact match, try partial match with date filtering:
-       - First try today only
-       - If no results, expand to +/- 2 days
+    2. If no exact match, try partial match with dropoff_date within +/- 2 days
 
     Args:
         query: Search term (document name, order_id, or license_plate)
 
     Returns:
-        list: Matching orders with supplier_name, order_date, license_plate, status
+        list: Matching orders with supplier_name, order_date, dropoff_date, license_plate, status
     """
     check_pos_operator()
     from frappe.utils import add_days
@@ -185,7 +183,7 @@ def lookup_order(query):
     if not query or len(query) < 2:
         return []
 
-    fields = ["name", "order_id", "supplier", "supplier_name", "order_date", "license_plate", "status"]
+    fields = ["name", "order_id", "supplier", "supplier_name", "order_date", "dropoff_date", "license_plate", "status"]
 
     # Step 1: Try exact match on name (document ID)
     exact_by_name = frappe.db.get_value(
@@ -217,42 +215,23 @@ def lookup_order(query):
     if exact_by_plate:
         return [exact_by_plate]
 
-    # Step 4: Partial match - first try today only
+    # Step 4: Partial match - search within +/- 2 days of dropoff_date
     today = nowdate()
-    orders = frappe.db.sql("""
-        SELECT
-            name, order_id, supplier, supplier_name, order_date, license_plate, status
-        FROM `tabPOS Order`
-        WHERE
-            order_date = %(today)s
-            AND (
-                name LIKE %(query)s
-                OR order_id LIKE %(query)s
-                OR license_plate LIKE %(query)s
-            )
-        ORDER BY order_date DESC, creation DESC
-        LIMIT 10
-    """, {"query": f"%{query}%", "today": today}, as_dict=True)
-
-    if orders:
-        return orders
-
-    # Step 5: Expand to +/- 2 days if no results today
     date_start = add_days(today, -2)
     date_end = add_days(today, 2)
 
     orders = frappe.db.sql("""
         SELECT
-            name, order_id, supplier, supplier_name, order_date, license_plate, status
+            name, order_id, supplier, supplier_name, order_date, dropoff_date, license_plate, status
         FROM `tabPOS Order`
         WHERE
-            order_date BETWEEN %(date_start)s AND %(date_end)s
+            dropoff_date BETWEEN %(date_start)s AND %(date_end)s
             AND (
                 name LIKE %(query)s
                 OR order_id LIKE %(query)s
                 OR license_plate LIKE %(query)s
             )
-        ORDER BY order_date DESC, creation DESC
+        ORDER BY dropoff_date DESC, creation DESC
         LIMIT 10
     """, {"query": f"%{query}%", "date_start": date_start, "date_end": date_end}, as_dict=True)
 
@@ -262,13 +241,13 @@ def lookup_order(query):
 @frappe.whitelist()
 def get_order_details(order_id):
     """
-    Get full details of a POS Order including truck weight data.
+    Get full details of a POS Order including truck weight data and order items.
 
     Args:
         order_id: POS Order name
 
     Returns:
-        dict: Order details including supplier info and truck weights
+        dict: Order details including supplier info, truck weights, and order items
     """
     check_pos_operator()
     order = frappe.get_doc("POS Order", order_id)
@@ -281,15 +260,46 @@ def get_order_details(order_id):
         as_dict=True
     )
 
+    # Get order items (indicated/promised items from supplier)
+    order_items = []
+    if hasattr(order, 'order_items') and order.order_items:
+        for item in order.order_items:
+            order_items.append({
+                "item_code": item.item_code,
+                "item_name": item.item_name,
+                "uom": item.uom,
+                "weight": item.weight  # Indicated weight
+            })
+
+    # Check for existing scrap weight for this order + current session's scale
+    existing_scrap_weight = None
+    session = frappe.db.get_value(
+        "POS Session",
+        {"operator": frappe.session.user, "status": "Open"},
+        ["name", "scale"],
+        as_dict=True
+    )
+    if session and session.scale:
+        existing_scrap_weight = frappe.db.get_value(
+            "Scrap Weight",
+            {"pos_order": order.name, "scale": session.scale},
+            "name"
+        )
+
     return {
         "order_id": order.name,
         "supplier": order.supplier,
         "supplier_name": order.supplier_name or (supplier_data.supplier_name if supplier_data else None),
         "order_date": order.order_date,
+        "dropoff_date": getattr(order, 'dropoff_date', None),
         "license_plate": order.license_plate,
         "purchase_order": order.purchase_order,
         "notes": order.notes,
         "status": order.status,
+        # Order items (indicated by supplier)
+        "order_items": order_items,
+        # Existing scrap weight for this order+scale (for reweight)
+        "existing_scrap_weight": existing_scrap_weight,
         # Scale fields
         "scrap_scale": getattr(order, 'scrap_scale', None),
         # Truck weight fields
@@ -309,18 +319,54 @@ def get_order_details(order_id):
 
 
 @frappe.whitelist()
-def create_scrap_weight(session, pos_order, items, remarks=None):
+def load_scrap_weight(scrap_weight_id):
     """
-    Record scrap weight for a POS Order.
+    Load existing Scrap Weight items into cart for editing (reweight).
 
-    Allows re-weighing of already processed orders. If the order was previously
-    processed, the new weight record is marked as is_reweight=1.
+    Args:
+        scrap_weight_id: Scrap Weight document name
+
+    Returns:
+        dict: Scrap weight data with items for loading into cart
+    """
+    check_pos_operator()
+
+    sw = frappe.get_doc("Scrap Weight", scrap_weight_id)
+
+    items = []
+    for item in sw.items:
+        items.append({
+            "item_code": item.item_code,
+            "item_name": item.item_name,
+            "weight": item.weight,
+            "uom": item.uom
+        })
+
+    return {
+        "name": sw.name,
+        "pos_order": sw.pos_order,
+        "items": items,
+        "remarks": sw.remarks,
+        "is_reweight": sw.is_reweight
+    }
+
+
+@frappe.whitelist()
+def create_scrap_weight(session, pos_order, items, remarks=None,
+                        existing_scrap_weight=None, reweight_reason=None):
+    """
+    Record or update scrap weight for a POS Order.
+
+    If existing_scrap_weight is provided, updates the existing document.
+    Otherwise creates a new one.
 
     Args:
         session: POS Session name (required)
         pos_order: POS Order name (required)
         items: JSON list of items [{item_code, weight, uom}]
         remarks: Optional remarks
+        existing_scrap_weight: Optional - if provided, updates this document instead of creating new
+        reweight_reason: Optional - reason for reweight (required if is_reweight)
 
     Returns:
         dict: {scrap_weight, total_weight, is_reweight}
@@ -355,9 +401,6 @@ def create_scrap_weight(session, pos_order, items, remarks=None):
     if not order_data:
         frappe.throw(_("POS Order {0} not found").format(pos_order))
 
-    # Check if this is a re-weigh (order already processed)
-    is_reweight = order_data.status == "Processed"
-
     # Build items list
     weight_items = []
     for item in items:
@@ -368,23 +411,43 @@ def create_scrap_weight(session, pos_order, items, remarks=None):
         }
         weight_items.append(item_data)
 
-    # Create scrap weight document linked to POS Order
-    scrap_weight = frappe.get_doc({
-        "doctype": "Scrap Weight",
-        "pos_order": pos_order,
-        "supplier": order_data.supplier,
-        "posting_date": nowdate(),
-        "session": session,
-        "pos_profile": session_data.pos_profile,
-        "scale": session_data.scale,
-        "remarks": remarks,
-        "is_reweight": is_reweight,
-        "items": weight_items
-    })
+    is_reweight = False
 
-    scrap_weight.insert()
+    if existing_scrap_weight:
+        # UPDATE existing document
+        scrap_weight = frappe.get_doc("Scrap Weight", existing_scrap_weight)
 
-    # Update POS Order - use frappe.get_doc to trigger activity tracking
+        # Clear existing items and add new ones
+        scrap_weight.items = []
+        for item_data in weight_items:
+            scrap_weight.append("items", item_data)
+
+        # Mark as reweight
+        scrap_weight.is_reweight = 1
+        scrap_weight.reweight_reason = reweight_reason
+        scrap_weight.reweight_at = frappe.utils.now_datetime()
+        scrap_weight.reweight_by = frappe.session.user
+        scrap_weight.remarks = remarks
+
+        scrap_weight.save()
+        is_reweight = True
+    else:
+        # CREATE new document
+        scrap_weight = frappe.get_doc({
+            "doctype": "Scrap Weight",
+            "pos_order": pos_order,
+            "supplier": order_data.supplier,
+            "posting_date": nowdate(),
+            "session": session,
+            "pos_profile": session_data.pos_profile,
+            "scale": session_data.scale,
+            "remarks": remarks,
+            "is_reweight": 0,
+            "items": weight_items
+        })
+        scrap_weight.insert()
+
+    # Update POS Order
     order_doc = frappe.get_doc("POS Order", pos_order)
     order_doc.status = "Processed"
     order_doc.processed_by = frappe.session.user

@@ -14,6 +14,9 @@
   "posting_time",
   "license_plate",
   "is_reweight",
+  "reweight_reason",
+  "reweight_at",
+  "reweight_by",
   "section_break_session",
   "session",
   "operator",
@@ -96,6 +99,30 @@
    "description": "Indicates this is a re-weighing of a previously processed order"
   },
   {
+   "fieldname": "reweight_by",
+   "fieldtype": "Link",
+   "label": "Reweight By",
+   "options": "User",
+   "read_only": 1,
+   "depends_on": "is_reweight",
+   "description": "Who performed the reweight"
+  },
+  {
+   "fieldname": "reweight_at",
+   "fieldtype": "Datetime",
+   "label": "Reweight At",
+   "read_only": 1,
+   "depends_on": "is_reweight",
+   "description": "When the reweight occurred"
+  },
+  {
+   "fieldname": "reweight_reason",
+   "fieldtype": "Small Text",
+   "label": "Reweight Reason",
+   "depends_on": "is_reweight",
+   "description": "Reason for re-weighing this order"
+  },
+  {
    "collapsible": 1,
    "fieldname": "section_break_session",
    "fieldtype": "Section Break",
@@ -173,7 +200,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-02 10:00:00.000000",
+ "modified": "2025-12-11 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "Scrap Weight",

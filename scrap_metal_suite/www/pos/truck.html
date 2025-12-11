@@ -143,22 +143,41 @@ body {
 
                 <!-- Order Details Card (shown when order selected) -->
                 <div id="orderDetailsCard" class="order-details-card" style="display:none;">
-                    <div class="order-card-header">
-                        <span class="order-card-id" id="orderCardId"></span>
-                        <button class="clear-btn" onclick="clearOrder()">&#10005;</button>
+                    <div class="order-card-header" onclick="toggleOrderDetails(event)">
+                        <div class="order-card-title">
+                            <span class="collapse-indicator" id="orderCollapseIndicator">▼</span>
+                            <span class="order-card-id" id="orderCardId"></span>
+                        </div>
+                        <div class="order-summary" id="orderSummary"></div>
+                        <button class="clear-btn" onclick="clearOrder(); event.stopPropagation();">&#10005;</button>
                     </div>
-                    <div class="order-card-body">
+                    <div class="order-card-body" id="orderCardBody">
                         <div class="order-detail-row">
-                            <span class="detail-label">Supplier</span>
+                            <span class="detail-label" data-i18n="supplier">Supplier</span>
                             <span class="detail-value" id="orderCardSupplier"></span>
                         </div>
                         <div class="order-detail-row">
-                            <span class="detail-label">Order Date</span>
+                            <span class="detail-label" data-i18n="orderDate">Order Date</span>
                             <span class="detail-value" id="orderCardDate"></span>
                         </div>
                         <div class="order-detail-row">
-                            <span class="detail-label">License Plate</span>
+                            <span class="detail-label" data-i18n="dropoffDate">Drop-off Date</span>
+                            <span class="detail-value" id="orderCardDropoffDate"></span>
+                        </div>
+                        <div class="order-detail-row">
+                            <span class="detail-label" data-i18n="licensePlate">License Plate</span>
                             <span class="detail-value" id="orderCardPlate"></span>
+                        </div>
+                        <!-- Order Items Collapsible Section -->
+                        <div class="order-items-section" id="orderItemsSection" style="display:none;">
+                            <div class="order-items-header" onclick="toggleOrderItems()">
+                                <span class="order-items-title">
+                                    <span data-i18n="expectedItems">Expected Items</span>
+                                    <span class="order-items-count" id="orderItemsCount">0</span>
+                                </span>
+                                <span class="order-items-toggle" id="orderItemsToggle">▼</span>
+                            </div>
+                            <div class="order-items-list" id="orderItemsList"></div>
                         </div>
                     </div>
                 </div>
@@ -839,7 +858,7 @@ function selectOrder(name, orderId, supplier, supplierName, licensePlate, orderD
     const card = document.getElementById('orderDetailsCard');
     document.getElementById('orderCardId').textContent = orderId || name;
     document.getElementById('orderCardSupplier').textContent = supplierName || supplier;
-    document.getElementById('orderCardDate').textContent = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
+    document.getElementById('orderCardDate').textContent = orderDate ? new Date(orderDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
     document.getElementById('orderCardPlate').textContent = licensePlate || '-';
     card.style.display = 'block';
 
@@ -848,8 +867,96 @@ function selectOrder(name, orderId, supplier, supplierName, licensePlate, orderD
     document.getElementById('weightCardsPanel').style.display = 'block';
     document.getElementById('actionButtons').style.display = 'flex';
 
+    // Fetch full order details including dropoff_date and order_items
+    fetchOrderDetails(name);
+
     // Load existing weight data
     loadWeightData(name);
+}
+
+// Fetch order details from API
+async function fetchOrderDetails(orderName) {
+    try {
+        const response = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.pos.get_order_details',
+            args: { order_id: orderName }
+        });
+
+        if (response.message) {
+            const details = response.message;
+
+            // Update dropoff date
+            const dropoffEl = document.getElementById('orderCardDropoffDate');
+            if (dropoffEl) {
+                dropoffEl.textContent = details.dropoff_date ? new Date(details.dropoff_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+            }
+
+            // Update order items section
+            renderOrderItems(details.order_items || []);
+        }
+    } catch (err) {
+        console.error('Failed to fetch order details:', err);
+    }
+}
+
+// Render order items in collapsible section
+function renderOrderItems(items) {
+    const section = document.getElementById('orderItemsSection');
+    const list = document.getElementById('orderItemsList');
+    const countEl = document.getElementById('orderItemsCount');
+
+    if (!items || items.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+    countEl.textContent = items.length;
+
+    let html = '';
+    items.forEach(item => {
+        const weight = item.weight ? parseFloat(item.weight).toFixed(2) + ' ' + (item.uom || 'Kg') : '-';
+        html += `
+            <div class="order-item-row">
+                <span class="order-item-name">${item.item_name || item.item_code}</span>
+                <span class="order-item-weight">${weight}</span>
+            </div>
+        `;
+    });
+
+    list.innerHTML = html;
+}
+
+// Toggle order items expansion
+function toggleOrderItems() {
+    const list = document.getElementById('orderItemsList');
+    const toggle = document.getElementById('orderItemsToggle');
+
+    list.classList.toggle('expanded');
+    toggle.classList.toggle('expanded');
+}
+
+// Toggle order details collapse/expand
+function toggleOrderDetails(event) {
+    // Don't toggle if clicking clear button
+    if (event.target.classList.contains('clear-btn')) return;
+
+    const body = document.getElementById('orderCardBody');
+    const indicator = document.getElementById('orderCollapseIndicator');
+    const summary = document.getElementById('orderSummary');
+
+    body.classList.toggle('collapsed');
+    indicator.classList.toggle('collapsed');
+
+    // Update summary when collapsed
+    if (body.classList.contains('collapsed')) {
+        const supplier = document.getElementById('orderCardSupplier').textContent;
+        const plate = document.getElementById('orderCardPlate').textContent;
+        summary.textContent = supplier + (plate && plate !== '-' ? ' • ' + plate : '');
+        summary.style.display = 'block';
+    } else {
+        summary.style.display = 'none';
+    }
 }
 
 function clearOrder() {

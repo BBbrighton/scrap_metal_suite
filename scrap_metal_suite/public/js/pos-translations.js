@@ -84,6 +84,11 @@ const POS_I18N = (function() {
             order: 'Order',
             orders: 'Orders',
             orderDate: 'Order Date',
+            dropoffDate: 'Drop-off Date',
+            orderItems: 'Order Items',
+            indicatedWeight: 'Indicated Weight',
+            noOrderItems: 'No items in this order',
+            expectedItems: 'Expected Items',
             orderNotFound: 'Order not found',
             noOrdersFound: 'No orders found',
             errorSearching: 'Error searching for order',
@@ -96,6 +101,8 @@ const POS_I18N = (function() {
             // ===== Items =====
             items: 'Items',
             item: 'Item',
+            all: 'All',
+            fromOrder: 'From Order',
             noItemsAdded: 'No items added yet',
             addToCart: 'Add to Cart',
 
@@ -143,6 +150,21 @@ const POS_I18N = (function() {
             retake: 'Retake',
             savePhoto: 'Save Photo',
             photoReady: 'Photo captured and ready to attach',
+            photosAttached: 'photo(s) attached',
+
+            // ===== Confirmation =====
+            confirmRecording: 'Confirm Recording',
+            confirmRecord: 'Confirm & Record',
+            confirmUpdate: 'Confirm & Update',
+            dateTime: 'Date & Time',
+            recordedBy: 'Recorded By',
+
+            // ===== Reweight =====
+            reweightWarning: 'Previous weighing loaded. Changes will be marked as reweight.',
+            reweightNotice: 'This will update the previous weighing record.',
+            reweightReason: 'Reason for reweight',
+            enterReweightReason: 'Enter reason for reweight...',
+            previousWeighingLoaded: 'Previous weighing loaded into cart',
 
             // ===== Camera =====
             camera: 'Camera',
@@ -262,6 +284,11 @@ const POS_I18N = (function() {
             order: 'ออเดอร์',
             orders: 'ออเดอร์',
             orderDate: 'วันที่สั่ง',
+            dropoffDate: 'วันที่ส่งมอบ',
+            orderItems: 'รายการสินค้า',
+            indicatedWeight: 'น้ำหนักที่แจ้ง',
+            noOrderItems: 'ไม่มีรายการในออเดอร์นี้',
+            expectedItems: 'รายการที่คาดหวัง',
             orderNotFound: 'ไม่พบออเดอร์',
             noOrdersFound: 'ไม่พบออเดอร์',
             errorSearching: 'เกิดข้อผิดพลาดในการค้นหา',
@@ -274,6 +301,8 @@ const POS_I18N = (function() {
             // ===== Items =====
             items: 'รายการสินค้า',
             item: 'สินค้า',
+            all: 'ทั้งหมด',
+            fromOrder: 'จากออเดอร์',
             noItemsAdded: 'ยังไม่มีรายการ',
             addToCart: 'เพิ่มลงตะกร้า',
 
@@ -321,6 +350,21 @@ const POS_I18N = (function() {
             retake: 'ถ่ายใหม่',
             savePhoto: 'บันทึกรูป',
             photoReady: 'ถ่ายรูปแล้ว พร้อมแนบ',
+            photosAttached: 'รูปที่แนบ',
+
+            // ===== Confirmation =====
+            confirmRecording: 'ยืนยันการบันทึก',
+            confirmRecord: 'ยืนยันและบันทึก',
+            confirmUpdate: 'ยืนยันและอัปเดต',
+            dateTime: 'วันที่และเวลา',
+            recordedBy: 'บันทึกโดย',
+
+            // ===== Reweight =====
+            reweightWarning: 'โหลดการชั่งก่อนหน้าแล้ว การเปลี่ยนแปลงจะถูกทำเครื่องหมายเป็นการชั่งซ้ำ',
+            reweightNotice: 'การดำเนินการนี้จะอัปเดตบันทึกการชั่งก่อนหน้า',
+            reweightReason: 'เหตุผลในการชั่งซ้ำ',
+            enterReweightReason: 'กรอกเหตุผลในการชั่งซ้ำ...',
+            previousWeighingLoaded: 'โหลดการชั่งก่อนหน้าลงตะกร้าแล้ว',
 
             // ===== Camera =====
             camera: 'กล้อง',
