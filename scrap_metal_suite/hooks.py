@@ -257,6 +257,10 @@ fixtures = [
     },
     {
         "dt": "Scale"
+    },
+    {
+        "dt": "Print Format",
+        "filters": [["module", "=", "Scrap Metal Suite"]]
     }
 ]
 

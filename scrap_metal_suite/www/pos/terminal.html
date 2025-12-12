@@ -1333,6 +1333,8 @@ async function recordWeight() {
             }, 5);
 
             clearTransaction();
+            // Print thermal receipt
+            printScrapWeight(data.message.scrap_weight);
         }
     } catch (error) {
         frappe.msgprint({
@@ -1364,6 +1366,13 @@ async function attachPhoto(docname) {
     } catch (err) {
         console.error('Photo upload error:', err);
     }
+}
+
+// ===== Print Thermal Receipt =====
+function printScrapWeight(scrapWeightName) {
+    // Open print preview in new tab with auto-print trigger
+    const printUrl = '/printview?doctype=Scrap%20Weight&name=' + encodeURIComponent(scrapWeightName) + '&format=Scrap%20Weight%20Thermal&trigger_print=1';
+    window.open(printUrl, '_blank');
 }
 
 // ===== Session Management =====
