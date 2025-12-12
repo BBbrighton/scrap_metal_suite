@@ -882,6 +882,11 @@ function renderOrderItems(items) {
     // Show/hide "From Order" tab
     if (fromOrderTab) {
         fromOrderTab.style.display = (items && items.length > 0) ? '' : 'none';
+
+        // Auto-select "From Order" tab if there are order items
+        if (items && items.length > 0) {
+            filterCategory(fromOrderTab, 'fromOrder');
+        }
     }
 
     if (!items || items.length === 0) {
