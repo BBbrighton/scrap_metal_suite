@@ -96,9 +96,14 @@ class ScaleReader {
                 if (result.debugData && onProgress) {
                     const byteCount = result.debugData.split(' ').filter(b => b).length;
                     onProgress(`✗ ${configDesc} failed (received ${byteCount} bytes)`);
-                    if (byteCount > 0 && byteCount <= 50) {
-                        // Show raw bytes if we got some data
-                        onProgress(`  Raw: ${result.debugData}`);
+                    if (byteCount > 0) {
+                        // Show first 100 bytes of raw data for analysis
+                        const bytes = result.debugData.split(' ').filter(b => b);
+                        const preview = bytes.slice(0, 100).join(' ');
+                        onProgress(`  Raw (first ${Math.min(byteCount, 100)} bytes): ${preview}`);
+                        if (byteCount > 100) {
+                            onProgress(`  ... (${byteCount - 100} more bytes not shown)`);
+                        }
                     }
                 } else if (onProgress) {
                     onProgress(`✗ ${configDesc} failed (no data received)`);
