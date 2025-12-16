@@ -384,11 +384,25 @@ def create_scrap_weight(session, pos_order, items, remarks=None,
     session_data = frappe.db.get_value(
         "POS Session",
         session,
-        ["status", "scale", "pos_profile"],
+        ["status", "scale", "pos_profile", "operator"],
         as_dict=True
     )
     if not session_data or session_data.status != "Open":
         frappe.throw(_("Session {0} is not open").format(session))
+
+    # SECURITY FIX: Verify session belongs to current user
+    if session_data.operator != frappe.session.user:
+        frappe.throw(_("This session does not belong to the current user"))
+
+    # Get scale's max capacity from database for validation
+    scale_max_capacity = None
+    scale_name = None
+    if session_data.scale:
+        scale_info = frappe.db.get_value("Scale", session_data.scale,
+                                        ["max_capacity_kg", "scale_name"], as_dict=True)
+        if scale_info:
+            scale_max_capacity = scale_info.max_capacity_kg
+            scale_name = scale_info.scale_name
 
     # Validate POS Order exists
     order_data = frappe.db.get_value(
@@ -401,15 +415,48 @@ def create_scrap_weight(session, pos_order, items, remarks=None,
     if not order_data:
         frappe.throw(_("POS Order {0} not found").format(pos_order))
 
-    # Build items list
+    # Build items list with SECURITY FIX: proper weight validation
     weight_items = []
     for item in items:
+        item_code = item.get("item_code")
+
+        # SECURITY FIX: Validate weight value
+        try:
+            weight = float(item.get("weight", 0))
+        except (ValueError, TypeError):
+            frappe.throw(_("Invalid weight value for item {0}").format(item_code))
+
+        # SECURITY FIX: Weight must be greater than zero
+        if weight <= 0:
+            frappe.throw(_("Weight must be greater than zero for item {0}").format(item_code))
+
+        # SECURITY FIX: Weight must not exceed scale capacity
+        if scale_max_capacity and weight > scale_max_capacity:
+            frappe.throw(_("Weight {0} kg exceeds scale {1} maximum capacity of {2} kg").format(
+                weight, scale_name, scale_max_capacity))
+
         item_data = {
-            "item_code": item.get("item_code"),
-            "weight": flt(item.get("weight")),
+            "item_code": item_code,
+            "weight": flt(weight),
             "uom": item.get("uom", "Kg")
         }
         weight_items.append(item_data)
+
+    # SECURITY FIX: Sanitize remarks to prevent XSS
+    sanitized_remarks = None
+    if remarks:
+        from frappe.utils import sanitize_html
+        sanitized_remarks = sanitize_html(str(remarks).strip())
+        if len(sanitized_remarks) > 1000:
+            frappe.throw(_("Remarks exceed maximum length of {0} characters").format(1000))
+
+    # SECURITY FIX: Sanitize reweight_reason to prevent XSS
+    sanitized_reweight_reason = None
+    if reweight_reason:
+        from frappe.utils import sanitize_html
+        sanitized_reweight_reason = sanitize_html(str(reweight_reason).strip())
+        if len(sanitized_reweight_reason) > 500:
+            frappe.throw(_("Reweight reason exceed maximum length of {0} characters").format(500))
 
     is_reweight = False
 
@@ -424,10 +471,10 @@ def create_scrap_weight(session, pos_order, items, remarks=None,
 
         # Mark as reweight
         scrap_weight.is_reweight = 1
-        scrap_weight.reweight_reason = reweight_reason
+        scrap_weight.reweight_reason = sanitized_reweight_reason
         scrap_weight.reweight_at = frappe.utils.now_datetime()
         scrap_weight.reweight_by = frappe.session.user
-        scrap_weight.remarks = remarks
+        scrap_weight.remarks = sanitized_remarks
 
         scrap_weight.save()
         is_reweight = True
@@ -441,7 +488,7 @@ def create_scrap_weight(session, pos_order, items, remarks=None,
             "session": session,
             "pos_profile": session_data.pos_profile,
             "scale": session_data.scale,
-            "remarks": remarks,
+            "remarks": sanitized_remarks,
             "is_reweight": 0,
             "items": weight_items
         })
@@ -566,9 +613,32 @@ def record_truck_weight(pos_order, weight_type, weight, scale=None, remarks=None
     if weight_type not in ['gross', 'tare']:
         frappe.throw(_("weight_type must be 'gross' or 'tare'"))
 
-    weight = flt(weight)
+    # SECURITY FIX: Validate weight value properly
+    try:
+        weight = float(weight)
+    except (ValueError, TypeError):
+        frappe.throw(_("Invalid weight value"))
+
     if weight <= 0:
         frappe.throw(_("Weight must be greater than 0"))
+
+    # SECURITY FIX: Get scale's max capacity from database for validation
+    scale_max_capacity = None
+    scale_name = None
+    if scale:
+        scale_info = frappe.db.get_value("Scale", scale,
+                                        ["max_capacity_kg", "scale_name"], as_dict=True)
+        if not scale_info:
+            frappe.throw(_("Scale not found: {0}").format(scale))
+        scale_max_capacity = scale_info.max_capacity_kg
+        scale_name = scale_info.scale_name
+
+        # SECURITY FIX: Weight must not exceed scale capacity
+        if scale_max_capacity and weight > scale_max_capacity:
+            frappe.throw(_("Weight {0} kg exceeds scale {1} maximum capacity of {2} kg").format(
+                weight, scale_name, scale_max_capacity))
+
+    weight = flt(weight)
 
     order = frappe.get_doc("POS Order", pos_order)
 
@@ -584,9 +654,13 @@ def record_truck_weight(pos_order, weight_type, weight, scale=None, remarks=None
         if scale:
             order.tare_weight_scale = scale
 
-    # Update remarks if provided (field may not exist if migration not run)
+    # SECURITY FIX: Update remarks with XSS sanitization
     if remarks and hasattr(order, 'truck_weight_remarks'):
-        order.truck_weight_remarks = remarks
+        from frappe.utils import sanitize_html
+        sanitized_remarks = sanitize_html(str(remarks).strip())
+        if len(sanitized_remarks) > 1000:
+            frappe.throw(_("Remarks exceed maximum length of {0} characters").format(1000))
+        order.truck_weight_remarks = sanitized_remarks
 
     # Calculate net truck weight if both weights are available
     if order.gross_weight and order.tare_weight:

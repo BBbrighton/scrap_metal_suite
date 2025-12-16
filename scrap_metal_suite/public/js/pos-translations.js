@@ -208,6 +208,21 @@ const POS_I18N = (function() {
             invalidInput: 'Invalid input',
             requiredField: 'This field is required',
 
+            // ===== Validation Errors =====
+            atLeastOneItemRequired: 'At least one item is required',
+            invalidWeightValue: 'Invalid weight value for item {item}',
+            weightMustBeGreaterThanZero: 'Weight must be greater than zero for item {item}',
+            weightExceedsScaleCapacity: 'Weight {weight} kg exceeds scale {scale} maximum capacity of {max} kg',
+            remarksExceedMaxLength: 'Remarks exceed maximum length of {max} characters',
+            noActiveSession: 'No active POS session found',
+            sessionNotBelongToUser: 'This session does not belong to the current user',
+            invalidOrderId: 'Invalid Order ID',
+            orderNotFound: 'Order not found',
+            orderAlreadyCompleted: 'Order has already been completed',
+            orderAlreadyWeighed: 'Order has already been weighed',
+            scaleNotFound: 'Scale not found: {scale}',
+            photoUploadFailed: 'Failed to upload photo',
+
             // ===== Units =====
             kg: 'kg',
             ton: 'ton',
@@ -407,6 +422,21 @@ const POS_I18N = (function() {
             serverError: 'เซิร์ฟเวอร์มีปัญหา กรุณาติดต่อฝ่ายสนับสนุน',
             invalidInput: 'ข้อมูลไม่ถูกต้อง',
             requiredField: 'จำเป็นต้องกรอก',
+
+            // ===== Validation Errors =====
+            atLeastOneItemRequired: 'จำเป็นต้องมีรายการอย่างน้อยหนึ่งรายการ',
+            invalidWeightValue: 'น้ำหนักไม่ถูกต้องสำหรับรายการ {item}',
+            weightMustBeGreaterThanZero: 'น้ำหนักต้องมากกว่าศูนย์สำหรับรายการ {item}',
+            weightExceedsScaleCapacity: 'น้ำหนัก {weight} กก. เกินกำลังการชั่งสูงสุดของเครื่องชั่ง {scale} ที่ {max} กก.',
+            remarksExceedMaxLength: 'หมายเหตุเกินความยาวสูงสุด {max} ตัวอักษร',
+            noActiveSession: 'ไม่พบเซสชัน POS ที่เปิดอยู่',
+            sessionNotBelongToUser: 'เซสชันนี้ไม่ได้เป็นของผู้ใช้ปัจจุบัน',
+            invalidOrderId: 'รหัสออเดอร์ไม่ถูกต้อง',
+            orderNotFound: 'ไม่พบออเดอร์',
+            orderAlreadyCompleted: 'ออเดอร์นี้เสร็จสิ้นแล้ว',
+            orderAlreadyWeighed: 'ออเดอร์นี้ชั่งน้ำหนักแล้ว',
+            scaleNotFound: 'ไม่พบเครื่องชั่ง: {scale}',
+            photoUploadFailed: 'อัปโหลดรูปภาพไม่สำเร็จ',
 
             // ===== Units =====
             kg: 'กก.',
