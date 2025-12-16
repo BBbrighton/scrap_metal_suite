@@ -75,16 +75,16 @@ class ScaleReader {
                     // Found working configuration!
                     this.config = config;
                     if (onProgress) {
-                        onProgress(`✓ Detected: ${configDesc}, Weight: ${result.weight} kg`);
-                    }
-                    if (result.debugData) {
-                        if (onProgress) {
-                            onProgress(`Debug: ${result.debugData}`);
-                        }
+                        onProgress(`✓ DETECTED: ${configDesc}`);
+                        onProgress(`  Protocol: ${result.protocol}`);
+                        onProgress(`  Weight: ${result.weight} kg ${result.stable ? '(STABLE)' : '(unstable)'}`);
+                        onProgress(`  This configuration works! Connecting...`);
                     }
                     return {
                         config: config,
                         weight: result.weight,
+                        stable: result.stable,
+                        protocol: result.protocol,
                         rawData: result.rawData
                     };
                 }
@@ -128,16 +128,16 @@ class ScaleReader {
     }
 
     /**
-     * Test read data from currently open port
+     * Test read data from currently open port and auto-detect protocol
      *
      * @param {number} timeout - Timeout in milliseconds
-     * @returns {Object} { success, weight, rawData, debugData }
+     * @returns {Object} { success, weight, rawData, debugData, protocol }
      */
     async testRead(timeout = 3000) {
         return new Promise(async (resolve) => {
             const startTime = Date.now();
             const reader = this.port.readable.getReader();
-            const allBytesReceived = [];  // DEBUG: Store all bytes received
+            const allBytesReceived = [];  // Store all bytes for analysis
 
             const checkData = async () => {
                 try {
@@ -152,7 +152,7 @@ class ScaleReader {
                         return;
                     }
 
-                    // DEBUG: Store all received bytes
+                    // Store all received bytes
                     for (let byte of value) {
                         allBytesReceived.push(byte);
                     }
@@ -161,25 +161,27 @@ class ScaleReader {
                     for (let byte of value) {
                         this.buffer[this.bufferIndex++] = byte;
 
-                        // Check for complete HP-05 frame (17 bytes)
-                        if (this.bufferIndex >= 17) {
-                            const frame = this.buffer.slice(0, 17);
-                            const decoded = this.decodeHP05Frame(frame);
+                        // Try to decode with any known protocol
+                        const decoded = this.tryDecodeAny(this.buffer.slice(0, this.bufferIndex));
 
-                            if (decoded && decoded.valid) {
-                                reader.releaseLock();
-                                resolve({
-                                    success: true,
-                                    weight: decoded.weight,
-                                    rawData: Array.from(frame).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
-                                    debugData: Array.from(allBytesReceived).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')
-                                });
-                                return;
-                            }
+                        if (decoded && decoded.valid) {
+                            reader.releaseLock();
+                            resolve({
+                                success: true,
+                                weight: decoded.weight,
+                                stable: decoded.stable,
+                                unit: decoded.unit,
+                                protocol: decoded.protocol,
+                                rawData: Array.from(allBytesReceived).slice(0, 100).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+                                debugData: Array.from(allBytesReceived).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')
+                            });
+                            return;
+                        }
 
-                            // Shift buffer
-                            this.buffer.copyWithin(0, 1);
-                            this.bufferIndex--;
+                        // Keep buffer manageable
+                        if (this.bufferIndex > 200) {
+                            this.buffer.copyWithin(0, 100);
+                            this.bufferIndex -= 100;
                         }
                     }
 
@@ -208,6 +210,98 @@ class ScaleReader {
 
             checkData();
         });
+    }
+
+    /**
+     * Try to decode buffer with any known protocol
+     * @param {Uint8Array} buffer
+     * @returns {Object|null}
+     */
+    tryDecodeAny(buffer) {
+        // Try STX protocol first (most common)
+        const stxResult = this.decodeSTXProtocol(buffer);
+        if (stxResult) return stxResult;
+
+        // Try HP-05 protocol
+        const hp05Result = this.decodeHP05Protocol(buffer);
+        if (hp05Result) return hp05Result;
+
+        return null;
+    }
+
+    /**
+     * Decode STX protocol (1200 baud, 7E1)
+     * Frame: STX ( status weight... CR LF
+     */
+    decodeSTXProtocol(buffer) {
+        if (buffer.length < 18) return null;
+
+        // Look for STX (0x02) followed by '(' (0x28) and ending with CR LF
+        for (let i = 0; i <= buffer.length - 18; i++) {
+            if (buffer[i] === 0x02 && buffer[i + 1] === 0x28) {
+                // Found potential frame start, look for CR LF
+                for (let j = i + 16; j < Math.min(buffer.length - 1, i + 20); j++) {
+                    if (buffer[j] === 0x0D && buffer[j + 1] === 0x0A) {
+                        // Found complete frame!
+                        const frame = buffer.slice(i, j + 2);
+                        return this.parseSTXFrame(frame);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parse STX frame
+     */
+    parseSTXFrame(frame) {
+        if (frame.length < 18) return null;
+        if (frame[0] !== 0x02 || frame[1] !== 0x28) return null;
+
+        // Status: '0' = stable, '8' = unstable
+        const statusChar = String.fromCharCode(frame[2]);
+        const stable = (statusChar === '0');
+
+        // Extract weight digits (ASCII, bytes 3-10)
+        let weightStr = '';
+        for (let i = 3; i <= 10; i++) {
+            const char = String.fromCharCode(frame[i]);
+            if (char >= '0' && char <= '9') {
+                weightStr += char;
+            }
+        }
+
+        if (weightStr.length === 0) return null;
+
+        // Parse weight (in grams, convert to kg)
+        const weightGrams = parseInt(weightStr, 10);
+        const weight = weightGrams / 1000;
+
+        return {
+            valid: true,
+            weight: weight,
+            stable: stable,
+            unit: 'kg',
+            protocol: 'STX',
+            status: statusChar
+        };
+    }
+
+    /**
+     * Decode HP-05 protocol (fixed 17 bytes)
+     */
+    decodeHP05Protocol(buffer) {
+        if (buffer.length < 17) return null;
+
+        for (let i = 0; i <= buffer.length - 17; i++) {
+            const frame = buffer.slice(i, i + 17);
+            const result = this.decodeHP05Frame(frame);
+            if (result && result.valid) {
+                return { ...result, protocol: 'HP-05' };
+            }
+        }
+        return null;
     }
 
     /**
@@ -272,27 +366,30 @@ class ScaleReader {
                 for (let byte of value) {
                     this.buffer[this.bufferIndex++] = byte;
 
-                    // Check for complete HP-05 frame (17 bytes)
-                    if (this.bufferIndex >= 17) {
-                        const frame = this.buffer.slice(0, 17);
-                        const decoded = this.decodeHP05Frame(frame);
+                    // Try to decode with any protocol
+                    const decoded = this.tryDecodeAny(this.buffer.slice(0, this.bufferIndex));
 
-                        if (decoded && decoded.valid) {
-                            this.lastWeight = decoded.weight;
+                    if (decoded && decoded.valid) {
+                        this.lastWeight = decoded.weight;
 
-                            if (this.onWeightUpdate) {
-                                this.onWeightUpdate({
-                                    weight: decoded.weight,
-                                    stable: decoded.stable,
-                                    unit: decoded.unit,
-                                    rawData: Array.from(frame).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')
-                                });
-                            }
+                        if (this.onWeightUpdate) {
+                            this.onWeightUpdate({
+                                weight: decoded.weight,
+                                stable: decoded.stable,
+                                unit: decoded.unit,
+                                protocol: decoded.protocol,
+                                rawData: Array.from(this.buffer.slice(0, Math.min(this.bufferIndex, 50))).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')
+                            });
                         }
 
-                        // Shift buffer (sliding window)
-                        this.buffer.copyWithin(0, 1);
-                        this.bufferIndex--;
+                        // Reset buffer after successful decode
+                        this.bufferIndex = 0;
+                    }
+
+                    // Keep buffer manageable (sliding window)
+                    if (this.bufferIndex > 200) {
+                        this.buffer.copyWithin(0, 100);
+                        this.bufferIndex -= 100;
                     }
                 }
             }
