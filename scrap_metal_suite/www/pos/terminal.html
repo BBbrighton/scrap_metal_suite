@@ -1048,6 +1048,21 @@ function addToCart() {
         return;
     }
 
+    // CLIENT-SIDE VALIDATION: Check against scale capacity
+    if (state.scale && state.scale.max_capacity_kg) {
+        if (weight > state.scale.max_capacity_kg) {
+            frappe.msgprint({
+                title: t('error'),
+                indicator: 'red',
+                message: t('weightExceedsScaleCapacity')
+                    .replace('{weight}', weight.toFixed(2))
+                    .replace('{scale}', state.scale.scale_name)
+                    .replace('{max}', state.scale.max_capacity_kg)
+            });
+            return;
+        }
+    }
+
     state.cart.push({
         item_code: state.currentItem.code,
         item_name: state.currentItem.name,
@@ -1484,7 +1499,8 @@ async function checkSessionScale() {
                 scale_name: response.message.scale_name,
                 scale_type: response.message.scale_type,
                 usage_type: response.message.scale_usage_type,
-                location: response.message.scale_location
+                location: response.message.scale_location,
+                max_capacity_kg: response.message.scale_max_capacity_kg  // CLIENT-SIDE VALIDATION: Include max capacity
             };
             updateScaleDisplay();
         } else {

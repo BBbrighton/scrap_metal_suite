@@ -88,7 +88,7 @@ def get_active_session():
         scale_info = frappe.db.get_value(
             "Scale",
             session.scale,
-            ["scale_name", "scale_type", "usage_type", "location"],
+            ["scale_name", "scale_type", "usage_type", "location", "max_capacity_kg"],
             as_dict=True
         )
         if scale_info:
@@ -96,6 +96,7 @@ def get_active_session():
             session.scale_type = scale_info.scale_type
             session.scale_usage_type = scale_info.usage_type
             session.scale_location = scale_info.location
+            session.scale_max_capacity_kg = scale_info.max_capacity_kg  # CLIENT-SIDE VALIDATION: Include max capacity
 
     return session
 
