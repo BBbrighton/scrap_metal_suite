@@ -45,17 +45,24 @@ class ScaleReader {
             throw new Error('No port selected: ' + err.message);
         }
 
-        // Test configurations (baud rates for HP-05)
+        // Test configurations - comprehensive set matching working HTML
         const testConfigs = [
-            { baudRate: 1200, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none' },
-            { baudRate: 2400, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none' },
-            { baudRate: 4800, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none' },
-            { baudRate: 9600, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none' },
+            // 8N1 configurations
+            { baudRate: 1200, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 2400, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 4800, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 9600, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+
+            // 7E1 configurations (7 data bits, even parity)
+            { baudRate: 1200, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 2400, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 9600, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
         ];
 
         for (const config of testConfigs) {
+            const configDesc = `${config.baudRate} baud, ${config.dataBits}${config.parity[0].toUpperCase()}${config.stopBits}`;
             if (onProgress) {
-                onProgress(`Testing ${config.baudRate} baud...`);
+                onProgress(`Testing ${configDesc}...`);
             }
 
             try {
@@ -68,7 +75,12 @@ class ScaleReader {
                     // Found working configuration!
                     this.config = config;
                     if (onProgress) {
-                        onProgress(`✓ Detected: ${config.baudRate} baud, Weight: ${result.weight} kg`);
+                        onProgress(`✓ Detected: ${configDesc}, Weight: ${result.weight} kg`);
+                    }
+                    if (result.debugData) {
+                        if (onProgress) {
+                            onProgress(`Debug: ${result.debugData}`);
+                        }
                     }
                     return {
                         config: config,
@@ -80,6 +92,18 @@ class ScaleReader {
                 // Close and try next config
                 await this.port.close();
 
+                // Show debug data even on failure
+                if (result.debugData && onProgress) {
+                    const byteCount = result.debugData.split(' ').filter(b => b).length;
+                    onProgress(`✗ ${configDesc} failed (received ${byteCount} bytes)`);
+                    if (byteCount > 0 && byteCount <= 50) {
+                        // Show raw bytes if we got some data
+                        onProgress(`  Raw: ${result.debugData}`);
+                    }
+                } else if (onProgress) {
+                    onProgress(`✗ ${configDesc} failed (no data received)`);
+                }
+
             } catch (err) {
                 // Failed to open or read - try next config
                 try {
@@ -88,7 +112,7 @@ class ScaleReader {
                     // Ignore close errors
                 }
                 if (onProgress) {
-                    onProgress(`✗ ${config.baudRate} baud failed: ${err.message}`);
+                    onProgress(`✗ ${configDesc} error: ${err.message}`);
                 }
             }
         }
