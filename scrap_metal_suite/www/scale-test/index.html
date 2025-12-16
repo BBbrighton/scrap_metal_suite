@@ -340,23 +340,17 @@ body {
         </div>
     </div>
 
-    <!-- Weight Display Card -->
+    <!-- Testing Instructions -->
     <div class="card">
-        <div class="weight-display">
-            <div class="weight-value" id="weightValue">0.00</div>
-            <div class="weight-unit" id="weightUnit">kg</div>
-            <div class="weight-status" id="weightStatus">Waiting for data...</div>
-        </div>
-
         <div class="alert alert-info">
             <span>ℹ️</span>
             <div>
                 <strong>Testing Instructions:</strong><br>
-                1. Connect HP-05 scale to USB port<br>
+                1. Connect scale to USB port<br>
                 2. Power on the scale<br>
                 3. Click "Auto-Detect Scale" button<br>
                 4. Select the correct COM port from browser prompt<br>
-                5. Watch for live weight readings above
+                5. Watch the connection log below for detection results
             </div>
         </div>
     </div>
@@ -423,11 +417,9 @@ async function startAutoDetect() {
         showConnectionInfo(result.config);
         showConnectedButtons();
 
-        // Start receiving live updates
-        scaleReader.onWeightUpdate = handleWeightUpdate;
-        scaleReader.onStatusUpdate = handleStatusUpdate;
-
+        // Detection successful - just log it
         isConnected = true;
+        addLog('Scale auto-detection complete!', 'success');
 
     } catch (err) {
         addLog('✗ Auto-detection failed: ' + err.message, 'error');
@@ -478,30 +470,7 @@ async function disconnect() {
     hideConnectionInfo();
     showDisconnectedButtons();
 
-    document.getElementById('weightValue').textContent = '0.00';
-    document.getElementById('weightStatus').textContent = 'Disconnected';
-
     addLog('✓ Disconnected', 'info');
-}
-
-// Handle weight updates from scale
-function handleWeightUpdate(data) {
-    document.getElementById('weightValue').textContent = data.weight.toFixed(2);
-    document.getElementById('weightUnit').textContent = data.unit;
-    document.getElementById('weightStatus').textContent = data.stable ? '✓ Stable' : '⚖️ Weighing...';
-
-    addLog(`Weight: ${data.weight} ${data.unit} ${data.stable ? '(stable)' : ''}`, 'success');
-    addLog(`Raw: ${data.rawData}`, 'info');
-}
-
-// Handle status updates
-function handleStatusUpdate(data) {
-    if (data.status === 'error') {
-        addLog('Error: ' + data.message, 'error');
-        updateStatus('disconnected', 'Error');
-    } else if (data.status === 'disconnected') {
-        updateStatus('disconnected', 'Disconnected');
-    }
 }
 
 // Update status badge
