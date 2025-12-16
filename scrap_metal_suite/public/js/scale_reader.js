@@ -155,34 +155,30 @@ class ScaleReader {
                     // Store all received bytes
                     for (let byte of value) {
                         allBytesReceived.push(byte);
-                    }
-
-                    // Append to buffer
-                    for (let byte of value) {
                         this.buffer[this.bufferIndex++] = byte;
-
-                        // Try to decode with any known protocol
-                        const decoded = this.tryDecodeAny(this.buffer.slice(0, this.bufferIndex));
-
-                        if (decoded && decoded.valid) {
-                            reader.releaseLock();
-                            resolve({
-                                success: true,
-                                weight: decoded.weight,
-                                stable: decoded.stable,
-                                unit: decoded.unit,
-                                protocol: decoded.protocol,
-                                rawData: Array.from(allBytesReceived).slice(0, 100).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
-                                debugData: Array.from(allBytesReceived).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')
-                            });
-                            return;
-                        }
 
                         // Keep buffer manageable
                         if (this.bufferIndex > 200) {
                             this.buffer.copyWithin(0, 100);
                             this.bufferIndex -= 100;
                         }
+                    }
+
+                    // Try to decode with current buffer contents
+                    const decoded = this.tryDecodeAny(this.buffer.slice(0, this.bufferIndex));
+
+                    if (decoded && decoded.valid) {
+                        reader.releaseLock();
+                        resolve({
+                            success: true,
+                            weight: decoded.weight,
+                            stable: decoded.stable,
+                            unit: decoded.unit,
+                            protocol: decoded.protocol,
+                            rawData: Array.from(allBytesReceived).slice(0, 100).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+                            debugData: Array.from(allBytesReceived).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')
+                        });
+                        return;
                     }
 
                     // Check timeout
