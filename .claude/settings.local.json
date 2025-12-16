@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wsl bash -c \"rm /home/brighton/frappe-bench/apps/scrap_metal_suite/fix_collapsible_css.py\")"
+    ]
+  }
+}

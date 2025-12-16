@@ -1,0 +1,45 @@
+source,translation,context
+# Scrap Metal Suite - Custom Thai Translations
+# This file overrides default ERPNext Thai translations
+
+# Common Terms
+"Supplier","ผู้ขาย",""
+"Customer","ลูกค้า",""
+"Item","สินค้า",""
+"Price","ราคา",""
+"Quantity","จำนวน",""
+"Weight","น้ำหนัก",""
+"Total","รวม",""
+"Submit","ส่ง",""
+"Save","บันทึก",""
+"Cancel","ยกเลิก",""
+"Delete","ลบ",""
+"Edit","แก้ไข",""
+"New","สร้างใหม่",""
+"Dashboard","แดชบอร์ด",""
+"Settings","ตั้งค่า",""
+"Logout","ออกจากระบบ",""
+
+# Scrap Metal Specific
+"Scrap Metal","เศษโลหะ",""
+"Scrap Purchase","รับซื้อเศษโลหะ",""
+"POS Session","เซสชั่นขาย",""
+"Weight Receipt","ใบชั่งน้ำหนัก",""
+"Scale","เครื่องชั่ง",""
+
+# Portal Terms
+"View Prices","ดูราคา",""
+"Sell Scrap","ขายเศษโลหะ",""
+"My Invoices","ใบแจ้งหนี้ของฉัน",""
+"Schedule Dropoff","นัดหมายส่งของ",""
+"Recent Purchases","การซื้อล่าสุด",""
+
+# Status
+"Pending","รอดำเนินการ",""
+"Approved","อนุมัติแล้ว",""
+"Rejected","ปฏิเสธ",""
+"Open","เปิด",""
+"Closed","ปิด",""
+"Draft","ร่าง",""
+"Submitted","ส่งแล้ว",""
+"Cancelled","ยกเลิกแล้ว",""

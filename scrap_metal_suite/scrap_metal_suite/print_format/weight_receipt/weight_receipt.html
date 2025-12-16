@@ -1,0 +1,505 @@
+<style>
+    @page {
+        size: A4;
+        margin: 10mm;
+    }
+
+    .weight-receipt {
+        font-family: Arial, sans-serif;
+        font-size: 11pt;
+        color: #333;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    /* Header Section */
+    .receipt-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #333;
+    }
+
+    .company-logo {
+        width: 120px;
+        height: auto;
+    }
+
+    .company-logo img {
+        max-width: 100%;
+        max-height: 80px;
+    }
+
+    .qr-code {
+        width: 80px;
+        height: 80px;
+    }
+
+    .qr-code img {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Sub-header / Address */
+    .company-address {
+        text-align: center;
+        padding: 8px 0;
+        font-size: 10pt;
+        color: #555;
+        border-bottom: 1px solid #ddd;
+    }
+
+    /* Title */
+    .receipt-title {
+        text-align: center;
+        font-size: 18pt;
+        font-weight: bold;
+        margin: 15px 0 10px 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Order Info Section */
+    .order-info {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 10px 0;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .info-row {
+        width: 50%;
+        padding: 4px 0;
+        display: flex;
+    }
+
+    .info-label {
+        font-weight: bold;
+        width: 120px;
+        color: #555;
+    }
+
+    .info-value {
+        flex: 1;
+    }
+
+    /* Tables */
+    .items-section {
+        margin: 15px 0;
+    }
+
+    .section-title {
+        font-size: 12pt;
+        font-weight: bold;
+        background-color: #f5f5f5;
+        padding: 8px 10px;
+        margin-bottom: 0;
+        border: 1px solid #ddd;
+        border-bottom: none;
+    }
+
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+    }
+
+    .items-table th {
+        background-color: #e9e9e9;
+        padding: 8px 10px;
+        text-align: left;
+        border: 1px solid #ddd;
+        font-weight: bold;
+    }
+
+    .items-table td {
+        padding: 8px 10px;
+        border: 1px solid #ddd;
+    }
+
+    .items-table .text-right {
+        text-align: right;
+    }
+
+    .items-table .total-row {
+        font-weight: bold;
+        background-color: #f9f9f9;
+    }
+
+    /* Truck Weight Section */
+    .truck-weight-section {
+        margin: 15px 0;
+        padding: 15px;
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+    }
+
+    .truck-weight-title {
+        font-size: 12pt;
+        font-weight: bold;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .weight-grid {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .weight-item {
+        width: 50%;
+        padding: 5px 0;
+        display: flex;
+    }
+
+    .weight-label {
+        width: 140px;
+        color: #555;
+    }
+
+    .weight-value {
+        font-weight: bold;
+    }
+
+    .weight-time {
+        color: #777;
+        font-size: 9pt;
+        margin-left: 10px;
+    }
+
+    .weight-divider {
+        width: 100%;
+        border-top: 1px dashed #ccc;
+        margin: 8px 0;
+    }
+
+    .variance-section {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #ddd;
+    }
+
+    .variance-ok {
+        color: #28a745;
+    }
+
+    .variance-warning {
+        color: #dc3545;
+    }
+
+    /* Status Section */
+    .status-section {
+        margin: 15px 0;
+        padding: 10px;
+        border: 1px solid #ddd;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 3px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .status-pending {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+
+    .status-processed {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .status-cancelled {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    /* Notes Section */
+    .notes-section {
+        margin: 15px 0;
+        padding: 10px;
+        border: 1px solid #ddd;
+        min-height: 50px;
+    }
+
+    .notes-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    /* Signatures */
+    .signatures-section {
+        margin-top: 30px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .signature-box {
+        width: 45%;
+        text-align: center;
+    }
+
+    .signature-line {
+        border-top: 1px solid #333;
+        margin-top: 50px;
+        padding-top: 5px;
+    }
+
+    /* Reweight flags */
+    .reweight-flags {
+        margin: 10px 0;
+        padding: 8px;
+        background-color: #fff3cd;
+        border: 1px solid #ffc107;
+        font-size: 10pt;
+    }
+
+    .reweight-flag {
+        display: inline-block;
+        margin-right: 15px;
+    }
+</style>
+
+<div class="weight-receipt">
+    <!-- Header: Logo left, QR right -->
+    <div class="receipt-header">
+        <div class="company-logo">
+            {% set company_name = frappe.db.get_default("Company") %}
+            {% set company = frappe.get_doc("Company", company_name) if company_name else None %}
+            {% if company.company_logo %}
+                <img src="{{ company.company_logo }}" alt="Company Logo">
+            {% else %}
+                <strong>{{ company.company_name or "Scrap Metal Trading" }}</strong>
+            {% endif %}
+        </div>
+        <div class="qr-code">
+            <img src="{{ qr_src(doc.doctype, doc.name) }}" alt="QR Code">
+        </div>
+    </div>
+
+    <!-- Sub-header: Company Address -->
+    <div class="company-address">
+        {% if company %}
+            {{ company.address_line1 or "" }}
+            {% if company.address_line2 %}, {{ company.address_line2 }}{% endif %}
+            {% if company.city %}, {{ company.city }}{% endif %}
+            {% if company.state %}, {{ company.state }}{% endif %}
+            {% if company.pincode %} {{ company.pincode }}{% endif %}
+            {% if company.phone %}<br>Tel: {{ company.phone }}{% endif %}
+        {% endif %}
+    </div>
+
+    <!-- Title -->
+    <div class="receipt-title">Weight Receipt</div>
+
+    <!-- Order Information -->
+    <div class="order-info">
+        <div class="info-row">
+            <span class="info-label">Order ID:</span>
+            <span class="info-value">{{ doc.order_id or doc.name }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Order Date:</span>
+            <span class="info-value">{{ frappe.utils.formatdate(doc.order_date, "dd/MM/yyyy") }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Supplier:</span>
+            <span class="info-value">{{ doc.supplier }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Drop-off Date:</span>
+            <span class="info-value">{{ frappe.utils.formatdate(doc.dropoff_date, "dd/MM/yyyy") }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Supplier Name:</span>
+            <span class="info-value">{{ doc.supplier_name or "" }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">License Plate:</span>
+            <span class="info-value">{{ doc.license_plate or "-" }}</span>
+        </div>
+    </div>
+
+    <!-- Order Items (Indicated) -->
+    {% if doc.order_items %}
+    <div class="items-section">
+        <div class="section-title">Order Items (Indicated)</div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%">#</th>
+                    <th style="width: 50%">Item</th>
+                    <th style="width: 20%">Unit</th>
+                    <th style="width: 20%" class="text-right">Weight (kg)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set order_total = namespace(value=0) %}
+                {% for item in doc.order_items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.item_name or item.item_code }}</td>
+                    <td>{{ item.uom or "Kg" }}</td>
+                    <td class="text-right">{{ "{:,.2f}".format(item.weight or 0) }}</td>
+                </tr>
+                {% set order_total.value = order_total.value + (item.weight or 0) %}
+                {% endfor %}
+                <tr class="total-row">
+                    <td colspan="3" class="text-right">Total Indicated:</td>
+                    <td class="text-right">{{ "{:,.2f}".format(order_total.value) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Weighed Items (Actual) -->
+    {% if doc.items %}
+    <div class="items-section">
+        <div class="section-title">Weighed Items (Actual)</div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%">#</th>
+                    <th style="width: 35%">Item</th>
+                    <th style="width: 20%">Unit</th>
+                    <th style="width: 20%" class="text-right">Weight (kg)</th>
+                    <th style="width: 15%">Ref</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in doc.items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.item_name or item.item_code }}</td>
+                    <td>{{ item.uom or "Kg" }}</td>
+                    <td class="text-right">{{ "{:,.2f}".format(item.weight or 0) }}</td>
+                    <td>{{ item.scrap_weight or "" }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td colspan="3" class="text-right">Total Weighed:</td>
+                    <td class="text-right">{{ "{:,.2f}".format(doc.total_scrap_weight or 0) }}</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Truck Weight Verification -->
+    <div class="truck-weight-section">
+        <div class="truck-weight-title">Truck Weight Verification</div>
+        <div class="weight-grid">
+            <div class="weight-item">
+                <span class="weight-label">Gross Weight:</span>
+                <span class="weight-value">{{ "{:,.2f}".format(doc.gross_weight or 0) }} kg</span>
+                {% if doc.gross_weight_time %}
+                <span class="weight-time">@ {{ frappe.utils.format_datetime(doc.gross_weight_time, "HH:mm") }}</span>
+                {% endif %}
+            </div>
+            <div class="weight-item">
+                <span class="weight-label">Scale:</span>
+                <span class="weight-value">{{ doc.gross_weight_scale or "-" }}</span>
+            </div>
+            <div class="weight-item">
+                <span class="weight-label">Tare Weight:</span>
+                <span class="weight-value">{{ "{:,.2f}".format(doc.tare_weight or 0) }} kg</span>
+                {% if doc.tare_weight_time %}
+                <span class="weight-time">@ {{ frappe.utils.format_datetime(doc.tare_weight_time, "HH:mm") }}</span>
+                {% endif %}
+            </div>
+            <div class="weight-item">
+                <span class="weight-label">Scale:</span>
+                <span class="weight-value">{{ doc.tare_weight_scale or "-" }}</span>
+            </div>
+        </div>
+
+        <div class="weight-divider"></div>
+
+        <div class="weight-grid">
+            <div class="weight-item">
+                <span class="weight-label">Net Truck Weight:</span>
+                <span class="weight-value">{{ "{:,.2f}".format(doc.net_truck_weight or 0) }} kg</span>
+            </div>
+            <div class="weight-item">
+                <span class="weight-label">Total Scrap Weight:</span>
+                <span class="weight-value">{{ "{:,.2f}".format(doc.total_scrap_weight or 0) }} kg</span>
+            </div>
+        </div>
+
+        <div class="variance-section">
+            <div class="weight-grid">
+                <div class="weight-item">
+                    <span class="weight-label">Variance:</span>
+                    {% set variance_class = "variance-ok" if (doc.weight_variance_percent or 0)|abs <= 2 else "variance-warning" %}
+                    <span class="weight-value {{ variance_class }}">
+                        {{ "{:,.2f}".format(doc.weight_variance or 0) }} kg
+                        ({{ "{:.2f}".format(doc.weight_variance_percent or 0) }}%)
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reweight Flags -->
+    {% if doc.is_truck_reweighed or doc.is_scrap_reweighed %}
+    <div class="reweight-flags">
+        {% if doc.is_truck_reweighed %}
+        <span class="reweight-flag">* Truck was reweighed</span>
+        {% endif %}
+        {% if doc.is_scrap_reweighed %}
+        <span class="reweight-flag">* Scrap was reweighed</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Status Section -->
+    <div class="status-section">
+        <div>
+            <strong>Status:</strong>
+            <span class="status-badge status-{{ (doc.status or 'pending')|lower }}">
+                {{ doc.status or "Pending" }}
+            </span>
+        </div>
+        <div>
+            {% if doc.processed_time %}
+            <strong>Processed:</strong> {{ frappe.utils.format_datetime(doc.processed_time, "dd/MM/yyyy HH:mm") }}
+            {% endif %}
+            {% if doc.processed_by %}
+            <br><strong>Operator:</strong> {{ frappe.db.get_value("User", doc.processed_by, "full_name") or doc.processed_by }}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Notes Section -->
+    {% if doc.notes or doc.truck_weight_remarks %}
+    <div class="notes-section">
+        <div class="notes-title">Notes:</div>
+        {% if doc.notes %}
+        <div>{{ doc.notes }}</div>
+        {% endif %}
+        {% if doc.truck_weight_remarks %}
+        <div><em>Truck remarks: {{ doc.truck_weight_remarks }}</em></div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Signatures -->
+    <div class="signatures-section">
+        <div class="signature-box">
+            <div class="signature-line">Supplier Signature</div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">Operator Signature</div>
+        </div>
+    </div>
+</div>

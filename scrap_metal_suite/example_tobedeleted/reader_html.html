@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>WebSerial Scale Reader (Drop-in)</title>
+  <style>
+    body { font-family: Consolas, monospace; max-width: 980px; margin: 40px auto; padding: 20px; background:#1e1e1e; color:#d4d4d4; }
+    h1 { color:#4ec9b0; margin-bottom: 10px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+    .card { background:#252526; padding:14px; border-radius:10px; box-shadow: 0 6px 18px rgba(0,0,0,.25); margin: 12px 0; }
+    label { display:block; font-size: 12px; color:#b0b0b0; margin-bottom: 6px; }
+    input, select { background:#2d2d2d; color:#d4d4d4; border:1px solid #3e3e3e; border-radius:6px; padding:8px; min-width: 140px; }
+    button { background:#0e639c; color:white; border:none; padding:10px 14px; font-size:14px; cursor:pointer; border-radius:8px; }
+    button:hover { background:#1177bb; }
+    button:disabled { background:#555; cursor:not-allowed; }
+    .statusline span { display:inline-block; min-width: 120px; }
+    .ok { color:#4ec9b0; }
+    .bad { color:#ce9178; }
+    .weight { font-size: 56px; font-weight: 800; text-align:center; padding: 18px; border-radius: 12px; background:#1f1f20; }
+    .small { font-size: 12px; color:#9a9a9a; }
+    .log { max-height: 220px; overflow:auto; background:#1f1f20; border-radius:10px; padding:10px; border:1px solid #333; }
+    .logline { border-bottom:1px solid #2b2b2b; padding: 6px 0; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #3e3e3e; font-size:12px; }
+    .pill.ok { border-color:#4ec9b0; }
+    .pill.bad { border-color:#ce9178; }
+    .split { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 880px) { .split { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>🔌 WebSerial Scale Reader</h1>
+  <div class="card statusline">
+    <div class="row">
+      <div>State: <span id="state" class="bad">Disconnected</span></div>
+      <div>Port: <span id="portLabel">None</span></div>
+      <div>Config: <span id="cfgLabel">—</span></div>
+      <div class="small" id="hint"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Previously Authorized Ports</label>
+        <select id="portsSelect"></select>
+      </div>
+
+      <button id="refreshPortsBtn">Refresh Ports</button>
+      <button id="requestPortBtn">Request Port (Popup)</button>
+      <button id="connectBtn" disabled>Connect</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+      <button id="autoDetectBtn" disabled>Auto-Detect Config</button>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="row">
+      <div>
+        <label>Baud Rate</label>
+        <input id="baudRate" type="number" value="1200" />
+      </div>
+      <div>
+        <label>Data Bits</label>
+        <select id="dataBits">
+          <option>7</option>
+          <option selected>8</option>
+        </select>
+      </div>
+      <div>
+        <label>Parity</label>
+        <select id="parity">
+          <option value="none" selected>none</option>
+          <option value="even">even</option>
+          <option value="odd">odd</option>
+        </select>
+      </div>
+      <div>
+        <label>Stop Bits</label>
+        <select id="stopBits">
+          <option value="1" selected>1</option>
+          <option value="2">2</option>
+        </select>
+      </div>
+      <div>
+        <label>Flow Control</label>
+        <select id="flowControl">
+          <option value="none" selected>none</option>
+          <option value="hardware">hardware</option>
+        </select>
+      </div>
+      <div>
+        <label>Buffer Size</label>
+        <input id="bufferSize" type="number" value="255" />
+      </div>
+      <div>
+        <label>Delimiter</label>
+        <select id="delimiter">
+          <option value="lf" selected>LF (0x0A)</option>
+          <option value="cr">CR (0x0D)</option>
+          <option value="crlf">CRLF (0x0D0A)</option>
+          <option value="fixed">Fixed length</option>
+        </select>
+      </div>
+      <div>
+        <label>Fixed Length</label>
+        <input id="fixedLen" type="number" value="17" />
+      </div>
+      <div>
+        <label>Raw Log</label>
+        <select id="rawLog">
+          <option value="off" selected>off</option>
+          <option value="on">on</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="small" style="margin-top:10px;">
+      Tip: once you grant permission once, you can reconnect from “Previously Authorized Ports” without the popup.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="weight">
+      <div id="weightText">--- kg</div>
+      <div style="font-size: 16px; margin-top: 8px;">
+        <span id="stability" class="pill">Waiting…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;">Stable Readings</h3>
+        <button id="exportBtn" disabled>Export CSV</button>
+      </div>
+      <div class="log" id="stableLog"><div class="small">No readings yet</div></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;">Debug / Raw</h3>
+        <button id="clearDebugBtn">Clear</button>
+      </div>
+      <div class="log" id="debugLog"><div class="small">—</div></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // -----------------------------
+  // State
+  // -----------------------------
+  let port = null;
+  let reader = null;
+  let keepReading = false;
+
+  let readingsHistory = [];
+  let lastStableWeight = null;
+
+  const $ = (id) => document.getElementById(id);
+
+  // -----------------------------
+  // UI helpers
+  // -----------------------------
+  function setHint(msg) { $("hint").textContent = msg || ""; }
+  function setState(text, ok) {
+    $("state").textContent = text;
+    $("state").className = ok ? "ok" : "bad";
+  }
+  function setPortLabel(text) { $("portLabel").textContent = text || "None"; }
+  function setCfgLabel(text) { $("cfgLabel").textContent = text || "—"; }
+
+  function logDebug(msg) {
+    const div = document.createElement("div");
+    div.className = "logline";
+    div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    const log = $("debugLog");
+    if (log.querySelector(".small")) log.innerHTML = "";
+    log.prepend(div);
+  }
+
+  function toHex(u8) {
+    return Array.from(u8).map(b => b.toString(16).padStart(2,"0")).join(" ");
+  }
+
+  // -----------------------------
+  // Decoder (your HP-05 logic)
+  // -----------------------------
+  function decodeScaleData(frame) {
+    if (!frame || frame.length !== 17) return null;
+    if (frame[0] !== 0x82 || frame[1] !== 0x28) return null;
+
+    const isStable = (frame[2] === 0x30);
+
+    // bytes 6-9: digits (HP-05 specific)
+    const digits = [];
+    for (let i = 6; i < 10; i++) {
+      const asciiVal = frame[i] & 0x7F;
+      if (asciiVal >= 48 && asciiVal <= 57) digits.push(String.fromCharCode(asciiVal));
+      else if (asciiVal === 32) digits.push("0");
+      else return null;
+    }
+    if (digits.length !== 4) return null;
+
+    const weight = parseInt(digits.join(""), 10);
+    return { weight, isStable };
+  }
+
+  function updateDisplay(weight, isStable) {
+    const weightKg = (weight / 1000).toFixed(3);
+    $("weightText").textContent = `${weightKg} kg`;
+
+    const pill = $("stability");
+    pill.textContent = isStable ? "● STABLE" : "○ Unstable";
+    pill.className = "pill " + (isStable ? "ok" : "bad");
+  }
+
+  function recordReading(weight) {
+    const timestamp = new Date().toISOString();
+    readingsHistory.push({ timestamp, weight });
+    renderStableLog();
+    $("exportBtn").disabled = readingsHistory.length === 0;
+  }
+
+  function renderStableLog() {
+    const log = $("stableLog");
+    if (readingsHistory.length === 0) {
+      log.innerHTML = '<div class="small">No readings yet</div>';
+      return;
+    }
+
+    const recent = readingsHistory.slice(-20).reverse();
+    log.innerHTML = recent.map(r => {
+      const t = new Date(r.timestamp).toLocaleTimeString();
+      const kg = (r.weight / 1000).toFixed(3);
+      return `<div class="logline"><span class="small">[${t}]</span>  <span class="ok" style="font-weight:700;">${kg} kg</span></div>`;
+    }).join("");
+  }
+
+  // -----------------------------
+  // Config
+  // -----------------------------
+  function getConfigFromUI() {
+    const cfg = {
+      baudRate: Number($("baudRate").value || 1200),
+      dataBits: Number($("dataBits").value || 8),
+      parity: $("parity").value || "none",
+      stopBits: Number($("stopBits").value || 1),
+      flowControl: $("flowControl").value || "none",
+      bufferSize: Number($("bufferSize").value || 255),
+      delimiter: $("delimiter").value || "lf",
+      fixedLen: Number($("fixedLen").value || 17),
+      rawLog: $("rawLog").value === "on"
+    };
+    return cfg;
+  }
+
+  function setConfigToUI(cfg) {
+    $("baudRate").value = cfg.baudRate ?? 1200;
+    $("dataBits").value = String(cfg.dataBits ?? 8);
+    $("parity").value = cfg.parity ?? "none";
+    $("stopBits").value = String(cfg.stopBits ?? 1);
+    $("flowControl").value = cfg.flowControl ?? "none";
+    $("bufferSize").value = cfg.bufferSize ?? 255;
+    $("delimiter").value = cfg.delimiter ?? "lf";
+    $("fixedLen").value = cfg.fixedLen ?? 17;
+    $("rawLog").value = cfg.rawLog ? "on" : "off";
+  }
+
+  function cfgToLabel(cfg) {
+    return `${cfg.baudRate} baud, ${cfg.dataBits}${cfg.parity[0].toUpperCase()}${cfg.stopBits}, flow:${cfg.flowControl}, buf:${cfg.bufferSize}`;
+  }
+
+  function saveCfg(cfg) {
+    localStorage.setItem("serial_cfg", JSON.stringify(cfg));
+  }
+
+  function loadCfg() {
+    try {
+      const s = localStorage.getItem("serial_cfg");
+      if (!s) return null;
+      return JSON.parse(s);
+    } catch { return null; }
+  }
+
+  // -----------------------------
+  // Frame extraction
+  // -----------------------------
+  function extractFrames(buffer, cfg) {
+    const frames = [];
+    if (!buffer || buffer.length === 0) return { frames, rest: buffer };
+
+    const mode = cfg.delimiter;
+
+    if (mode === "fixed") {
+      const n = Math.max(1, cfg.fixedLen|0);
+      let i = 0;
+      while (buffer.length - i >= n) {
+        frames.push(buffer.slice(i, i + n));
+        i += n;
+      }
+      return { frames, rest: buffer.slice(i) };
+    }
+
+    const findLF = () => buffer.indexOf(0x0A);
+    const findCR = () => buffer.indexOf(0x0D);
+
+    if (mode === "lf") {
+      while (true) {
+        const idx = findLF();
+        if (idx === -1) break;
+        frames.push(buffer.slice(0, idx)); // exclude delimiter
+        buffer = buffer.slice(idx + 1);
+      }
+      return { frames, rest: buffer };
+    }
+
+    if (mode === "cr") {
+      while (true) {
+        const idx = findCR();
+        if (idx === -1) break;
+        frames.push(buffer.slice(0, idx));
+        buffer = buffer.slice(idx + 1);
+      }
+      return { frames, rest: buffer };
+    }
+
+    // CRLF
+    while (true) {
+      // find 0x0D 0x0A sequence
+      let idx = -1;
+      for (let i = 0; i < buffer.length - 1; i++) {
+        if (buffer[i] === 0x0D && buffer[i+1] === 0x0A) { idx = i; break; }
+      }
+      if (idx === -1) break;
+      frames.push(buffer.slice(0, idx));
+      buffer = buffer.slice(idx + 2);
+    }
+    return { frames, rest: buffer };
+  }
+
+  // -----------------------------
+  // Serial lifecycle
+  // -----------------------------
+  async function disconnectScale(reason = "") {
+    keepReading = false;
+
+    try {
+      if (reader) {
+        try { await reader.cancel(); } catch {}
+        try { reader.releaseLock(); } catch {}
+        reader = null;
+      }
+    } finally {
+      if (port) {
+        try { await port.close(); } catch {}
+      }
+    }
+
+    // don't clear `port` always: if user wants to reconnect quickly, keep it
+    // but if disconnect was from device removal, we should clear it
+    // We'll clear only if reason is "device_removed"
+    if (reason === "device_removed") port = null;
+
+    $("connectBtn").disabled = false;
+    $("disconnectBtn").disabled = true;
+    $("autoDetectBtn").disabled = !port;
+    setState("Disconnected", false);
+    setHint(reason ? `(${reason})` : "");
+    setCfgLabel("—");
+    if (!port) setPortLabel("None");
+  }
+
+  async function connectScale(cfg) {
+    if (!port) {
+      alert("No port selected. Use Request Port or pick an authorized port.");
+      return;
+    }
+
+    // If already open, close cleanly first
+    await disconnectScale("");
+
+    cfg = cfg || getConfigFromUI();
+    saveCfg(cfg);
+
+    try {
+      await port.open({
+        baudRate: cfg.baudRate,
+        dataBits: cfg.dataBits,
+        parity: cfg.parity,
+        stopBits: cfg.stopBits,
+        flowControl: cfg.flowControl,
+        bufferSize: cfg.bufferSize
+      });
+
+      setState("Connected", true);
+      setCfgLabel(cfgToLabel(cfg));
+      $("connectBtn").disabled = true;
+      $("disconnectBtn").disabled = false;
+      $("autoDetectBtn").disabled = true;
+
+      keepReading = true;
+      readLoop(cfg);
+    } catch (err) {
+      logDebug(`Open failed: ${err.message || err}`);
+      setState("Disconnected", false);
+      $("connectBtn").disabled = false;
+      $("disconnectBtn").disabled = true;
+      $("autoDetectBtn").disabled = !port;
+      alert("Failed to open port: " + (err.message || err));
+    }
+  }
+
+  async function readLoop(cfg) {
+    let buffer = new Uint8Array(0);
+
+    try {
+      reader = port.readable.getReader();
+
+      while (keepReading) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (!value || value.length === 0) continue;
+
+        // append buffer
+        const merged = new Uint8Array(buffer.length + value.length);
+        merged.set(buffer);
+        merged.set(value, buffer.length);
+        buffer = merged;
+
+        const { frames, rest } = extractFrames(buffer, cfg);
+        buffer = rest;
+
+        for (const frame of frames) {
+          // optional raw log
+          if (cfg.rawLog) logDebug(`RX (${frame.length}): ${toHex(frame)}`);
+
+          // HP-05 decode attempt
+          const result = decodeScaleData(frame);
+          if (result) {
+            updateDisplay(result.weight, result.isStable);
+
+            if (result.isStable && result.weight > 10) {
+              if (lastStableWeight !== result.weight) {
+                lastStableWeight = result.weight;
+                recordReading(result.weight);
+              }
+            } else if (result.weight < 10) {
+              lastStableWeight = null;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      logDebug(`Read error: ${err.message || err}`);
+    } finally {
+      try { if (reader) reader.releaseLock(); } catch {}
+      reader = null;
+
+      // If reading stopped but port is still open, keep UI consistent
+      if (keepReading === false) return;
+
+      // If loop ended unexpectedly, disconnect
+      await disconnectScale("read loop ended");
+    }
+  }
+
+  // -----------------------------
+  // Ports list (authorized ports)
+  // -----------------------------
+  async function refreshAuthorizedPorts() {
+    if (!("serial" in navigator)) return;
+
+    const ports = await navigator.serial.getPorts();
+    const sel = $("portsSelect");
+    sel.innerHTML = "";
+
+    if (ports.length === 0) {
+      const opt = document.createElement("option");
+      opt.textContent = "(none yet — click Request Port)";
+      opt.value = "";
+      sel.appendChild(opt);
+      $("connectBtn").disabled = !port;
+      return;
+    }
+
+    ports.forEach((p, idx) => {
+      const info = p.getInfo ? p.getInfo() : {};
+      const vid = info.usbVendorId ? "0x" + info.usbVendorId.toString(16) : "unknownVID";
+      const pid = info.usbProductId ? "0x" + info.usbProductId.toString(16) : "unknownPID";
+      const opt = document.createElement("option");
+      opt.value = String(idx);
+      opt.textContent = `Port #${idx+1} (${vid}:${pid})`;
+      sel.appendChild(opt);
+    });
+
+    // Auto-select first if none selected
+    if (!port) port = ports[0];
+    setPortLabel(describePort(port));
+    $("connectBtn").disabled = !port;
+    $("autoDetectBtn").disabled = !port;
+  }
+
+  function describePort(p) {
+    try {
+      const info = p.getInfo ? p.getInfo() : {};
+      const vid = info.usbVendorId ? "0x" + info.usbVendorId.toString(16) : "—";
+      const pid = info.usbProductId ? "0x" + info.usbProductId.toString(16) : "—";
+      return `USB ${vid}:${pid}`;
+    } catch {
+      return "Serial Port";
+    }
+  }
+
+  async function pickAuthorizedPortByIndex() {
+    const ports = await navigator.serial.getPorts();
+    const idx = parseInt($("portsSelect").value || "0", 10);
+    if (!ports[idx]) return;
+    port = ports[idx];
+    setPortLabel(describePort(port));
+    $("connectBtn").disabled = false;
+    $("autoDetectBtn").disabled = false;
+  }
+
+  async function requestPortPopup() {
+    try {
+      port = await navigator.serial.requestPort();
+      setPortLabel(describePort(port));
+      $("connectBtn").disabled = false;
+      $("autoDetectBtn").disabled = false;
+      await refreshAuthorizedPorts();
+      logDebug("Port granted by user.");
+    } catch (err) {
+      logDebug(`requestPort cancelled/failed: ${err.message || err}`);
+    }
+  }
+
+  // -----------------------------
+  // Auto-detect config
+  // -----------------------------
+  const commonConfigs = [
+    // Try your known HP-05 first
+    { baudRate:1200, dataBits:8, parity:"none", stopBits:1, flowControl:"none", bufferSize:255, delimiter:"lf", fixedLen:17, rawLog:false },
+
+    // Common alternatives
+    { baudRate:2400, dataBits:8, parity:"none", stopBits:1, flowControl:"none", bufferSize:255, delimiter:"lf", fixedLen:17, rawLog:false },
+    { baudRate:4800, dataBits:8, parity:"none", stopBits:1, flowControl:"none", bufferSize:255, delimiter:"lf", fixedLen:17, rawLog:false },
+    { baudRate:9600, dataBits:8, parity:"none", stopBits:1, flowControl:"none", bufferSize:255, delimiter:"lf", fixedLen:17, rawLog:false },
+
+    // Sometimes scales are 7E1
+    { baudRate:1200, dataBits:7, parity:"even", stopBits:1, flowControl:"none", bufferSize:255, delimiter:"lf", fixedLen:17, rawLog:false },
+    { baudRate:2400, dataBits:7, parity:"even", stopBits:1, flowControl:"none", bufferSize:255, delimiter:"lf", fixedLen:17, rawLog:false },
+    { baudRate:9600, dataBits:7, parity:"even", stopBits:1, flowControl:"none", bufferSize:255, delimiter:"lf", fixedLen:17, rawLog:false },
+
+    // Some devices end frames with CR
+    { baudRate:1200, dataBits:8, parity:"none", stopBits:1, flowControl:"none", bufferSize:255, delimiter:"cr", fixedLen:17, rawLog:false }
+  ];
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function tryConfigOnce(cfg, ms=1200) {
+    // open, read briefly, count how many decodes succeed
+    let tmpReader = null;
+    let buffer = new Uint8Array(0);
+    let okCount = 0;
+
+    try {
+      await port.open({
+        baudRate: cfg.baudRate,
+        dataBits: cfg.dataBits,
+        parity: cfg.parity,
+        stopBits: cfg.stopBits,
+        flowControl: cfg.flowControl,
+        bufferSize: cfg.bufferSize
+      });
+
+      tmpReader = port.readable.getReader();
+
+      const deadline = Date.now() + ms;
+      while (Date.now() < deadline) {
+        const { value, done } = await tmpReader.read();
+        if (done) break;
+        if (!value) continue;
+
+        const merged = new Uint8Array(buffer.length + value.length);
+        merged.set(buffer);
+        merged.set(value, buffer.length);
+        buffer = merged;
+
+        const out = extractFrames(buffer, cfg);
+        buffer = out.rest;
+
+        for (const frame of out.frames) {
+          const res = decodeScaleData(frame);
+          if (res) okCount++;
+          if (okCount >= 2) return okCount; // good enough
+        }
+      }
+
+      return okCount;
+    } catch (err) {
+      return 0;
+    } finally {
+      try { if (tmpReader) { await tmpReader.cancel(); tmpReader.releaseLock(); } } catch {}
+      try { await port.close(); } catch {}
+      await sleep(120);
+    }
+  }
+
+  async function autoDetect() {
+    if (!port) return;
+
+    setHint("Auto-detecting… (trying common configs)");
+    logDebug("Auto-detect started…");
+
+    for (const cfg of commonConfigs) {
+      logDebug(`Trying ${cfgToLabel(cfg)} | delim:${cfg.delimiter}`);
+      const score = await tryConfigOnce(cfg, 1400);
+      logDebug(`→ score: ${score}`);
+
+      if (score >= 2) {
+        logDebug("✅ Auto-detect success. Using this config.");
+        setConfigToUI(cfg);
+        setHint("Auto-detect success.");
+        await connectScale(cfg);
+        return;
+      }
+    }
+
+    setHint("Auto-detect failed. Try manual settings + Raw Log on.");
+    logDebug("❌ Auto-detect failed.");
+    alert("Auto-detect couldn't confirm your protocol. Try enabling Raw Log and adjust delimiter/baud/parity.");
+  }
+
+  // -----------------------------
+  // Export CSV
+  // -----------------------------
+  function exportToCSV() {
+    if (readingsHistory.length === 0) return;
+
+    let csv = "timestamp,weight_kg\n";
+    for (const r of readingsHistory) {
+      const kg = (r.weight / 1000).toFixed(3);
+      csv += `${r.timestamp},${kg}\n`;
+    }
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `weight_log_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // -----------------------------
+  // Events: connect/disconnect
+  // -----------------------------
+  function attachSerialEvents() {
+    navigator.serial.addEventListener("disconnect", async (e) => {
+      // If the current port disappears, cleanup so user can reconnect without unplugging
+      if (port && (e.target === port || e.port === port)) {
+        logDebug("Device disconnected.");
+        await disconnectScale("device_removed");
+      }
+    });
+
+    navigator.serial.addEventListener("connect", async () => {
+      logDebug("Device connected (OS event).");
+      // We don’t auto-open here (could surprise user), but we refresh list
+      await refreshAuthorizedPorts();
+    });
+  }
+
+  // -----------------------------
+  // Wire UI
+  // -----------------------------
+  $("refreshPortsBtn").addEventListener("click", refreshAuthorizedPorts);
+  $("requestPortBtn").addEventListener("click", requestPortPopup);
+  $("connectBtn").addEventListener("click", () => connectScale(getConfigFromUI()));
+  $("disconnectBtn").addEventListener("click", () => disconnectScale(""));
+  $("autoDetectBtn").addEventListener("click", autoDetect);
+  $("portsSelect").addEventListener("change", pickAuthorizedPortByIndex);
+  $("exportBtn").addEventListener("click", exportToCSV);
+  $("clearDebugBtn").addEventListener("click", () => { $("debugLog").innerHTML = '<div class="small">—</div>'; });
+
+  // Save config when user changes it
+  ["baudRate","dataBits","parity","stopBits","flowControl","bufferSize","delimiter","fixedLen","rawLog"]
+    .forEach(id => $(id).addEventListener("change", () => saveCfg(getConfigFromUI())));
+
+  // -----------------------------
+  // Boot
+  // -----------------------------
+  async function boot() {
+    if (!("serial" in navigator)) {
+      alert("Web Serial API not supported. Use Chrome/Edge on desktop.");
+      $("requestPortBtn").disabled = true;
+      $("connectBtn").disabled = true;
+      return;
+    }
+
+    attachSerialEvents();
+
+    // restore last config
+    const saved = loadCfg();
+    if (saved) setConfigToUI(saved);
+
+    await refreshAuthorizedPorts();
+
+    // enable buttons based on port presence
+    $("connectBtn").disabled = !port;
+    $("autoDetectBtn").disabled = !port;
+
+    setState("Disconnected", false);
+    setHint("Ready.");
+  }
+
+  boot();
+})();
+</script>
+
+</body>
+</html>

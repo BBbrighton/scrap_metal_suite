@@ -1,0 +1,568 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Scale Connection Test{% endblock %}
+
+{% block head_include %}
+<script src="/assets/scrap_metal_suite/js/scale_reader.js"></script>
+<style>
+:root {
+    --primary: #2563eb;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --gray: #6b7280;
+    --light-gray: #f3f4f6;
+    --border: #e5e7eb;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f9fafb;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.header {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    font-size: 28px;
+    color: #111827;
+    margin-bottom: 8px;
+}
+
+.header p {
+    color: var(--gray);
+    font-size: 14px;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.card h2 {
+    font-size: 20px;
+    color: #111827;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+    background: #059669;
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+.btn-secondary {
+    background: var(--light-gray);
+    color: #374151;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #e5e7eb;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.status-badge.disconnected {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-badge.connecting {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.connected {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.disconnected .status-dot {
+    background: #ef4444;
+}
+
+.connecting .status-dot {
+    background: #f59e0b;
+}
+
+.connected .status-dot {
+    background: #10b981;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.weight-display {
+    text-align: center;
+    padding: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    color: white;
+    margin-bottom: 24px;
+}
+
+.weight-value {
+    font-size: 72px;
+    font-weight: bold;
+    line-height: 1;
+    margin-bottom: 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+.weight-unit {
+    font-size: 24px;
+    opacity: 0.9;
+}
+
+.weight-status {
+    font-size: 14px;
+    margin-top: 16px;
+    opacity: 0.8;
+}
+
+.log-container {
+    background: #1f2937;
+    border-radius: 8px;
+    padding: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 13px;
+}
+
+.log-entry {
+    padding: 4px 0;
+    color: #d1d5db;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.log-entry.success {
+    color: #34d399;
+}
+
+.log-entry.error {
+    color: #f87171;
+}
+
+.log-entry.info {
+    color: #60a5fa;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.info-item {
+    padding: 12px;
+    background: var(--light-gray);
+    border-radius: 8px;
+}
+
+.info-label {
+    font-size: 12px;
+    color: var(--gray);
+    margin-bottom: 4px;
+}
+
+.info-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.btn-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: start;
+    gap: 12px;
+}
+
+.alert-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h1>🔧 Scale Connection Test</h1>
+        <p>Test WebSerial integration with HP-05 scale hardware</p>
+    </div>
+
+    <!-- Browser Support Alert -->
+    <div id="browserAlert" class="alert alert-warning" style="display:none;">
+        <span style="font-size: 20px;">⚠️</span>
+        <div>
+            <strong>WebSerial API Not Supported</strong><br>
+            Please use Chrome, Edge, or Opera browser to test scale connections.
+        </div>
+    </div>
+
+    <!-- Connection Status Card -->
+    <div class="card">
+        <h2>
+            📡 Connection Status
+            <span id="statusBadge" class="status-badge disconnected">
+                <span class="status-dot"></span>
+                <span>Disconnected</span>
+            </span>
+        </h2>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="startAutoDetect()" id="autoDetectBtn">
+                🔍 Auto-Detect Scale
+            </button>
+            <button class="btn btn-success" onclick="manualConnect()" id="connectBtn" style="display:none;">
+                🔗 Connect
+            </button>
+            <button class="btn btn-danger" onclick="disconnect()" id="disconnectBtn" style="display:none;">
+                ⏹️ Disconnect
+            </button>
+        </div>
+
+        <!-- Connection Info -->
+        <div id="connectionInfo" style="display:none;" class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Baud Rate</div>
+                <div class="info-value" id="infoBaudRate">-</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Data Bits</div>
+                <div class="info-value" id="infoDataBits">-</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Parity</div>
+                <div class="info-value" id="infoParity">-</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Stop Bits</div>
+                <div class="info-value" id="infoStopBits">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weight Display Card -->
+    <div class="card">
+        <div class="weight-display">
+            <div class="weight-value" id="weightValue">0.00</div>
+            <div class="weight-unit" id="weightUnit">kg</div>
+            <div class="weight-status" id="weightStatus">Waiting for data...</div>
+        </div>
+
+        <div class="alert alert-info">
+            <span>ℹ️</span>
+            <div>
+                <strong>Testing Instructions:</strong><br>
+                1. Connect HP-05 scale to USB port<br>
+                2. Power on the scale<br>
+                3. Click "Auto-Detect Scale" button<br>
+                4. Select the correct COM port from browser prompt<br>
+                5. Watch for live weight readings above
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Log Card -->
+    <div class="card">
+        <h2>📋 Connection Log</h2>
+        <div class="log-container" id="logContainer">
+            <div class="log-entry info">Ready to test scale connection...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global state
+let scaleReader = null;
+let isConnected = false;
+
+// Check browser support on page load
+document.addEventListener('DOMContentLoaded', () => {
+    if (!('serial' in navigator)) {
+        document.getElementById('browserAlert').style.display = 'flex';
+        document.getElementById('autoDetectBtn').disabled = true;
+        addLog('Browser does not support WebSerial API', 'error');
+    } else {
+        addLog('WebSerial API available ✓', 'success');
+        checkPreviousPorts();
+    }
+});
+
+// Check for previously authorized ports
+async function checkPreviousPorts() {
+    try {
+        const ports = await ScaleReader.getPorts();
+        if (ports.length > 0) {
+            addLog(`Found ${ports.length} previously authorized port(s)`, 'info');
+        }
+    } catch (err) {
+        console.error('Error checking ports:', err);
+    }
+}
+
+// Auto-detect scale
+async function startAutoDetect() {
+    addLog('Starting auto-detection...', 'info');
+    updateStatus('connecting', 'Auto-detecting...');
+
+    document.getElementById('autoDetectBtn').disabled = true;
+
+    try {
+        scaleReader = new ScaleReader();
+
+        const result = await scaleReader.autoDetect((message) => {
+            addLog(message, 'info');
+        });
+
+        // Success!
+        addLog('✓ Scale detected successfully!', 'success');
+        addLog(`Configuration: ${JSON.stringify(result.config)}`, 'success');
+        addLog(`Initial weight: ${result.weight} kg`, 'success');
+
+        // Update UI
+        updateStatus('connected', 'Connected');
+        showConnectionInfo(result.config);
+        showConnectedButtons();
+
+        // Start receiving live updates
+        scaleReader.onWeightUpdate = handleWeightUpdate;
+        scaleReader.onStatusUpdate = handleStatusUpdate;
+
+        isConnected = true;
+
+    } catch (err) {
+        addLog('✗ Auto-detection failed: ' + err.message, 'error');
+        updateStatus('disconnected', 'Disconnected');
+        document.getElementById('autoDetectBtn').disabled = false;
+        scaleReader = null;
+    }
+}
+
+// Manual connect (using detected config)
+async function manualConnect() {
+    if (!scaleReader || !scaleReader.config) {
+        addLog('No configuration available. Run auto-detect first.', 'error');
+        return;
+    }
+
+    addLog('Connecting with detected configuration...', 'info');
+    updateStatus('connecting', 'Connecting...');
+
+    try {
+        await scaleReader.connect(scaleReader.config);
+
+        scaleReader.onWeightUpdate = handleWeightUpdate;
+        scaleReader.onStatusUpdate = handleStatusUpdate;
+
+        isConnected = true;
+
+        addLog('✓ Connected successfully', 'success');
+        updateStatus('connected', 'Connected');
+
+    } catch (err) {
+        addLog('✗ Connection failed: ' + err.message, 'error');
+        updateStatus('disconnected', 'Disconnected');
+    }
+}
+
+// Disconnect from scale
+async function disconnect() {
+    addLog('Disconnecting...', 'info');
+
+    if (scaleReader) {
+        await scaleReader.disconnect();
+        scaleReader = null;
+    }
+
+    isConnected = false;
+    updateStatus('disconnected', 'Disconnected');
+    hideConnectionInfo();
+    showDisconnectedButtons();
+
+    document.getElementById('weightValue').textContent = '0.00';
+    document.getElementById('weightStatus').textContent = 'Disconnected';
+
+    addLog('✓ Disconnected', 'info');
+}
+
+// Handle weight updates from scale
+function handleWeightUpdate(data) {
+    document.getElementById('weightValue').textContent = data.weight.toFixed(2);
+    document.getElementById('weightUnit').textContent = data.unit;
+    document.getElementById('weightStatus').textContent = data.stable ? '✓ Stable' : '⚖️ Weighing...';
+
+    addLog(`Weight: ${data.weight} ${data.unit} ${data.stable ? '(stable)' : ''}`, 'success');
+    addLog(`Raw: ${data.rawData}`, 'info');
+}
+
+// Handle status updates
+function handleStatusUpdate(data) {
+    if (data.status === 'error') {
+        addLog('Error: ' + data.message, 'error');
+        updateStatus('disconnected', 'Error');
+    } else if (data.status === 'disconnected') {
+        updateStatus('disconnected', 'Disconnected');
+    }
+}
+
+// Update status badge
+function updateStatus(status, text) {
+    const badge = document.getElementById('statusBadge');
+    badge.className = `status-badge ${status}`;
+    badge.querySelector('span:last-child').textContent = text;
+}
+
+// Show connection info
+function showConnectionInfo(config) {
+    document.getElementById('connectionInfo').style.display = 'grid';
+    document.getElementById('infoBaudRate').textContent = config.baudRate;
+    document.getElementById('infoDataBits').textContent = config.dataBits;
+    document.getElementById('infoParity').textContent = config.parity;
+    document.getElementById('infoStopBits').textContent = config.stopBits;
+}
+
+// Hide connection info
+function hideConnectionInfo() {
+    document.getElementById('connectionInfo').style.display = 'none';
+}
+
+// Show connected state buttons
+function showConnectedButtons() {
+    document.getElementById('autoDetectBtn').style.display = 'none';
+    document.getElementById('connectBtn').style.display = 'none';
+    document.getElementById('disconnectBtn').style.display = 'inline-flex';
+}
+
+// Show disconnected state buttons
+function showDisconnectedButtons() {
+    document.getElementById('autoDetectBtn').style.display = 'inline-flex';
+    document.getElementById('autoDetectBtn').disabled = false;
+    document.getElementById('connectBtn').style.display = 'none';
+    document.getElementById('disconnectBtn').style.display = 'none';
+}
+
+// Add log entry
+function addLog(message, type = 'info') {
+    const container = document.getElementById('logContainer');
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+
+    const timestamp = new Date().toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+
+    entry.textContent = `[${timestamp}] ${message}`;
+    container.appendChild(entry);
+
+    // Auto-scroll to bottom
+    container.scrollTop = container.scrollHeight;
+
+    // Limit to 100 entries
+    while (container.children.length > 100) {
+        container.removeChild(container.firstChild);
+    }
+}
+</script>
+{% endblock %}
