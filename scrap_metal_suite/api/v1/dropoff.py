@@ -1,0 +1,716 @@
+# Dropoff API Endpoints
+# Handles drop-off operations for POS terminal (1-truck-per-dropoff design)
+
+import frappe
+from frappe import _
+from frappe.utils import flt, nowdate, now_datetime, add_to_date, get_datetime
+import json
+
+
+def check_pos_operator():
+    """
+    Check if current user has POS Operator role.
+    Raises PermissionError if not authorized.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Please login to access POS"), frappe.AuthenticationError)
+
+    user_roles = frappe.get_roles(frappe.session.user)
+    if "POS Operator" not in user_roles and "System Manager" not in user_roles:
+        frappe.throw(_("Access denied. POS Operator role required."), frappe.PermissionError)
+
+
+def _update_session_activity(session):
+    """Update last_activity timestamp for session timeout tracking."""
+    if session:
+        frappe.db.set_value("POS Session", session, "last_activity", now_datetime(), update_modified=False)
+
+
+def _auto_transition_status(dropoff_doc):
+    """
+    Auto-transition dropoff status based on weights recorded.
+    Called after recording truck/scrap weights.
+
+    Transitions:
+    - Draft/Scheduled -> Weighing (first truck weight)
+    - Weighing -> Unloading (first scrap weight)
+    - Unloading -> Verified (all done, variance OK)
+    - Unloading -> Needs Attention (all done, variance NOT OK)
+    """
+    current = dropoff_doc.status
+
+    # Check if we have truck weights
+    has_gross = dropoff_doc.gross_weight and dropoff_doc.gross_weight > 0
+    has_tare = dropoff_doc.tare_weight and dropoff_doc.tare_weight > 0
+    has_truck_weight = has_gross or has_tare
+
+    # Check if we have scrap weights
+    has_scrap = dropoff_doc.total_scrap_weight and dropoff_doc.total_scrap_weight > 0
+
+    # All weights complete = both truck weights AND scrap weights
+    all_complete = has_gross and has_tare and has_scrap
+
+    if current in ["Draft", "Scheduled"] and has_truck_weight:
+        dropoff_doc.status = "Weighing"
+    elif current == "Weighing" and has_scrap:
+        dropoff_doc.status = "Unloading"
+    elif current == "Unloading" and all_complete:
+        # Check variance
+        if dropoff_doc.variance_ok:
+            dropoff_doc.status = "Verified"
+        else:
+            dropoff_doc.status = "Needs Attention"
+
+
+# =============================================================================
+# SEARCH & LOOKUP
+# =============================================================================
+
+@frappe.whitelist()
+def lookup_dropoff(query):
+    """
+    Search for Drop-offs by ID or license plate.
+
+    Args:
+        query: Search term (DO-YYMMDD-XXX or license plate)
+
+    Returns:
+        list: Matching drop-offs with status, order_count
+    """
+    check_pos_operator()
+
+    if not query or len(query) < 2:
+        return []
+
+    # Try exact match first
+    exact = frappe.db.get_value(
+        "Dropoff",
+        {"name": query},
+        ["name", "dropoff_date", "license_plate", "supplier_name", "status"],
+        as_dict=True
+    )
+    if exact:
+        exact["order_count"] = frappe.db.count("Dropoff Order", {"parent": exact.name})
+        return [exact]
+
+    # Try license plate exact match
+    plate_match = frappe.db.get_value(
+        "Dropoff",
+        {"license_plate": query},
+        ["name", "dropoff_date", "license_plate", "supplier_name", "status"],
+        as_dict=True
+    )
+    if plate_match:
+        plate_match["order_count"] = frappe.db.count("Dropoff Order", {"parent": plate_match.name})
+        return [plate_match]
+
+    # Partial search within recent dates (+/- 3 days)
+    today = nowdate()
+    date_start = add_to_date(today, days=-3)
+    date_end = add_to_date(today, days=3)
+
+    dropoffs = frappe.db.sql("""
+        SELECT name, dropoff_date, license_plate, supplier_name, status
+        FROM `tabDropoff`
+        WHERE dropoff_date BETWEEN %(start)s AND %(end)s
+          AND (name LIKE %(q)s OR license_plate LIKE %(q)s)
+        ORDER BY dropoff_date DESC, creation DESC
+        LIMIT 10
+    """, {"start": date_start, "end": date_end, "q": f"%{query}%"}, as_dict=True)
+
+    for d in dropoffs:
+        d["order_count"] = frappe.db.count("Dropoff Order", {"parent": d.name})
+
+    return dropoffs
+
+
+@frappe.whitelist()
+def get_dropoff_by_qr(qr_data):
+    """
+    Parse QR code data and return dropoff details.
+
+    Args:
+        qr_data: QR content - URL or dropoff ID
+                 e.g., "https://site.com/dropoff/DO-251226-00001" or "DO-251226-00001"
+
+    Returns:
+        dict: Dropoff details or error
+    """
+    check_pos_operator()
+
+    if not qr_data:
+        return {"error": "Empty QR data"}
+
+    # Extract dropoff ID from URL if needed
+    dropoff_id = qr_data.strip()
+    if "/dropoff/" in dropoff_id:
+        dropoff_id = dropoff_id.split("/dropoff/")[-1].split("?")[0].strip()
+
+    if not dropoff_id:
+        return {"error": "Invalid QR format"}
+
+    # Check if dropoff exists
+    if not frappe.db.exists("Dropoff", dropoff_id):
+        return {"error": f"Dropoff '{dropoff_id}' not found"}
+
+    # Return full details
+    return get_dropoff_details(dropoff_id)
+
+
+@frappe.whitelist()
+def get_dropoff_details(dropoff):
+    """
+    Get full details of a Drop-off for terminal display.
+
+    Args:
+        dropoff: Dropoff document name
+
+    Returns:
+        dict: Complete dropoff info including truck weights, orders, scrap weights
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+
+    # Get linked orders with details
+    orders = []
+    for order_row in doc.orders:
+        order_data = frappe.db.get_value(
+            "POS Order",
+            order_row.pos_order,
+            ["name", "supplier_name", "contracted_weight", "total_received",
+             "fulfillment_percent", "fulfillment_status"],
+            as_dict=True
+        )
+        if order_data:
+            order_data["allocated_weight"] = order_row.allocated_weight
+            orders.append(order_data)
+
+    # Get scrap weight records
+    scrap_weights = frappe.get_all(
+        "Scrap Weight",
+        filters={"dropoff": dropoff},
+        fields=["name", "total_weight", "posting_date", "posting_time", "is_reweight"],
+        order_by="creation asc"
+    )
+
+    for sw in scrap_weights:
+        sw["items_count"] = frappe.db.count("Scrap Weight Item", {"parent": sw.name})
+
+    return {
+        "name": doc.name,
+        "dropoff_date": doc.dropoff_date,
+        "dropoff_time": doc.dropoff_time,
+        "license_plate": doc.license_plate,
+        "supplier": doc.supplier,
+        "supplier_name": doc.supplier_name,
+        "status": doc.status,
+        "variance_threshold_percent": doc.variance_threshold_percent,
+        # Truck weights (inline)
+        "gross_weight": doc.gross_weight,
+        "gross_weight_time": doc.gross_weight_time,
+        "gross_weight_scale": doc.gross_weight_scale,
+        "gross_weight_operator": doc.gross_weight_operator,
+        "tare_weight": doc.tare_weight,
+        "tare_weight_time": doc.tare_weight_time,
+        "tare_weight_scale": doc.tare_weight_scale,
+        "tare_weight_operator": doc.tare_weight_operator,
+        "net_weight": doc.net_weight,
+        "truck_remarks": doc.truck_remarks,
+        "is_reweighed": doc.is_reweighed,
+        # Orders
+        "orders": orders,
+        "order_count": len(orders),
+        # Scrap weights
+        "scrap_weights": scrap_weights,
+        "total_scrap_weight": doc.total_scrap_weight,
+        # Verification
+        "total_truck_weight": doc.total_truck_weight,
+        "truck_variance": doc.truck_variance,
+        "truck_variance_percent": doc.truck_variance_percent,
+        "variance_ok": doc.variance_ok
+    }
+
+
+# =============================================================================
+# TRUCK WEIGHT RECORDING
+# =============================================================================
+
+@frappe.whitelist()
+def record_truck_weight(dropoff, weight_type, weight, scale=None, session=None):
+    """
+    Record gross or tare weight for the dropoff truck.
+    Also creates Truck Weight audit record.
+
+    Args:
+        dropoff: Dropoff document name
+        weight_type: 'gross' or 'tare'
+        weight: Weight in kg
+        scale: Scale name (optional)
+        session: POS Session name (optional, for audit)
+
+    Returns:
+        dict: Updated weights, status, truck_weight_record name
+    """
+    check_pos_operator()
+
+    if weight_type not in ["gross", "tare"]:
+        frappe.throw(_("weight_type must be 'gross' or 'tare'"))
+
+    # Validate weight
+    try:
+        weight = float(weight)
+    except (ValueError, TypeError):
+        frappe.throw(_("Invalid weight value"))
+
+    if weight <= 0:
+        frappe.throw(_("Weight must be greater than 0"))
+
+    # Validate scale capacity if provided
+    if scale:
+        scale_info = frappe.db.get_value(
+            "Scale", scale, ["max_capacity_kg", "scale_name"], as_dict=True
+        )
+        if not scale_info:
+            frappe.throw(_("Scale not found: {0}").format(scale))
+        if scale_info.max_capacity_kg and weight > scale_info.max_capacity_kg:
+            frappe.throw(_("Weight {0} kg exceeds scale {1} capacity of {2} kg").format(
+                weight, scale_info.scale_name, scale_info.max_capacity_kg
+            ))
+
+    # Update session activity
+    _update_session_activity(session)
+
+    # Get session info for audit
+    session_data = None
+    if session:
+        session_data = frappe.db.get_value(
+            "POS Session", session, ["pos_profile"], as_dict=True
+        )
+
+    # Update dropoff
+    doc = frappe.get_doc("Dropoff", dropoff)
+
+    weight = flt(weight)
+    now = now_datetime()
+
+    if weight_type == "gross":
+        doc.gross_weight = weight
+        doc.gross_weight_time = now
+        doc.gross_weight_scale = scale
+        doc.gross_weight_operator = frappe.session.user
+    else:
+        doc.tare_weight = weight
+        doc.tare_weight_time = now
+        doc.tare_weight_scale = scale
+        doc.tare_weight_operator = frappe.session.user
+
+    # Auto-transition status
+    _auto_transition_status(doc)
+
+    doc.save()
+
+    # Create Truck Weight audit record
+    truck_weight = frappe.get_doc({
+        "doctype": "Truck Weight",
+        "dropoff": dropoff,
+        "weight_type": weight_type.capitalize(),
+        "weight": weight,
+        "weighed_at": now,
+        "scale": scale,
+        "operator": frappe.session.user,
+        "session": session,
+        "pos_profile": session_data.pos_profile if session_data else None
+    })
+    truck_weight.insert()
+
+    return {
+        "dropoff": doc.name,
+        "status": doc.status,
+        "gross_weight": doc.gross_weight,
+        "gross_weight_time": doc.gross_weight_time,
+        "tare_weight": doc.tare_weight,
+        "tare_weight_time": doc.tare_weight_time,
+        "net_weight": doc.net_weight,
+        "truck_weight_record": truck_weight.name
+    }
+
+
+@frappe.whitelist()
+def mark_truck_reweighed(dropoff, reason):
+    """
+    Mark dropoff truck as reweighed.
+
+    Args:
+        dropoff: Dropoff document name
+        reason: Reason for reweight
+
+    Returns:
+        dict: Success status
+    """
+    check_pos_operator()
+
+    if not reason:
+        frappe.throw(_("Reweight reason is required"))
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+    doc.is_reweighed = 1
+    doc.reweight_reason = reason
+    doc.reweight_by = frappe.session.user
+    doc.reweight_at = now_datetime()
+    doc.save()
+
+    return {
+        "success": True,
+        "is_reweighed": 1,
+        "reweight_reason": reason
+    }
+
+
+@frappe.whitelist()
+def save_truck_remarks(dropoff, remarks=None):
+    """
+    Save remarks for truck.
+
+    Args:
+        dropoff: Dropoff document name
+        remarks: Text remarks
+
+    Returns:
+        dict: Success status
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+
+    if remarks:
+        from frappe.utils import sanitize_html
+        doc.truck_remarks = sanitize_html(str(remarks).strip())[:2000]
+
+    doc.save()
+
+    return {"success": True, "truck_remarks": doc.truck_remarks}
+
+
+@frappe.whitelist()
+def save_truck_photo(dropoff, photo):
+    """
+    Save photo for truck with proper naming convention.
+
+    Args:
+        dropoff: Dropoff document name
+        photo: File attachment
+
+    Returns:
+        dict: Success status with photo URL
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+    doc.truck_photo = photo
+    doc.save()
+
+    return {"success": True, "truck_photo": doc.truck_photo}
+
+
+# =============================================================================
+# SCRAP WEIGHT RECORDING
+# =============================================================================
+
+@frappe.whitelist()
+def record_scrap_weight(session, dropoff, items, remarks=None,
+                        existing_scrap_weight=None, reweight_reason=None):
+    """
+    Record scrap weight for a drop-off.
+
+    Args:
+        session: POS Session name (required)
+        dropoff: Dropoff document name (required)
+        items: JSON list [{item_code, weight, uom}]
+        remarks: Optional text
+        existing_scrap_weight: For reweight - update this doc
+        reweight_reason: Required if reweighting
+
+    Returns:
+        dict: scrap_weight name, totals, variance info
+    """
+    check_pos_operator()
+
+    if isinstance(items, str):
+        items = json.loads(items)
+
+    if not items:
+        frappe.throw(_("At least one item is required"))
+
+    # Validate session
+    session_data = frappe.db.get_value(
+        "POS Session", session,
+        ["status", "scale", "pos_profile", "operator"],
+        as_dict=True
+    )
+    if not session_data or session_data.status != "Open":
+        frappe.throw(_("Session {0} is not open").format(session))
+
+    if session_data.operator != frappe.session.user:
+        frappe.throw(_("This session does not belong to the current user"))
+
+    # Update session activity
+    _update_session_activity(session)
+
+    # Validate dropoff exists
+    if not frappe.db.exists("Dropoff", dropoff):
+        frappe.throw(_("Dropoff {0} not found").format(dropoff))
+
+    # Get scale max capacity
+    scale_max = None
+    if session_data.scale:
+        scale_max = frappe.db.get_value("Scale", session_data.scale, "max_capacity_kg")
+
+    # Build items list with validation
+    weight_items = []
+    for item in items:
+        item_code = item.get("item_code")
+
+        try:
+            weight = float(item.get("weight", 0))
+        except (ValueError, TypeError):
+            frappe.throw(_("Invalid weight for item {0}").format(item_code))
+
+        if weight <= 0:
+            frappe.throw(_("Weight must be > 0 for item {0}").format(item_code))
+
+        if scale_max and weight > scale_max:
+            frappe.throw(_("Weight {0} exceeds scale capacity {1}").format(weight, scale_max))
+
+        weight_items.append({
+            "item_code": item_code,
+            "weight": flt(weight),
+            "uom": item.get("uom", "Kg")
+        })
+
+    # Sanitize remarks
+    sanitized_remarks = None
+    if remarks:
+        from frappe.utils import sanitize_html
+        sanitized_remarks = sanitize_html(str(remarks).strip())[:1000]
+
+    sanitized_reweight_reason = None
+    if reweight_reason:
+        from frappe.utils import sanitize_html
+        sanitized_reweight_reason = sanitize_html(str(reweight_reason).strip())[:500]
+
+    is_reweight = False
+
+    if existing_scrap_weight:
+        # UPDATE existing
+        scrap_weight = frappe.get_doc("Scrap Weight", existing_scrap_weight)
+        scrap_weight.items = []
+        for item_data in weight_items:
+            scrap_weight.append("items", item_data)
+
+        scrap_weight.is_reweight = 1
+        scrap_weight.reweight_reason = sanitized_reweight_reason
+        scrap_weight.reweight_at = now_datetime()
+        scrap_weight.reweight_by = frappe.session.user
+        scrap_weight.remarks = sanitized_remarks
+        scrap_weight.save()
+        is_reweight = True
+    else:
+        # CREATE new
+        scrap_weight = frappe.get_doc({
+            "doctype": "Scrap Weight",
+            "dropoff": dropoff,
+            "posting_date": nowdate(),
+            "session": session,
+            "pos_profile": session_data.pos_profile,
+            "scale": session_data.scale,
+            "remarks": sanitized_remarks,
+            "is_reweight": 0,
+            "items": weight_items
+        })
+        scrap_weight.insert()
+
+    # Reload dropoff to get updated totals (controller syncs on save)
+    dropoff_doc = frappe.get_doc("Dropoff", dropoff)
+
+    # Auto-transition status
+    _auto_transition_status(dropoff_doc)
+    dropoff_doc.save()
+
+    return {
+        "scrap_weight": scrap_weight.name,
+        "total_weight": scrap_weight.total_weight,
+        "is_reweight": is_reweight,
+        "dropoff_status": dropoff_doc.status,
+        "dropoff_total_scrap": dropoff_doc.total_scrap_weight,
+        "truck_variance": dropoff_doc.truck_variance,
+        "truck_variance_percent": dropoff_doc.truck_variance_percent,
+        "variance_ok": dropoff_doc.variance_ok
+    }
+
+
+@frappe.whitelist()
+def load_scrap_weight(scrap_weight_id):
+    """
+    Load existing Scrap Weight for editing (reweight).
+
+    Args:
+        scrap_weight_id: Scrap Weight document name
+
+    Returns:
+        dict: Scrap weight data with items
+    """
+    check_pos_operator()
+
+    sw = frappe.get_doc("Scrap Weight", scrap_weight_id)
+
+    items = []
+    for item in sw.items:
+        items.append({
+            "item_code": item.item_code,
+            "item_name": item.item_name,
+            "weight": item.weight,
+            "uom": item.uom
+        })
+
+    return {
+        "name": sw.name,
+        "dropoff": sw.dropoff,
+        "items": items,
+        "remarks": sw.remarks,
+        "is_reweight": sw.is_reweight
+    }
+
+
+# =============================================================================
+# VERIFICATION & COMPLETION
+# =============================================================================
+
+@frappe.whitelist()
+def get_dropoff_verification(dropoff):
+    """
+    Get verification summary for completion screen.
+
+    Args:
+        dropoff: Dropoff document name
+
+    Returns:
+        dict: Complete verification data with can_complete flag
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+
+    # Get scrap records
+    scrap_records = frappe.get_all(
+        "Scrap Weight",
+        filters={"dropoff": dropoff},
+        fields=["name", "total_weight", "is_reweight", "posting_date", "posting_time"],
+        order_by="creation asc"
+    )
+
+    # Get orders with fulfillment info
+    orders = []
+    for order_row in doc.orders:
+        order_data = frappe.db.get_value(
+            "POS Order",
+            order_row.pos_order,
+            ["name", "supplier_name", "contracted_weight", "total_received",
+             "fulfillment_percent", "fulfillment_status"],
+            as_dict=True
+        )
+        if order_data:
+            order_data["allocated_weight"] = order_row.allocated_weight
+            orders.append(order_data)
+
+    # Determine if can complete
+    blockers = []
+
+    if not doc.gross_weight:
+        blockers.append("Missing gross weight")
+    if not doc.tare_weight:
+        blockers.append("Missing tare weight")
+    if not doc.total_scrap_weight:
+        blockers.append("No scrap weights recorded")
+    if not doc.variance_ok:
+        blockers.append(f"Variance {doc.truck_variance_percent:.2f}% exceeds threshold {doc.variance_threshold_percent}%")
+    if doc.status == "Closed":
+        blockers.append("Already closed")
+    if doc.status == "Cancelled":
+        blockers.append("Dropoff is cancelled")
+
+    can_complete = len(blockers) == 0 and doc.status in ["Verified", "Unloading"]
+
+    return {
+        "dropoff": doc.name,
+        "status": doc.status,
+        # Truck
+        "license_plate": doc.license_plate,
+        "gross_weight": doc.gross_weight,
+        "tare_weight": doc.tare_weight,
+        "net_weight": doc.net_weight,
+        "is_reweighed": doc.is_reweighed,
+        # Scrap
+        "scrap_records": scrap_records,
+        "total_scrap_weight": doc.total_scrap_weight,
+        # Variance
+        "total_truck_weight": doc.total_truck_weight,
+        "truck_variance": doc.truck_variance,
+        "truck_variance_percent": doc.truck_variance_percent,
+        "variance_threshold_percent": doc.variance_threshold_percent,
+        "variance_ok": doc.variance_ok,
+        # Orders
+        "orders": orders,
+        # Completion
+        "can_complete": can_complete,
+        "completion_blockers": blockers
+    }
+
+
+@frappe.whitelist()
+def complete_dropoff(dropoff):
+    """
+    Complete dropoff - set status to Closed, allocate weights to orders.
+
+    Args:
+        dropoff: Dropoff document name
+
+    Returns:
+        dict: Completion result with updated orders
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+
+    # Validate can complete
+    if doc.status not in ["Verified", "Unloading"]:
+        frappe.throw(_("Can only complete dropoff from Verified or Unloading status. Current: {0}").format(doc.status))
+
+    if not doc.gross_weight or not doc.tare_weight:
+        frappe.throw(_("Both gross and tare weights are required"))
+
+    if not doc.total_scrap_weight:
+        frappe.throw(_("No scrap weights recorded"))
+
+    # Set status to Closed - this triggers allocation via controller
+    doc.status = "Closed"
+    doc.save()
+
+    # Get updated order info
+    orders_updated = []
+    for order_row in doc.orders:
+        order_data = frappe.db.get_value(
+            "POS Order",
+            order_row.pos_order,
+            ["name", "total_received", "fulfillment_percent", "fulfillment_status"],
+            as_dict=True
+        )
+        if order_data:
+            order_data["allocated_weight"] = order_row.allocated_weight
+            orders_updated.append(order_data)
+
+    return {
+        "dropoff": doc.name,
+        "status": "Closed",
+        "orders_updated": orders_updated
+    }

@@ -1,0 +1,58 @@
+{
+ "actions": [],
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "scrap_weight",
+  "item",
+  "item_name",
+  "column_break_1",
+  "actual_weight"
+ ],
+ "fields": [
+  {
+   "fieldname": "scrap_weight",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Scrap Weight",
+   "options": "Scrap Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "actual_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Actual Weight (kg)",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "module": "Scrap Metal Suite",
+ "name": "Dropoff Actual Item",
+ "naming_rule": "Random",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

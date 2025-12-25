@@ -153,23 +153,14 @@ role_home_page = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"scrap_metal_suite.tasks.all"
-# 	],
-# 	"daily": [
-# 		"scrap_metal_suite.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"scrap_metal_suite.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"scrap_metal_suite.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"scrap_metal_suite.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+    "cron": {
+        # Close idle POS sessions every 15 minutes (sessions idle > 90 mins)
+        "*/15 * * * *": [
+            "scrap_metal_suite.scheduler.close_idle_sessions"
+        ]
+    }
+}
 
 # Testing
 # -------
@@ -178,12 +169,13 @@ role_home_page = {
 
 # Overriding Methods
 # ------------------------------
+# Override get_count to handle "Dropoff" doctype which triggers SQL sanitizer
+# due to "drop" being a blacklisted keyword in Frappe db_query.py
+override_whitelisted_methods = {
+    "frappe.desk.reportview.get_count": "scrap_metal_suite.overrides.reportview.get_count"
+}
 #
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "scrap_metal_suite.event.get_events"
-# }
-#
-# each overriding function accepts a `data` argument;
+# each overriding function accepts a data argument;
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps
 # override_doctype_dashboards = {

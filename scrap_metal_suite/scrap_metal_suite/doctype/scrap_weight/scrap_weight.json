@@ -6,13 +6,11 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
-  "pos_order",
-  "supplier",
+  "dropoff",
   "supplier_name",
   "column_break_1",
   "posting_date",
   "posting_time",
-  "license_plate",
   "is_reweight",
   "reweight_reason",
   "reweight_at",
@@ -36,28 +34,21 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Naming Series",
-   "options": "WGT-.YYYY.-",
+   "options": "WGT-.YY.MM.DD.-",
    "reqd": 1
   },
   {
-   "fieldname": "pos_order",
+   "fieldname": "dropoff",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "POS Order",
-   "options": "POS Order"
+   "label": "Drop-off",
+   "options": "Dropoff",
+   "reqd": 1,
+   "description": "The drop-off event this weight record belongs to"
   },
   {
-   "fieldname": "supplier",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Supplier",
-   "options": "Supplier",
-   "reqd": 1
-  },
-  {
-   "fetch_from": "supplier.supplier_name",
+   "fetch_from": "dropoff.supplier_name",
    "fieldname": "supplier_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -83,20 +74,13 @@
    "label": "Posting Time"
   },
   {
-   "fetch_from": "pos_order.license_plate",
-   "fieldname": "license_plate",
-   "fieldtype": "Data",
-   "label": "License Plate",
-   "read_only": 1
-  },
-  {
    "default": "0",
    "fieldname": "is_reweight",
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Is Re-weight",
    "read_only": 1,
-   "description": "Indicates this is a re-weighing of a previously processed order"
+   "description": "Indicates this is a re-weighing"
   },
   {
    "fieldname": "reweight_by",
@@ -120,7 +104,7 @@
    "fieldtype": "Small Text",
    "label": "Reweight Reason",
    "depends_on": "is_reweight",
-   "description": "Reason for re-weighing this order"
+   "description": "Reason for re-weighing"
   },
   {
    "collapsible": 1,
@@ -160,7 +144,7 @@
    "label": "Scale",
    "options": "Scale",
    "read_only": 1,
-   "description": "Scrap scale used for this weighing (inherited from session)"
+   "description": "Scrap scale used for this weighing"
   },
   {
    "fieldname": "section_break_items",
@@ -200,7 +184,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-11 12:00:00.000000",
+ "modified": "2025-12-25 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "Scrap Weight",

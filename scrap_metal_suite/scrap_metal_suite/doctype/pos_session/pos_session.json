@@ -13,6 +13,8 @@
   "status",
   "opening_time",
   "closing_time",
+  "last_activity",
+  "closed_by",
   "section_break_totals",
   "total_purchases",
   "column_break_2",
@@ -25,7 +27,7 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Naming Series",
-   "options": "SES-.YYYY.-",
+   "options": "SES-.YY.MM.DD.-",
    "reqd": 1
   },
   {
@@ -80,6 +82,21 @@
    "fieldname": "closing_time",
    "fieldtype": "Datetime",
    "label": "Closing Time"
+  },
+  {
+   "fieldname": "last_activity",
+   "fieldtype": "Datetime",
+   "label": "Last Activity",
+   "read_only": 1,
+   "description": "Last activity timestamp for session timeout tracking"
+  },
+  {
+   "fieldname": "closed_by",
+   "fieldtype": "Link",
+   "label": "Closed By",
+   "options": "User",
+   "read_only": 1,
+   "description": "User who closed the session (or System for auto-close)"
   },
   {
    "fieldname": "section_break_totals",

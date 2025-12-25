@@ -88,7 +88,12 @@ def get_active_session():
         scale_info = frappe.db.get_value(
             "Scale",
             session.scale,
-            ["scale_name", "scale_type", "usage_type", "location", "max_capacity_kg"],
+            [
+                "scale_name", "scale_type", "usage_type", "location", "max_capacity_kg",
+                # Serial settings for WebSerial auto-reconnect
+                "baud_rate", "data_bits", "parity", "stop_bits", "flow_control",
+                "protocol_detected", "unit_conversion_factor", "signal_unit"
+            ],
             as_dict=True
         )
         if scale_info:
@@ -97,6 +102,15 @@ def get_active_session():
             session.scale_usage_type = scale_info.usage_type
             session.scale_location = scale_info.location
             session.scale_max_capacity_kg = scale_info.max_capacity_kg  # CLIENT-SIDE VALIDATION: Include max capacity
+            # Serial settings for WebSerial auto-reconnect
+            session.baud_rate = scale_info.baud_rate
+            session.data_bits = scale_info.data_bits
+            session.parity = scale_info.parity
+            session.stop_bits = scale_info.stop_bits
+            session.flow_control = scale_info.flow_control
+            session.protocol_detected = scale_info.protocol_detected
+            session.unit_conversion_factor = scale_info.unit_conversion_factor
+            session.signal_unit = scale_info.signal_unit
 
     return session
 
@@ -161,6 +175,41 @@ def close_session(session):
         frappe.throw(_("You can only close your own sessions"))
 
     return session_doc.close_session()
+
+
+@frappe.whitelist()
+def update_session_activity(session):
+    """
+    Update last_activity timestamp for session timeout tracking.
+    Called by frontend as heartbeat.
+
+    Args:
+        session: POS Session name
+
+    Returns:
+        dict: Success status
+    """
+    check_pos_operator()
+
+    session_data = frappe.db.get_value(
+        "POS Session", session, ["status", "operator"], as_dict=True
+    )
+
+    if not session_data:
+        frappe.throw(_("Session {0} not found").format(session))
+
+    if session_data.status != "Open":
+        return {"success": False, "message": "Session is not open"}
+
+    if session_data.operator != frappe.session.user:
+        frappe.throw(_("This session does not belong to you"))
+
+    frappe.db.set_value(
+        "POS Session", session, "last_activity",
+        frappe.utils.now_datetime(), update_modified=False
+    )
+
+    return {"success": True, "last_activity": frappe.utils.now_datetime()}
 
 
 @frappe.whitelist()
@@ -813,7 +862,13 @@ def get_scales(usage_type=None, scale_type=None):
     scales = frappe.get_all(
         "Scale",
         filters=filters,
-        fields=["name", "scale_name", "scale_type", "usage_type", "location", "max_capacity_kg", "is_active", "in_use", "in_use_by_session"],
+        fields=[
+            "name", "scale_name", "scale_type", "usage_type", "location",
+            "max_capacity_kg", "is_active", "in_use", "in_use_by_session",
+            # Serial settings for WebSerial connection
+            "baud_rate", "data_bits", "parity", "stop_bits", "flow_control",
+            "protocol_detected", "unit_conversion_factor", "signal_unit"
+        ],
         order_by="scale_name asc"
     )
 

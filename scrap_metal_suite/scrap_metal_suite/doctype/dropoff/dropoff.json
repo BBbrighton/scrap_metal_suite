@@ -1,0 +1,462 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "dropoff_date",
+  "dropoff_time",
+  "column_break_header",
+  "license_plate",
+  "variance_threshold_percent",
+  "status",
+  "section_break_supplier",
+  "supplier",
+  "supplier_name",
+  "section_break_orders",
+  "orders",
+  "section_break_expected",
+  "expected_items",
+  "total_indicated_weight",
+  "section_break_actual",
+  "actual_items",
+  "total_actual_weight",
+  "section_break_summary",
+  "item_summary",
+  "section_break_truck_weight",
+  "gross_weight",
+  "gross_weight_scale",
+  "gross_weight_time",
+  "gross_weight_operator",
+  "column_break_truck",
+  "tare_weight",
+  "tare_weight_scale",
+  "tare_weight_time",
+  "tare_weight_operator",
+  "section_break_net",
+  "net_weight",
+  "truck_photo",
+  "truck_remarks",
+  "section_break_verification",
+  "total_truck_weight",
+  "total_scrap_weight",
+  "column_break_verification",
+  "truck_variance",
+  "truck_variance_percent",
+  "variance_ok",
+  "section_break_unallocated",
+  "unallocated_weight",
+  "unallocated_items",
+  "section_break_reweight",
+  "is_reweighed",
+  "reweight_reason",
+  "column_break_reweight",
+  "reweight_by",
+  "reweight_at",
+  "section_break_cancel",
+  "cancellation_reason",
+  "column_break_cancel",
+  "cancelled_by",
+  "cancelled_at",
+  "section_break_remarks",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "DO-.YY.MM.DD.-",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "dropoff_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Drop-off Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dropoff_time",
+   "fieldtype": "Time",
+   "label": "Drop-off Time"
+  },
+  {
+   "fieldname": "column_break_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "license_plate",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "License Plate",
+   "reqd": 1,
+   "description": "Truck license plate number"
+  },
+  {
+   "default": "0.01",
+   "fieldname": "variance_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Variance Threshold %",
+   "description": "Maximum acceptable variance percentage (default 0.01%)"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nScheduled\nWeighing\nUnloading\nVerified\nNeeds Attention\nClosed\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_supplier",
+   "fieldtype": "Section Break",
+   "label": "Supplier"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "read_only": 1,
+   "description": "Auto-set from linked orders"
+  },
+  {
+   "fetch_from": "supplier.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_orders",
+   "fieldtype": "Section Break",
+   "label": "Linked Orders"
+  },
+  {
+   "fieldname": "orders",
+   "fieldtype": "Table",
+   "label": "Orders",
+   "options": "Dropoff Order",
+   "description": "POS Orders to be fulfilled by this drop-off"
+  },
+  {
+   "fieldname": "section_break_expected",
+   "fieldtype": "Section Break",
+   "label": "Expected Items (Indicated by Supplier)"
+  },
+  {
+   "fieldname": "expected_items",
+   "fieldtype": "Table",
+   "label": "Expected Items",
+   "options": "Dropoff Expected Item",
+   "description": "Supplier's claimed/expected items before actual weighing"
+  },
+  {
+   "fieldname": "total_indicated_weight",
+   "fieldtype": "Float",
+   "label": "Total Indicated Weight (kg)",
+   "read_only": 1,
+   "description": "Sum of all indicated weights from expected items"
+  },
+  {
+   "fieldname": "section_break_actual",
+   "fieldtype": "Section Break",
+   "label": "Actual Items (Weighed)"
+  },
+  {
+   "fieldname": "actual_items",
+   "fieldtype": "Table",
+   "label": "Actual Items",
+   "options": "Dropoff Actual Item",
+   "read_only": 1,
+   "description": "Items actually weighed from linked Scrap Weight records"
+  },
+  {
+   "fieldname": "total_actual_weight",
+   "fieldtype": "Float",
+   "label": "Total Actual Weight (kg)",
+   "read_only": 1,
+   "description": "Sum of all actual weights from scrap weight records"
+  },
+  {
+   "fieldname": "section_break_summary",
+   "fieldtype": "Section Break",
+   "label": "Item Summary (Aggregated)"
+  },
+  {
+   "fieldname": "item_summary",
+   "fieldtype": "Table",
+   "label": "Item Summary",
+   "options": "Dropoff Item Summary",
+   "read_only": 1,
+   "description": "Aggregated totals by item across all weighings"
+  },
+  {
+   "fieldname": "section_break_truck_weight",
+   "fieldtype": "Section Break",
+   "label": "Truck Weight (Gross)"
+  },
+  {
+   "fieldname": "gross_weight",
+   "fieldtype": "Float",
+   "label": "Gross Weight (kg)",
+   "description": "Weight of truck with scrap (weighed first)"
+  },
+  {
+   "fieldname": "gross_weight_scale",
+   "fieldtype": "Link",
+   "label": "Scale",
+   "options": "Scale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gross_weight_time",
+   "fieldtype": "Datetime",
+   "label": "Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gross_weight_operator",
+   "fieldtype": "Link",
+   "label": "Operator",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_truck",
+   "fieldtype": "Column Break",
+   "label": "Truck Weight (Tare)"
+  },
+  {
+   "fieldname": "tare_weight",
+   "fieldtype": "Float",
+   "label": "Tare Weight (kg)",
+   "description": "Weight of empty truck (weighed after unloading)"
+  },
+  {
+   "fieldname": "tare_weight_scale",
+   "fieldtype": "Link",
+   "label": "Scale",
+   "options": "Scale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tare_weight_time",
+   "fieldtype": "Datetime",
+   "label": "Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tare_weight_operator",
+   "fieldtype": "Link",
+   "label": "Operator",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_net",
+   "fieldtype": "Section Break",
+   "label": "Net Weight & Notes"
+  },
+  {
+   "fieldname": "net_weight",
+   "fieldtype": "Float",
+   "label": "Net Weight (kg)",
+   "read_only": 1,
+   "description": "Gross - Tare (calculated automatically)"
+  },
+  {
+   "fieldname": "truck_photo",
+   "fieldtype": "Attach Image",
+   "label": "Truck Photo"
+  },
+  {
+   "fieldname": "truck_remarks",
+   "fieldtype": "Small Text",
+   "label": "Truck Remarks"
+  },
+  {
+   "fieldname": "section_break_verification",
+   "fieldtype": "Section Break",
+   "label": "Weight Verification"
+  },
+  {
+   "fieldname": "total_truck_weight",
+   "fieldtype": "Float",
+   "label": "Total Truck Weight (kg)",
+   "read_only": 1,
+   "description": "Net weight from truck weighing"
+  },
+  {
+   "fieldname": "total_scrap_weight",
+   "fieldtype": "Float",
+   "label": "Total Scrap Weight (kg)",
+   "read_only": 1,
+   "description": "Sum from all Scrap Weight records"
+  },
+  {
+   "fieldname": "column_break_verification",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "truck_variance",
+   "fieldtype": "Float",
+   "label": "Variance (kg)",
+   "read_only": 1,
+   "description": "Truck weight - Scrap weight"
+  },
+  {
+   "fieldname": "truck_variance_percent",
+   "fieldtype": "Percent",
+   "label": "Variance %",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "variance_ok",
+   "fieldtype": "Check",
+   "label": "Variance OK",
+   "read_only": 1,
+   "description": "Auto-set: variance within threshold"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_unallocated",
+   "fieldtype": "Section Break",
+   "label": "Unallocated Items",
+   "description": "Items weighed but not expected by any linked order"
+  },
+  {
+   "fieldname": "unallocated_weight",
+   "fieldtype": "Float",
+   "label": "Unallocated Weight (kg)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "unallocated_items",
+   "fieldtype": "Code",
+   "label": "Unallocated Items (JSON)",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_reweight",
+   "fieldtype": "Section Break",
+   "label": "Reweight Info"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_reweighed",
+   "fieldtype": "Check",
+   "label": "Is Reweighed"
+  },
+  {
+   "depends_on": "is_reweighed",
+   "fieldname": "reweight_reason",
+   "fieldtype": "Small Text",
+   "label": "Reweight Reason"
+  },
+  {
+   "fieldname": "column_break_reweight",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "is_reweighed",
+   "fieldname": "reweight_by",
+   "fieldtype": "Link",
+   "label": "Reweight By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "depends_on": "is_reweighed",
+   "fieldname": "reweight_at",
+   "fieldtype": "Datetime",
+   "label": "Reweight At",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "eval:doc.status=='Cancelled'",
+   "fieldname": "section_break_cancel",
+   "fieldtype": "Section Break",
+   "label": "Cancellation Info"
+  },
+  {
+   "fieldname": "cancellation_reason",
+   "fieldtype": "Small Text",
+   "label": "Cancellation Reason",
+   "mandatory_depends_on": "eval:doc.status=='Cancelled'"
+  },
+  {
+   "fieldname": "column_break_cancel",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cancelled_by",
+   "fieldtype": "Link",
+   "label": "Cancelled By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_at",
+   "fieldtype": "Datetime",
+   "label": "Cancelled At",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_remarks",
+   "fieldtype": "Section Break",
+   "label": "Additional Notes"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "link_doctype": "Scrap Weight",
+   "link_fieldname": "dropoff"
+  },
+  {
+   "link_doctype": "Truck Weight",
+   "link_fieldname": "dropoff"
+  }
+ ],
+ "module": "Scrap Metal Suite",
+ "name": "Dropoff",
+ "naming_rule": "By \"Naming Series\" field",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

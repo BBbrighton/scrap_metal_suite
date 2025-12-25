@@ -1,0 +1,193 @@
+{
+ "actions": [],
+ "creation": "2025-12-25 12:00:00.000000",
+ "description": "DEPRECATED: No longer used. Use license_plate on Dropoff form and Truck Weight DocType instead.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "license_plate",
+  "section_break_gross",
+  "gross_weight",
+  "gross_weight_scale",
+  "column_break_gross",
+  "gross_weight_time",
+  "gross_weight_operator",
+  "section_break_tare",
+  "tare_weight",
+  "tare_weight_scale",
+  "column_break_tare",
+  "tare_weight_time",
+  "tare_weight_operator",
+  "section_break_net",
+  "net_weight",
+  "section_break_reweight",
+  "is_reweighed",
+  "reweight_reason",
+  "column_break_reweight",
+  "reweight_by",
+  "reweight_at",
+  "section_break_remarks",
+  "remarks",
+  "photo"
+ ],
+ "fields": [
+  {
+   "fieldname": "license_plate",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "License Plate",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_gross",
+   "fieldtype": "Section Break",
+   "label": "Gross Weight"
+  },
+  {
+   "fieldname": "gross_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Gross Weight (kg)",
+   "description": "Weight of truck with scrap (weighed first)"
+  },
+  {
+   "fieldname": "gross_weight_scale",
+   "fieldtype": "Link",
+   "label": "Scale",
+   "options": "Scale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_gross",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gross_weight_time",
+   "fieldtype": "Datetime",
+   "label": "Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gross_weight_operator",
+   "fieldtype": "Link",
+   "label": "Operator",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_tare",
+   "fieldtype": "Section Break",
+   "label": "Tare Weight"
+  },
+  {
+   "fieldname": "tare_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Tare Weight (kg)",
+   "description": "Weight of empty truck (weighed after unloading)"
+  },
+  {
+   "fieldname": "tare_weight_scale",
+   "fieldtype": "Link",
+   "label": "Scale",
+   "options": "Scale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_tare",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "tare_weight_time",
+   "fieldtype": "Datetime",
+   "label": "Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tare_weight_operator",
+   "fieldtype": "Link",
+   "label": "Operator",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_net",
+   "fieldtype": "Section Break",
+   "label": "Net Weight"
+  },
+  {
+   "fieldname": "net_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Net Weight (kg)",
+   "read_only": 1,
+   "description": "Gross - Tare (calculated automatically)"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_reweight",
+   "fieldtype": "Section Break",
+   "label": "Reweight Info"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_reweighed",
+   "fieldtype": "Check",
+   "label": "Is Reweighed"
+  },
+  {
+   "depends_on": "is_reweighed",
+   "fieldname": "reweight_reason",
+   "fieldtype": "Small Text",
+   "label": "Reweight Reason"
+  },
+  {
+   "fieldname": "column_break_reweight",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "is_reweighed",
+   "fieldname": "reweight_by",
+   "fieldtype": "Link",
+   "label": "Reweight By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "depends_on": "is_reweighed",
+   "fieldname": "reweight_at",
+   "fieldtype": "Datetime",
+   "label": "Reweight At",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_remarks",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "photo",
+   "fieldtype": "Attach Image",
+   "label": "Photo"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-12-25 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "Dropoff Truck",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

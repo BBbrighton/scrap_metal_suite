@@ -22,8 +22,55 @@ class ScaleReader {
         this.lastWeight = null;
         this.onWeightUpdate = null;
         this.onStatusUpdate = null;
+        this.onDisconnect = null; // Callback when port is physically disconnected
         this.buffer = new Uint8Array(255);
         this.bufferIndex = 0;
+        this._boundDisconnectHandler = null;
+    }
+
+    /**
+     * Set up disconnect event listener for the port
+     */
+    _setupDisconnectListener() {
+        if (!this.port) return;
+
+        // Remove any existing listener
+        this._removeDisconnectListener();
+
+        // Create bound handler so we can remove it later
+        this._boundDisconnectHandler = async (event) => {
+            console.log('Port disconnect event received');
+            // Clean up our state
+            this.isConnected = false;
+            if (this.reader) {
+                try {
+                    this.reader.releaseLock();
+                } catch (e) {}
+                this.reader = null;
+            }
+            this.port = null;
+            this.config = null;
+
+            // Notify listeners
+            if (this.onStatusUpdate) {
+                this.onStatusUpdate({ status: 'disconnected', reason: 'unplugged' });
+            }
+            if (this.onDisconnect) {
+                this.onDisconnect();
+            }
+        };
+
+        this.port.addEventListener('disconnect', this._boundDisconnectHandler);
+    }
+
+    /**
+     * Remove disconnect event listener
+     */
+    _removeDisconnectListener() {
+        if (this.port && this._boundDisconnectHandler) {
+            this.port.removeEventListener('disconnect', this._boundDisconnectHandler);
+            this._boundDisconnectHandler = null;
+        }
     }
 
     /**
@@ -74,6 +121,10 @@ class ScaleReader {
                 if (result.success) {
                     // Found working configuration!
                     this.config = config;
+
+                    // Set up disconnect listener for USB unplug events
+                    this._setupDisconnectListener();
+
                     if (onProgress) {
                         onProgress(`✓ DETECTED: ${configDesc}`);
                         onProgress(`  Protocol: ${result.protocol}`);
@@ -331,6 +382,9 @@ class ScaleReader {
             this.isConnected = true;
             this.bufferIndex = 0;
 
+            // Set up disconnect listener for USB unplug events
+            this._setupDisconnectListener();
+
             // Start reading
             this.startReading();
 
@@ -347,14 +401,27 @@ class ScaleReader {
      * Start continuous reading from scale
      */
     async startReading() {
-        const reader = this.port.readable.getReader();
-        this.reader = reader;
+        // Don't start if port isn't available
+        if (!this.port || !this.port.readable) {
+            console.error('Cannot start reading: port not available');
+            return;
+        }
+
+        let reader;
+        try {
+            reader = this.port.readable.getReader();
+            this.reader = reader;
+        } catch (err) {
+            console.error('Failed to get reader:', err);
+            return;
+        }
 
         try {
             while (this.isConnected) {
                 const { value, done } = await reader.read();
 
                 if (done) {
+                    console.log('Read stream ended');
                     break;
                 }
 
@@ -390,12 +457,25 @@ class ScaleReader {
                 }
             }
         } catch (err) {
-            console.error('Read error:', err);
-            if (this.onStatusUpdate) {
-                this.onStatusUpdate({ status: 'error', message: err.message });
+            // Only log if it's a real error, not a cancellation
+            if (err.name !== 'AbortError' && this.isConnected) {
+                console.error('Read error:', err);
+                if (this.onStatusUpdate) {
+                    this.onStatusUpdate({ status: 'error', message: err.message });
+                }
             }
         } finally {
-            reader.releaseLock();
+            // Release the reader lock - this is important for reconnection
+            try {
+                reader.releaseLock();
+                console.log('Reader lock released');
+            } catch (e) {
+                // Lock might already be released
+            }
+            // Clear the stored reference if it matches
+            if (this.reader === reader) {
+                this.reader = null;
+            }
         }
     }
 
@@ -477,34 +557,65 @@ class ScaleReader {
 
     /**
      * Disconnect from scale
+     * @param {boolean} forgetPort - If true, completely release port permission (requires re-authorization)
      */
-    async disconnect() {
-        if (!this.isConnected) {
-            return;
-        }
-
+    async disconnect(forgetPort = false) {
+        // 1. Signal the read loop to stop
         this.isConnected = false;
 
+        // 2. Cancel and release the reader properly
         if (this.reader) {
             try {
+                // Cancel any pending read operation
                 await this.reader.cancel();
             } catch (e) {
-                // Ignore
+                // Ignore cancel errors - reader might already be done
+                console.log('Reader cancel:', e.message);
+            }
+            try {
+                // Release the lock so the port can be closed
+                this.reader.releaseLock();
+            } catch (e) {
+                // Ignore release errors - might already be released
+                console.log('Reader release:', e.message);
             }
             this.reader = null;
         }
 
+        // 3. Small delay to ensure read loop has exited
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // 4. Remove disconnect event listener before closing port
+        this._removeDisconnectListener();
+
+        // 5. Close the port
         if (this.port) {
             try {
                 await this.port.close();
+                console.log('Port closed successfully');
             } catch (e) {
-                // Ignore
+                // Port may already be closed
+                console.log('Port close:', e.message);
             }
+
+            // 6. If forgetPort is true, release the port permission entirely
+            // This allows other pages/sessions to access the port without unplugging
+            if (forgetPort && typeof this.port.forget === 'function') {
+                try {
+                    await this.port.forget();
+                    console.log('Port permission released');
+                } catch (e) {
+                    console.log('Port forget error:', e.message);
+                }
+            }
+
             this.port = null;
         }
 
+        // 6. Reset all state
         this.config = null;
         this.lastWeight = null;
+        this.bufferIndex = 0;
 
         if (this.onStatusUpdate) {
             this.onStatusUpdate({ status: 'disconnected' });

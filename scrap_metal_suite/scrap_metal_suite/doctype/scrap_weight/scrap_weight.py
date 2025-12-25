@@ -1,12 +1,19 @@
-# Copyright (c) 2025, Chotiputsilp.r@gmail.com and contributors
+# Copyright (c) 2025, Scrap Metal Suite and contributors
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, nowtime
 
 
 class ScrapWeight(Document):
+    """
+    Scrap Weight DocType Controller
+
+    Implements validations from DROPOFF_ARCHITECTURE.md Part 13 (Edge Cases)
+    """
+
     def before_insert(self):
         """Set defaults before inserting."""
         if not self.posting_time:
@@ -17,6 +24,10 @@ class ScrapWeight(Document):
             session = frappe.get_doc("POS Session", self.session)
             self.operator = session.operator
             self.pos_profile = session.pos_profile
+
+        # Auto-fill supplier from dropoff
+        if self.dropoff and not self.supplier:
+            self.supplier = frappe.db.get_value("Dropoff", self.dropoff, "supplier")
 
     def validate(self):
         """Validate and calculate totals."""
@@ -30,51 +41,33 @@ class ScrapWeight(Document):
             self.total_weight += flt(item.weight)
 
     def on_update(self):
-        """Update linked POS Order with weighed items."""
-        if self.pos_order:
-            self.update_pos_order_items()
+        """Update linked Drop-off totals."""
+        if self.dropoff:
+            self.update_dropoff_totals()
 
     def on_trash(self):
-        """Update linked POS Order when this record is deleted."""
-        if self.pos_order:
-            self.update_pos_order_items(exclude_self=True)
+        """Update linked Drop-off when this record is deleted."""
+        if self.dropoff:
+            self.update_dropoff_totals()
 
-    def update_pos_order_items(self, exclude_self=False):
-        """Sync all weighed items from Scrap Weight records to POS Order."""
-        pos_order = frappe.get_doc("POS Order", self.pos_order)
+    def before_cancel(self):
+        """
+        Edge Case 13.13: Prevent deletion if linked to Closed drop-off.
+        """
+        if self.dropoff:
+            dropoff_status = frappe.db.get_value("Dropoff", self.dropoff, "status")
+            if dropoff_status == "Closed":
+                frappe.throw(
+                    _("Cannot delete Scrap Weight linked to a Closed Drop-off. Cancel the Drop-off first.")
+                )
 
-        # Get all Scrap Weight records linked to this POS Order
-        filters = {"pos_order": self.pos_order}
-        if exclude_self:
-            filters["name"] = ["!=", self.name]
-
-        scrap_weights = frappe.get_all(
-            "Scrap Weight",
-            filters=filters,
-            fields=["name"],
-            order_by="posting_date asc, posting_time asc"
-        )
-
-        # Clear existing weighed items
-        pos_order.set("items", [])
-        total_weight = 0
-
-        # Add items from each Scrap Weight record
-        for sw in scrap_weights:
-            sw_doc = frappe.get_doc("Scrap Weight", sw.name)
-            for item in sw_doc.items:
-                pos_order.append("items", {
-                    "scrap_weight": sw.name,
-                    "item_code": item.item_code,
-                    "item_name": item.item_name,
-                    "weight": item.weight,
-                    "uom": item.uom
-                })
-                total_weight += flt(item.weight)
-
-        # Update total scrap weight
-        pos_order.total_scrap_weight = total_weight
-
-        # Save without triggering full validation
-        pos_order.flags.ignore_validate = True
-        pos_order.save(ignore_permissions=True)
+    def update_dropoff_totals(self):
+        """Recalculate total_scrap_weight on the linked Drop-off."""
+        try:
+            dropoff = frappe.get_doc("Dropoff", self.dropoff)
+            dropoff.calculate_totals()
+            dropoff.flags.ignore_validate = True
+            dropoff.save(ignore_permissions=True)
+        except Exception:
+            # Drop-off might not exist yet during creation
+            pass

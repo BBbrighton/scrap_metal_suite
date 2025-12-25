@@ -1,9 +1,11 @@
 {% extends "templates/web.html" %}
 
-{% block title %}Scale Connection Test{% endblock %}
+{% block title %}Scale Configuration{% endblock %}
 
 {% block head_include %}
 <script src="/assets/scrap_metal_suite/js/scale_reader.js"></script>
+<script src="/assets/scrap_metal_suite/js/pos-translations.js"></script>
+<script src="/assets/scrap_metal_suite/js/scale-test-translations.js"></script>
 <style>
 :root {
     --primary: #2563eb;
@@ -38,17 +40,51 @@ body {
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
 }
 
-.header h1 {
+.header-content h1 {
     font-size: 28px;
     color: #111827;
     margin-bottom: 8px;
 }
 
-.header p {
+.header-content p {
     color: var(--gray);
     font-size: 14px;
+}
+
+.lang-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--light-gray);
+    padding: 6px;
+    border-radius: 8px;
+}
+
+.lang-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    color: var(--gray);
+}
+
+.lang-btn.active {
+    background: white;
+    color: var(--primary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.lang-btn:hover:not(.active) {
+    color: #374151;
 }
 
 .card {
@@ -122,6 +158,11 @@ body {
     background: #e5e7eb;
 }
 
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
 .status-badge {
     display: inline-flex;
     align-items: center;
@@ -173,15 +214,19 @@ body {
 
 .weight-display {
     text-align: center;
-    padding: 40px;
+    padding: 32px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 12px;
     color: white;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
+}
+
+.weight-display.inactive {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
 }
 
 .weight-value {
-    font-size: 72px;
+    font-size: 64px;
     font-weight: bold;
     line-height: 1;
     margin-bottom: 8px;
@@ -189,28 +234,32 @@ body {
 }
 
 .weight-unit {
-    font-size: 24px;
+    font-size: 20px;
     opacity: 0.9;
 }
 
 .weight-status {
-    font-size: 14px;
-    margin-top: 16px;
+    font-size: 13px;
+    margin-top: 12px;
     opacity: 0.8;
+}
+
+.weight-status.stable {
+    color: #86efac;
 }
 
 .log-container {
     background: #1f2937;
     border-radius: 8px;
     padding: 16px;
-    max-height: 400px;
+    max-height: 300px;
     overflow-y: auto;
     font-family: 'Monaco', 'Menlo', monospace;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .log-entry {
-    padding: 4px 0;
+    padding: 3px 0;
     color: #d1d5db;
     white-space: pre-wrap;
     word-break: break-all;
@@ -230,8 +279,8 @@ body {
 
 .info-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
     margin-top: 16px;
 }
 
@@ -242,9 +291,11 @@ body {
 }
 
 .info-label {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--gray);
     margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .info-value {
@@ -277,6 +328,139 @@ body {
     background: #fef3c7;
     color: #92400e;
 }
+
+.alert-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    background: white;
+    cursor: pointer;
+}
+
+.form-help {
+    font-size: 12px;
+    color: var(--gray);
+    margin-top: 4px;
+}
+
+.calibration-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.calibration-input {
+    width: 150px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.calibration-text {
+    font-size: 15px;
+    color: #374151;
+}
+
+.result-box {
+    padding: 16px;
+    background: var(--light-gray);
+    border-radius: 8px;
+    margin-top: 16px;
+}
+
+.result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.result-row:last-child {
+    border-bottom: none;
+}
+
+.result-label {
+    font-size: 14px;
+    color: var(--gray);
+}
+
+.result-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.result-value.highlight {
+    color: var(--primary);
+    font-size: 20px;
+}
+
+.step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.step-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 12px;
+}
+
+.divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+}
+
+.hidden {
+    display: none !important;
+}
 </style>
 {% endblock %}
 
@@ -284,82 +468,188 @@ body {
 <div class="container">
     <!-- Header -->
     <div class="header">
-        <h1>🔧 Scale Connection Test</h1>
-        <p>Test WebSerial integration with HP-05 scale hardware</p>
+        <div class="header-content">
+            <h1 data-i18n="scaleConfigTitle">Scale Configuration</h1>
+            <p data-i18n="scaleConfigDesc">Auto-detect scale settings and configure unit conversion</p>
+        </div>
+        <div class="lang-toggle">
+            <button class="lang-btn active" id="langEN" onclick="setLanguage('en')">EN</button>
+            <button class="lang-btn" id="langTH" onclick="setLanguage('th')">TH</button>
+        </div>
     </div>
 
     <!-- Browser Support Alert -->
-    <div id="browserAlert" class="alert alert-warning" style="display:none;">
+    <div id="browserAlert" class="alert alert-warning hidden">
         <span style="font-size: 20px;">⚠️</span>
         <div>
-            <strong>WebSerial API Not Supported</strong><br>
-            Please use Chrome, Edge, or Opera browser to test scale connections.
+            <strong data-i18n="webSerialNotSupported">WebSerial API Not Supported</strong><br>
+            <span data-i18n="useChromeOrEdge">Please use Chrome, Edge, or Opera browser to configure scales.</span>
         </div>
     </div>
 
-    <!-- Connection Status Card -->
+    <!-- Scale Selection Card -->
     <div class="card">
-        <h2>
-            📡 Connection Status
-            <span id="statusBadge" class="status-badge disconnected">
-                <span class="status-dot"></span>
-                <span>Disconnected</span>
-            </span>
-        </h2>
+        <h2>📋 <span data-i18n="selectScaleTitle">Select Scale</span></h2>
+        <div class="form-group">
+            <label class="form-label" data-i18n="scaleToConfig">Scale to Configure</label>
+            <select id="scaleSelect" class="form-select">
+                <option value="" data-i18n="selectScalePlaceholder">-- Select a scale --</option>
+            </select>
+            <p class="form-help" data-i18n="selectScaleHelp">Select the scale you want to configure from the database</p>
+        </div>
+    </div>
+
+    <!-- Step 1: Connection -->
+    <div class="card">
+        <div class="step-title">
+            <span class="step-number">1</span>
+            <span data-i18n="step1Title">Detect Scale Connection</span>
+        </div>
 
         <div class="btn-group">
             <button class="btn btn-primary" onclick="startAutoDetect()" id="autoDetectBtn">
-                🔍 Auto-Detect Scale
+                🔍 <span data-i18n="autoDetectScale">Auto-Detect Scale</span>
             </button>
-            <button class="btn btn-success" onclick="manualConnect()" id="connectBtn" style="display:none;">
-                🔗 Connect
+            <button class="btn btn-danger hidden" onclick="disconnect()" id="disconnectBtn">
+                ⏹️ <span data-i18n="disconnect">Disconnect</span>
             </button>
-            <button class="btn btn-danger" onclick="disconnect()" id="disconnectBtn" style="display:none;">
-                ⏹️ Disconnect
-            </button>
+            <span id="statusBadge" class="status-badge disconnected">
+                <span class="status-dot"></span>
+                <span data-i18n="disconnected">Disconnected</span>
+            </span>
         </div>
 
         <!-- Connection Info -->
-        <div id="connectionInfo" style="display:none;" class="info-grid">
+        <div id="connectionInfo" class="info-grid hidden">
             <div class="info-item">
-                <div class="info-label">Baud Rate</div>
+                <div class="info-label" data-i18n="baudRate">Baud Rate</div>
                 <div class="info-value" id="infoBaudRate">-</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Data Bits</div>
+                <div class="info-label" data-i18n="dataBits">Data Bits</div>
                 <div class="info-value" id="infoDataBits">-</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Parity</div>
+                <div class="info-label" data-i18n="parity">Parity</div>
                 <div class="info-value" id="infoParity">-</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Stop Bits</div>
+                <div class="info-label" data-i18n="stopBits">Stop Bits</div>
                 <div class="info-value" id="infoStopBits">-</div>
             </div>
-        </div>
-    </div>
-
-    <!-- Testing Instructions -->
-    <div class="card">
-        <div class="alert alert-info">
-            <span>ℹ️</span>
-            <div>
-                <strong>Testing Instructions:</strong><br>
-                1. Connect scale to USB port<br>
-                2. Power on the scale<br>
-                3. Click "Auto-Detect Scale" button<br>
-                4. Select the correct COM port from browser prompt<br>
-                5. Watch the connection log below for detection results
+            <div class="info-item">
+                <div class="info-label" data-i18n="protocol">Protocol</div>
+                <div class="info-value" id="infoProtocol">-</div>
             </div>
         </div>
     </div>
 
-    <!-- Connection Log Card -->
+    <!-- Step 2: Live Weight Display -->
+    <div class="card" id="weightCard">
+        <div class="step-title">
+            <span class="step-number">2</span>
+            <span data-i18n="step2Title">Live Scale Reading</span>
+        </div>
+
+        <div class="weight-display inactive" id="weightDisplay">
+            <div class="weight-value" id="weightValue">---.---</div>
+            <div class="weight-unit" data-i18n="rawValueFromScale">raw value from scale</div>
+            <div class="weight-status" id="weightStatus" data-i18n="connectToSeeReading">Connect scale to see live reading</div>
+        </div>
+
+        <div class="alert alert-info">
+            <span>💡</span>
+            <div data-i18n-html="rawValueInfo">
+                This shows the <strong>raw value</strong> from the scale signal before conversion.
+                Use this to determine what unit the scale sends.
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Unit Calibration -->
+    <div class="card" id="calibrationCard">
+        <div class="step-title">
+            <span class="step-number">3</span>
+            <span data-i18n="step3Title">Unit Calibration</span>
+        </div>
+
+        <div class="alert alert-info">
+            <span>📐</span>
+            <div data-i18n-html="calibrationInstruction">
+                Place exactly <strong>1 kg</strong> on the scale, then enter the reading below.
+                This helps us calculate the conversion factor.
+            </div>
+        </div>
+
+        <div class="calibration-row">
+            <span class="calibration-text" data-i18n-html="oneKgShows">When I place <strong>1 kg</strong> on the scale, it shows:</span>
+            <input type="number" id="oneKgReading" class="form-input calibration-input" placeholder="e.g. 1000" step="any">
+            <button class="btn btn-secondary btn-sm" onclick="readCurrentWeight()" id="readWeightBtn">
+                📖 <span data-i18n="useCurrentReading">Use Current Reading</span>
+            </button>
+        </div>
+
+        <div class="result-box" id="conversionResult" style="display:none;">
+            <div class="result-row">
+                <span class="result-label" data-i18n="detectedUnit">Scale signal unit (detected)</span>
+                <span class="result-value" id="detectedUnit">-</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label" data-i18n="conversionFactor">Conversion factor</span>
+                <span class="result-value highlight" id="conversionFactor">-</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label" data-i18n="verification">Verification</span>
+                <span class="result-value" id="verificationCalc">-</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 4: Save Configuration -->
+    <div class="card" id="saveCard">
+        <div class="step-title">
+            <span class="step-number">4</span>
+            <span data-i18n="step4Title">Save Configuration</span>
+        </div>
+
+        <div id="savePreview" class="result-box" style="display:none;">
+            <h4 style="margin-bottom: 12px; color: #111827;" data-i18n="configSummary">Configuration Summary</h4>
+            <div class="result-row">
+                <span class="result-label" data-i18n="summaryScale">Scale</span>
+                <span class="result-value" id="summaryScale">-</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label" data-i18n="summarySerial">Serial Settings</span>
+                <span class="result-value" id="summarySerial">-</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label" data-i18n="summaryConversion">Conversion Factor</span>
+                <span class="result-value" id="summaryConversion">-</span>
+            </div>
+        </div>
+
+        <div class="btn-group" style="margin-top: 16px;">
+            <button class="btn btn-success" onclick="saveConfiguration()" id="saveBtn" disabled>
+                💾 <span data-i18n="saveToDatabase">Save to Database</span>
+            </button>
+        </div>
+
+        <div id="saveResult" class="alert alert-success hidden" style="margin-top: 16px;">
+            <span>✅</span>
+            <div data-i18n="configSavedSuccess">Configuration saved successfully!</div>
+        </div>
+    </div>
+
+    <!-- Connection Log Card (Collapsible) -->
     <div class="card">
-        <h2>📋 Connection Log</h2>
-        <div class="log-container" id="logContainer">
-            <div class="log-entry info">Ready to test scale connection...</div>
+        <h2 style="cursor: pointer;" onclick="toggleLog()">
+            📋 <span data-i18n="connectionLog">Connection Log</span>
+            <span id="logToggle" style="font-size: 14px; color: var(--gray);">▼</span>
+        </h2>
+        <div id="logWrapper">
+            <div class="log-container" id="logContainer">
+                <div class="log-entry info" data-i18n="readyToConfigure">Ready to configure scale...</div>
+            </div>
         </div>
     </div>
 </div>
@@ -368,36 +658,109 @@ body {
 // Global state
 let scaleReader = null;
 let isConnected = false;
+let detectedConfig = null;
+let detectedProtocol = null;
+let currentRawWeight = null;
+let conversionFactor = 1;
 
-// Check browser support on page load
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize translations
+    POS_I18N.init();
+    updateLanguageUI();
+    applyTranslations();
+
+    // Check browser support
     if (!('serial' in navigator)) {
-        document.getElementById('browserAlert').style.display = 'flex';
+        document.getElementById('browserAlert').classList.remove('hidden');
         document.getElementById('autoDetectBtn').disabled = true;
-        addLog('Browser does not support WebSerial API', 'error');
+        addLog(POS_I18N.t('webSerialNotSupported'), 'error');
     } else {
-        addLog('WebSerial API available ✓', 'success');
-        checkPreviousPorts();
+        addLog(POS_I18N.t('webSerialAvailable') + ' ✓', 'success');
     }
+
+    // Load scales from database
+    loadScales();
+
+    // Setup calibration input listener
+    document.getElementById('oneKgReading').addEventListener('input', calculateConversion);
 });
 
-// Check for previously authorized ports
-async function checkPreviousPorts() {
+// Set language
+function setLanguage(lang) {
+    POS_I18N.setLanguage(lang);
+    updateLanguageUI();
+    applyTranslations();
+}
+
+// Update language toggle UI
+function updateLanguageUI() {
+    const lang = POS_I18N.getLanguage();
+    document.getElementById('langEN').classList.toggle('active', lang === 'en');
+    document.getElementById('langTH').classList.toggle('active', lang === 'th');
+}
+
+// Apply translations to all elements with data-i18n
+function applyTranslations() {
+    // Text content translations
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        el.textContent = POS_I18N.t(key);
+    });
+
+    // HTML content translations (for content with <strong> etc)
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const key = el.getAttribute('data-i18n-html');
+        el.innerHTML = POS_I18N.t(key);
+    });
+
+    // Update placeholder for select
+    const selectPlaceholder = document.querySelector('#scaleSelect option[value=""]');
+    if (selectPlaceholder) {
+        selectPlaceholder.textContent = POS_I18N.t('selectScalePlaceholder');
+    }
+}
+
+// Load scales from Frappe
+async function loadScales() {
     try {
-        const ports = await ScaleReader.getPorts();
-        if (ports.length > 0) {
-            addLog(`Found ${ports.length} previously authorized port(s)`, 'info');
+        const response = await fetch('/api/method/frappe.client.get_list', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Frappe-CSRF-Token': frappe.csrf_token
+            },
+            body: JSON.stringify({
+                doctype: 'Scale',
+                fields: ['name', 'scale_name', 'location', 'scale_type'],
+                filters: { is_active: 1 },
+                order_by: 'scale_name asc'
+            })
+        });
+
+        const data = await response.json();
+        const select = document.getElementById('scaleSelect');
+
+        if (data.message && data.message.length > 0) {
+            data.message.forEach(scale => {
+                const option = document.createElement('option');
+                option.value = scale.name;
+                option.textContent = `${scale.scale_name} - ${scale.location || 'No location'} (${scale.scale_type})`;
+                select.appendChild(option);
+            });
+            addLog(POS_I18N.t('loadedScales', { count: data.message.length }), 'success');
+        } else {
+            addLog(POS_I18N.t('noScalesInDb'), 'error');
         }
     } catch (err) {
-        console.error('Error checking ports:', err);
+        addLog(POS_I18N.t('errorLoadingScales') + ': ' + err.message, 'error');
     }
 }
 
 // Auto-detect scale
 async function startAutoDetect() {
     addLog('Starting auto-detection...', 'info');
-    updateStatus('connecting', 'Auto-detecting...');
-
+    updateStatus('connecting', POS_I18N.t('detecting'));
     document.getElementById('autoDetectBtn').disabled = true;
 
     try {
@@ -408,52 +771,215 @@ async function startAutoDetect() {
         });
 
         // Success!
-        addLog('✓ Scale detected successfully!', 'success');
-        addLog(`Configuration: ${JSON.stringify(result.config)}`, 'success');
-        addLog(`Initial weight: ${result.weight} kg`, 'success');
+        addLog('✓ ' + POS_I18N.t('scaleDetected'), 'success');
+        addLog(`Config: ${result.config.baudRate} baud, ${result.config.dataBits}${result.config.parity[0].toUpperCase()}${result.config.stopBits}`, 'success');
+        addLog(`Protocol: ${result.protocol}`, 'success');
+
+        // Store detected config
+        detectedConfig = result.config;
+        detectedProtocol = result.protocol;
 
         // Update UI
-        updateStatus('connected', 'Connected');
-        showConnectionInfo(result.config);
-        showConnectedButtons();
+        updateStatus('connected', POS_I18N.t('connected'));
+        showConnectionInfo(result.config, result.protocol);
+        document.getElementById('autoDetectBtn').classList.add('hidden');
+        document.getElementById('disconnectBtn').classList.remove('hidden');
 
-        // Detection successful - just log it
+        // Activate weight display
+        const weightDisplay = document.getElementById('weightDisplay');
+        weightDisplay.classList.remove('inactive');
+
+        // Start continuous reading
         isConnected = true;
-        addLog('Scale auto-detection complete!', 'success');
+        startContinuousReading();
+
+        // Update summary
+        updateSummary();
 
     } catch (err) {
-        addLog('✗ Auto-detection failed: ' + err.message, 'error');
-        updateStatus('disconnected', 'Disconnected');
+        addLog('✗ ' + POS_I18N.t('detectionFailed') + ': ' + err.message, 'error');
+        updateStatus('disconnected', POS_I18N.t('disconnected'));
         document.getElementById('autoDetectBtn').disabled = false;
         scaleReader = null;
     }
 }
 
-// Manual connect (using detected config)
-async function manualConnect() {
-    if (!scaleReader || !scaleReader.config) {
-        addLog('No configuration available. Run auto-detect first.', 'error');
+// Start continuous weight reading
+async function startContinuousReading() {
+    if (!scaleReader || !scaleReader.port) return;
+
+    // Set up the weight update callback
+    scaleReader.onWeightUpdate = (data) => {
+        currentRawWeight = data.weight;
+
+        // Update weight display (show raw value, not converted)
+        let displayValue = data.weight;
+        if (detectedProtocol === 'STX') {
+            displayValue = data.weight * 1000;
+        }
+
+        document.getElementById('weightValue').textContent = displayValue.toFixed(1);
+
+        const statusEl = document.getElementById('weightStatus');
+        if (data.stable) {
+            statusEl.textContent = '● ' + POS_I18N.t('stable');
+            statusEl.className = 'weight-status stable';
+        } else {
+            statusEl.textContent = '○ ' + POS_I18N.t('measuring');
+            statusEl.className = 'weight-status';
+        }
+    };
+
+    // Port is already open from autoDetect, just start reading
+    scaleReader.isConnected = true;
+    scaleReader.bufferIndex = 0;
+    addLog(POS_I18N.t('startingContinuousRead'), 'info');
+    scaleReader.startReading();
+}
+
+// Read current weight into calibration field
+function readCurrentWeight() {
+    if (currentRawWeight === null) {
+        addLog(POS_I18N.t('noWeightReading'), 'error');
         return;
     }
 
-    addLog('Connecting with detected configuration...', 'info');
-    updateStatus('connecting', 'Connecting...');
+    const displayValue = document.getElementById('weightValue').textContent;
+    document.getElementById('oneKgReading').value = displayValue;
+    calculateConversion();
+}
+
+// Calculate conversion factor
+function calculateConversion() {
+    const reading = parseFloat(document.getElementById('oneKgReading').value);
+
+    if (isNaN(reading) || reading <= 0) {
+        document.getElementById('conversionResult').style.display = 'none';
+        document.getElementById('saveBtn').disabled = true;
+        return;
+    }
+
+    conversionFactor = 1 / reading;
+
+    // Detect unit based on reading
+    let detectedUnitKey = 'unitUnknown';
+    if (reading >= 0.9 && reading <= 1.1) {
+        detectedUnitKey = 'unitKg';
+    } else if (reading >= 900 && reading <= 1100) {
+        detectedUnitKey = 'unitGrams';
+    } else if (reading >= 0.0009 && reading <= 0.0011) {
+        detectedUnitKey = 'unitTons';
+    } else if (reading >= 2.1 && reading <= 2.3) {
+        detectedUnitKey = 'unitLb';
+    }
+
+    // Update results
+    document.getElementById('detectedUnit').textContent = POS_I18N.t(detectedUnitKey);
+    document.getElementById('conversionFactor').textContent = conversionFactor.toFixed(6);
+    document.getElementById('verificationCalc').textContent =
+        `${reading} × ${conversionFactor.toFixed(6)} = ${(reading * conversionFactor).toFixed(3)} kg ✓`;
+
+    document.getElementById('conversionResult').style.display = 'block';
+
+    updateSaveButton();
+    updateSummary();
+}
+
+// Update save button state
+function updateSaveButton() {
+    const scaleSelected = document.getElementById('scaleSelect').value !== '';
+    const hasConfig = detectedConfig !== null;
+    const hasConversion = conversionFactor !== null && !isNaN(conversionFactor);
+
+    document.getElementById('saveBtn').disabled = !(scaleSelected && hasConfig && hasConversion);
+}
+
+// Update configuration summary
+function updateSummary() {
+    const scaleName = document.getElementById('scaleSelect').value;
+    const scaleSelect = document.getElementById('scaleSelect');
+    const selectedOption = scaleSelect.options[scaleSelect.selectedIndex];
+
+    if (scaleName && detectedConfig) {
+        document.getElementById('summaryScale').textContent = selectedOption.textContent;
+        document.getElementById('summarySerial').textContent =
+            `${detectedConfig.baudRate} baud, ${detectedConfig.dataBits}${detectedConfig.parity[0].toUpperCase()}${detectedConfig.stopBits} (${detectedProtocol || 'Unknown'})`;
+        document.getElementById('summaryConversion').textContent =
+            conversionFactor ? conversionFactor.toFixed(6) : 'Not set';
+        document.getElementById('savePreview').style.display = 'block';
+    }
+}
+
+// Save configuration to database
+async function saveConfiguration() {
+    const scaleName = document.getElementById('scaleSelect').value;
+
+    if (!scaleName) {
+        addLog(POS_I18N.t('selectScaleFirst'), 'error');
+        return;
+    }
+
+    if (!detectedConfig) {
+        addLog(POS_I18N.t('detectConfigFirst'), 'error');
+        return;
+    }
+
+    document.getElementById('saveBtn').disabled = true;
+    addLog(POS_I18N.t('savingConfig'), 'info');
 
     try {
-        await scaleReader.connect(scaleReader.config);
+        const response = await fetch('/api/method/frappe.client.set_value', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Frappe-CSRF-Token': frappe.csrf_token
+            },
+            body: JSON.stringify({
+                doctype: 'Scale',
+                name: scaleName,
+                fieldname: {
+                    baud_rate: String(detectedConfig.baudRate),
+                    data_bits: String(detectedConfig.dataBits),
+                    parity: detectedConfig.parity,
+                    stop_bits: String(detectedConfig.stopBits),
+                    flow_control: detectedConfig.flowControl || 'none',
+                    protocol_detected: detectedProtocol || '',
+                    unit_conversion_factor: conversionFactor,
+                    signal_unit: detectSignalUnit()
+                }
+            })
+        });
 
-        scaleReader.onWeightUpdate = handleWeightUpdate;
-        scaleReader.onStatusUpdate = handleStatusUpdate;
+        const data = await response.json();
 
-        isConnected = true;
+        if (data.message) {
+            addLog('✓ ' + POS_I18N.t('saveSuccess'), 'success');
+            document.getElementById('saveResult').classList.remove('hidden');
 
-        addLog('✓ Connected successfully', 'success');
-        updateStatus('connected', 'Connected');
+            setTimeout(() => {
+                document.getElementById('saveResult').classList.add('hidden');
+            }, 5000);
+        } else {
+            throw new Error(data.exc || 'Unknown error');
+        }
 
     } catch (err) {
-        addLog('✗ Connection failed: ' + err.message, 'error');
-        updateStatus('disconnected', 'Disconnected');
+        addLog('✗ ' + POS_I18N.t('saveFailed') + ': ' + err.message, 'error');
     }
+
+    document.getElementById('saveBtn').disabled = false;
+}
+
+// Detect signal unit from reading
+function detectSignalUnit() {
+    const reading = parseFloat(document.getElementById('oneKgReading').value);
+    if (isNaN(reading)) return '';
+
+    if (reading >= 0.9 && reading <= 1.1) return 'kg';
+    if (reading >= 900 && reading <= 1100) return 'grams';
+    if (reading >= 0.0009 && reading <= 0.0011) return 'tons';
+    if (reading >= 2.1 && reading <= 2.3) return 'lb';
+    return '';
 }
 
 // Disconnect from scale
@@ -466,9 +992,20 @@ async function disconnect() {
     }
 
     isConnected = false;
-    updateStatus('disconnected', 'Disconnected');
-    hideConnectionInfo();
-    showDisconnectedButtons();
+    currentRawWeight = null;
+
+    updateStatus('disconnected', POS_I18N.t('disconnected'));
+    document.getElementById('connectionInfo').classList.add('hidden');
+    document.getElementById('autoDetectBtn').classList.remove('hidden');
+    document.getElementById('autoDetectBtn').disabled = false;
+    document.getElementById('disconnectBtn').classList.add('hidden');
+
+    // Reset weight display
+    const weightDisplay = document.getElementById('weightDisplay');
+    weightDisplay.classList.add('inactive');
+    document.getElementById('weightValue').textContent = '---.---';
+    document.getElementById('weightStatus').textContent = POS_I18N.t('connectToSeeReading');
+    document.getElementById('weightStatus').className = 'weight-status';
 
     addLog('✓ Disconnected', 'info');
 }
@@ -481,32 +1018,27 @@ function updateStatus(status, text) {
 }
 
 // Show connection info
-function showConnectionInfo(config) {
-    document.getElementById('connectionInfo').style.display = 'grid';
+function showConnectionInfo(config, protocol) {
+    document.getElementById('connectionInfo').classList.remove('hidden');
     document.getElementById('infoBaudRate').textContent = config.baudRate;
     document.getElementById('infoDataBits').textContent = config.dataBits;
     document.getElementById('infoParity').textContent = config.parity;
     document.getElementById('infoStopBits').textContent = config.stopBits;
+    document.getElementById('infoProtocol').textContent = protocol || '-';
 }
 
-// Hide connection info
-function hideConnectionInfo() {
-    document.getElementById('connectionInfo').style.display = 'none';
-}
+// Toggle log visibility
+function toggleLog() {
+    const wrapper = document.getElementById('logWrapper');
+    const toggle = document.getElementById('logToggle');
 
-// Show connected state buttons
-function showConnectedButtons() {
-    document.getElementById('autoDetectBtn').style.display = 'none';
-    document.getElementById('connectBtn').style.display = 'none';
-    document.getElementById('disconnectBtn').style.display = 'inline-flex';
-}
-
-// Show disconnected state buttons
-function showDisconnectedButtons() {
-    document.getElementById('autoDetectBtn').style.display = 'inline-flex';
-    document.getElementById('autoDetectBtn').disabled = false;
-    document.getElementById('connectBtn').style.display = 'none';
-    document.getElementById('disconnectBtn').style.display = 'none';
+    if (wrapper.style.display === 'none') {
+        wrapper.style.display = 'block';
+        toggle.textContent = '▼';
+    } else {
+        wrapper.style.display = 'none';
+        toggle.textContent = '▶';
+    }
 }
 
 // Add log entry
@@ -525,13 +1057,17 @@ function addLog(message, type = 'info') {
     entry.textContent = `[${timestamp}] ${message}`;
     container.appendChild(entry);
 
-    // Auto-scroll to bottom
     container.scrollTop = container.scrollHeight;
 
-    // Limit to 100 entries
     while (container.children.length > 100) {
         container.removeChild(container.firstChild);
     }
 }
+
+// Listen for scale selection change
+document.getElementById('scaleSelect').addEventListener('change', () => {
+    updateSaveButton();
+    updateSummary();
+});
 </script>
 {% endblock %}

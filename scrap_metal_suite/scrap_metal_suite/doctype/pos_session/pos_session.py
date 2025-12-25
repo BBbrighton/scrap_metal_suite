@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import now_datetime
+from frappe.utils import flt, now_datetime
 
 
 class POSSession(Document):
@@ -41,19 +41,16 @@ class POSSession(Document):
         if self.status == "Closed":
             frappe.throw(_("Session is already closed"))
 
-        # Calculate totals from purchases
-        totals = frappe.db.sql("""
-            SELECT
-                COUNT(*) as total_purchases,
-                COALESCE(SUM(total_amount), 0) as total_amount,
-                COALESCE(SUM(total_weight), 0) as total_weight
-            FROM `tabScrap Purchase`
-            WHERE session = %s
-        """, self.name, as_dict=True)[0]
+        # Calculate totals from purchases using frappe.db.get_all
+        purchases = frappe.db.get_all(
+            "Scrap Purchase",
+            filters={"session": self.name},
+            fields=["total_amount", "total_weight"]
+        )
 
-        self.total_purchases = totals.total_purchases
-        self.total_amount = totals.total_amount
-        self.total_weight = totals.total_weight
+        self.total_purchases = len(purchases)
+        self.total_amount = sum(flt(p.total_amount) for p in purchases)
+        self.total_weight = sum(flt(p.total_weight) for p in purchases)
         self.closing_time = now_datetime()
         self.status = "Closed"
         self.save()

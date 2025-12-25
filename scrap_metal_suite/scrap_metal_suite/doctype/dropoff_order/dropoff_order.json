@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "creation": "2025-12-25 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "pos_order",
+  "allocated_weight"
+ ],
+ "fields": [
+  {
+   "fieldname": "pos_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "POS Order",
+   "options": "POS Order",
+   "reqd": 1
+  },
+  {
+   "fieldname": "allocated_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Allocated Weight (kg)",
+   "read_only": 1,
+   "description": "Weight allocated to this order from drop-off (filled at close)"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-12-25 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "Dropoff Order",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

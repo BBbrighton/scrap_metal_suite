@@ -1,0 +1,158 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "dropoff",
+  "license_plate",
+  "supplier_name",
+  "column_break_header",
+  "weight_type",
+  "weighed_at",
+  "section_break_weight",
+  "weight",
+  "scale",
+  "column_break_weight",
+  "operator",
+  "remarks",
+  "section_break_session",
+  "session",
+  "pos_profile"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "TW-.YY.MM.DD.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dropoff",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Drop-off",
+   "options": "Dropoff",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "dropoff.license_plate",
+   "fieldname": "license_plate",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "License Plate",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "dropoff.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "weight_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Weight Type",
+   "options": "Gross\nTare",
+   "reqd": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "weighed_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Weighed At",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_weight",
+   "fieldtype": "Section Break",
+   "label": "Weight Details"
+  },
+  {
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Weight (kg)",
+   "reqd": 1,
+   "description": "Weight reading from scale"
+  },
+  {
+   "fieldname": "scale",
+   "fieldtype": "Link",
+   "label": "Scale",
+   "options": "Scale",
+   "description": "Scale used for weighing"
+  },
+  {
+   "fieldname": "column_break_weight",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "operator",
+   "fieldtype": "Link",
+   "label": "Operator",
+   "options": "User",
+   "description": "User who recorded the weight"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_session",
+   "fieldtype": "Section Break",
+   "label": "Session Info"
+  },
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "label": "POS Session",
+   "options": "POS Session",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pos_profile",
+   "fieldtype": "Link",
+   "label": "POS Profile",
+   "options": "POS Profile Scrap",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "module": "Scrap Metal Suite",
+ "name": "Truck Weight",
+ "naming_rule": "By \"Naming Series\" field",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

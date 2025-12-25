@@ -6,14 +6,11 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
-  "order_id",
   "supplier",
   "supplier_name",
   "column_break_1",
   "order_date",
-  "dropoff_date",
-  "license_plate",
-  "scrap_scale",
+  "status",
   "section_break_details",
   "purchase_order",
   "notes",
@@ -21,28 +18,16 @@
   "order_items",
   "section_break_items",
   "items",
-  "section_break_truck_weight",
-  "gross_weight",
-  "gross_weight_scale",
-  "gross_weight_time",
-  "column_break_truck_1",
-  "tare_weight",
-  "tare_weight_scale",
-  "tare_weight_time",
-  "section_break_truck_calc",
-  "net_truck_weight",
-  "total_scrap_weight",
-  "column_break_truck_2",
-  "weight_variance",
-  "weight_variance_percent",
-  "section_break_truck_remarks",
-  "truck_weight_remarks",
-  "truck_weight_photo",
-  "section_break_reweight",
-  "is_truck_reweighed",
-  "is_scrap_reweighed",
+  "section_break_fulfillment",
+  "contracted_weight",
+  "total_received",
+  "column_break_fulfillment",
+  "fulfillment_percent",
+  "fulfillment_status",
+  "dropoff_status",
+  "section_break_settings",
+  "variance_threshold_percent",
   "section_break_status",
-  "status",
   "processed_by",
   "processed_time"
  ],
@@ -52,19 +37,8 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Naming Series",
-   "options": "ORD-.YYYY.-",
+   "options": "ORD-.YY.MM.DD.-",
    "reqd": 1
-  },
-  {
-   "fieldname": "order_id",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Order ID",
-   "reqd": 1,
-   "set_only_once": 1,
-   "unique": 1,
-   "description": "Unique identifier used by operators to search for this order"
   },
   {
    "fieldname": "supplier",
@@ -98,25 +72,14 @@
    "description": "Should match with the Purchase Order date"
   },
   {
-   "fieldname": "dropoff_date",
-   "fieldtype": "Date",
-   "label": "Drop-off Date",
-   "reqd": 1,
-   "description": "Date when supplier will drop off the scrap"
-  },
-  {
-   "fieldname": "license_plate",
-   "fieldtype": "Data",
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "License Plate"
-  },
-  {
-   "fieldname": "scrap_scale",
-   "fieldtype": "Link",
-   "label": "Scrap Scale",
-   "options": "Scale",
-   "read_only": 1,
-   "description": "Scrap scale used for item weighing (inherited from session)"
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nProcessing\nProcessed\nCancelled",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_details",
@@ -137,8 +100,8 @@
   {
    "fieldname": "section_break_order_items",
    "fieldtype": "Section Break",
-   "label": "Order Items",
-   "description": "In the future, this will be automatically fetched from the Purchase Order"
+   "label": "Order Items (Contracted)",
+   "description": "Items expected in this order with contracted weights"
   },
   {
    "fieldname": "order_items",
@@ -158,145 +121,75 @@
    "label": "Weighed Items",
    "options": "POS Order Weighed Item",
    "read_only": 1,
-   "description": "Items from linked Scrap Weight records. Updated automatically when Scrap Weight is saved."
+   "description": "Items allocated from drop-offs. Updated automatically when Drop-off is closed."
   },
   {
-   "fieldname": "section_break_truck_weight",
+   "fieldname": "section_break_fulfillment",
    "fieldtype": "Section Break",
-   "label": "Truck Weight Verification"
+   "label": "Fulfillment Tracking"
   },
   {
-   "fieldname": "gross_weight",
+   "fieldname": "contracted_weight",
    "fieldtype": "Float",
-   "label": "Gross Weight (kg)",
-   "description": "Weight of truck with scrap (weighed first)"
-  },
-  {
-   "fieldname": "gross_weight_scale",
-   "fieldtype": "Link",
-   "label": "Gross Weight Scale",
-   "options": "Scale",
+   "label": "Contracted Weight (kg)",
    "read_only": 1,
-   "description": "Truck scale used for entry/gross weight"
+   "description": "Sum of order_items weights (auto-calculated)"
   },
   {
-   "fieldname": "gross_weight_time",
-   "fieldtype": "Datetime",
-   "label": "Gross Weight Time",
-   "read_only": 1
+   "fieldname": "total_received",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Total Received (kg)",
+   "read_only": 1,
+   "description": "Sum of allocated weights from all drop-offs"
   },
   {
-   "fieldname": "column_break_truck_1",
+   "fieldname": "column_break_fulfillment",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "tare_weight",
-   "fieldtype": "Float",
-   "label": "Tare Weight (kg)",
-   "description": "Weight of empty truck (weighed after unloading)"
-  },
-  {
-   "fieldname": "tare_weight_scale",
-   "fieldtype": "Link",
-   "label": "Tare Weight Scale",
-   "options": "Scale",
-   "read_only": 1,
-   "description": "Truck scale used for exit/tare weight"
-  },
-  {
-   "fieldname": "tare_weight_time",
-   "fieldtype": "Datetime",
-   "label": "Tare Weight Time",
-   "read_only": 1
-  },
-  {
-   "fieldname": "section_break_truck_calc",
-   "fieldtype": "Section Break",
-   "label": "Weight Verification"
-  },
-  {
-   "fieldname": "net_truck_weight",
-   "fieldtype": "Float",
-   "label": "Net Truck Weight (kg)",
-   "read_only": 1,
-   "description": "Gross - Tare = Net weight from truck scale"
-  },
-  {
-   "fieldname": "total_scrap_weight",
-   "fieldtype": "Float",
-   "label": "Total Scrap Weight (kg)",
-   "read_only": 1,
-   "description": "Sum of all scrap weight records"
-  },
-  {
-   "fieldname": "column_break_truck_2",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "weight_variance",
-   "fieldtype": "Float",
-   "label": "Weight Variance (kg)",
-   "read_only": 1,
-   "description": "Net truck weight - Total scrap weight"
-  },
-  {
-   "fieldname": "weight_variance_percent",
+   "fieldname": "fulfillment_percent",
    "fieldtype": "Percent",
-   "label": "Variance %",
+   "label": "Fulfillment %",
    "read_only": 1,
-   "description": "Variance as percentage of net truck weight"
+   "description": "(received / contracted) x 100"
   },
   {
-   "fieldname": "section_break_truck_remarks",
+   "default": "Pending",
+   "fieldname": "fulfillment_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Fulfillment Status",
+   "options": "Pending\nPartial\nFulfilled\nOver-delivered",
+   "read_only": 1,
+   "description": "Auto-calculated based on fulfillment percentage"
+  },
+  {
+   "default": "No Drop-off",
+   "fieldname": "dropoff_status",
+   "fieldtype": "Select",
+   "label": "Drop-off Status",
+   "options": "No Drop-off\nScheduled\nIn Progress\nReceived",
+   "read_only": 1,
+   "description": "Status of linked drop-offs"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_settings",
    "fieldtype": "Section Break",
-   "label": "Truck Weight Notes"
+   "label": "Settings"
   },
   {
-   "fieldname": "truck_weight_remarks",
-   "fieldtype": "Small Text",
-   "label": "Truck Weight Remarks",
-   "description": "Notes from truck scale operator"
-  },
-  {
-   "fieldname": "truck_weight_photo",
-   "fieldtype": "Attach Image",
-   "label": "Truck Weight Photo",
-   "description": "Photo taken during truck weighing"
-  },
-  {
-   "fieldname": "section_break_reweight",
-   "fieldtype": "Section Break",
-   "label": "Reweight Flags",
-   "collapsible": 1
-  },
-  {
-   "default": "0",
-   "fieldname": "is_truck_reweighed",
-   "fieldtype": "Check",
-   "label": "Truck Reweighed",
-   "description": "Truck was reweighed due to variance"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_scrap_reweighed",
-   "fieldtype": "Check",
-   "label": "Scrap Reweighed",
-   "description": "Scrap was reweighed due to variance"
+   "default": "0.01",
+   "fieldname": "variance_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Variance Threshold %",
+   "description": "Maximum acceptable variance percentage (default 0.01%)"
   },
   {
    "fieldname": "section_break_status",
    "fieldtype": "Section Break",
-   "label": "Processing Status"
-  },
-  {
-   "default": "Pending",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Status",
-   "options": "Pending\nProcessed\nCancelled",
-   "reqd": 1
+   "label": "Processing Info"
   },
   {
    "fieldname": "processed_by",
@@ -315,11 +208,13 @@
  "index_web_pages_for_search": 1,
  "links": [
   {
-   "link_doctype": "Scrap Weight",
-   "link_fieldname": "pos_order"
+   "group": "Fulfillment",
+   "link_doctype": "Dropoff Order",
+   "link_fieldname": "pos_order",
+   "parent_doctype": "Dropoff"
   }
  ],
- "modified": "2025-12-11 10:00:00.000000",
+ "modified": "2025-12-25 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "POS Order",
