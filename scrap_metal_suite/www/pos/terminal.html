@@ -73,6 +73,9 @@ body {
                     <button class="scale-menu-item" id="scaleMenuDisconnect" onclick="handleScaleDisconnect()" style="display:none;">
                         <span>⏹️</span> <span data-i18n="disconnect">Disconnect</span>
                     </button>
+                    <button class="scale-menu-item" id="scaleMenuDisconnectRefresh" onclick="disconnectAndReload()" style="display:none;">
+                        <span>🔄</span> <span>Disconnect & Refresh</span>
+                    </button>
                     <button class="scale-menu-item" onclick="openScaleTestPage()">
                         <span>🔧</span> <span data-i18n="reconfigureScale">Reconfigure Scale</span>
                     </button>
@@ -134,66 +137,64 @@ body {
             </div>
 
             <!-- Order Section with Scanner -->
-            <div class="order-section">
-                <div class="order-label-row">
-                    <label data-i18n="orderId">Order ID</label>
+            <!-- Dropoff Section with Scanner -->
+            <div class="dropoff-section">
+                <div class="dropoff-label-row">
+                    <label data-i18n="dropoffId">Drop-off ID</label>
+                </div>
+                <div class="order-input-group" style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="dropoffSearch" data-i18n-placeholder="enterDropoffId"
+                           placeholder="Enter Drop-off ID or scan..."
+                           oninput="searchDropoff(this.value)" autocomplete="off" style="flex: 1;">
                     <button class="scan-btn" onclick="openScanner()" title="Scan Barcode/QR">
                         <span>&#128247;</span> <span data-i18n="scan">Scan</span>
                     </button>
-                </div>
-                <div class="order-input-group">
-                    <input type="text" id="orderSearch" data-i18n-placeholder="enterOrderId"
-                           placeholder="Enter Order ID or scan..."
-                           oninput="searchOrder(this.value)" autocomplete="off">
-                    <div id="orderResults" class="order-results"></div>
+                    <div id="dropoffResults" class="order-results"></div>
                 </div>
 
-                <!-- Order Details Card (shown when order selected) -->
-                <div id="orderDetailsCard" class="order-details-card" style="display:none;">
-                    <div class="order-card-header" onclick="toggleOrderDetails(event)">
-                        <div class="order-card-title">
-                            <span class="collapse-indicator" id="orderCollapseIndicator">▼</span>
-                            <span class="order-card-id" id="orderCardId"></span>
+                <!-- Dropoff Details Card (shown when dropoff selected) -->
+                <div id="dropoffDetailsCard" class="dropoff-details-card" style="display:none;">
+                    <div class="dropoff-card-header" onclick="toggleDropoffDetails(event)">
+                        <div class="dropoff-card-title">
+                            <span class="collapse-indicator" id="dropoffCollapseIndicator">▼</span>
+                            <span class="dropoff-card-id" id="dropoffCardId"></span>
                         </div>
-                        <div class="order-summary" id="orderSummary"></div>
-                        <button class="clear-btn" onclick="clearOrder(); event.stopPropagation();">&#10005;</button>
+                        <div class="dropoff-summary" id="dropoffSummary"></div>
+                        <button class="clear-btn" onclick="clearDropoff(); event.stopPropagation();">&#10005;</button>
                     </div>
-                    <div class="order-card-body" id="orderCardBody">
-                        <div class="order-detail-row">
+                    <div class="dropoff-card-body" id="dropoffCardBody">
+                        <div class="dropoff-detail-row">
                             <span class="detail-label" data-i18n="supplier">Supplier</span>
-                            <span class="detail-value" id="orderCardSupplier"></span>
+                            <span class="detail-value" id="dropoffCardSupplier"></span>
                         </div>
-                        <div class="order-detail-row">
-                            <span class="detail-label" data-i18n="orderDate">Order Date</span>
-                            <span class="detail-value" id="orderCardDate"></span>
-                        </div>
-                        <div class="order-detail-row">
+                        <div class="dropoff-detail-row">
                             <span class="detail-label" data-i18n="dropoffDate">Drop-off Date</span>
-                            <span class="detail-value" id="orderCardDropoffDate"></span>
+                            <span class="detail-value" id="dropoffCardDate"></span>
                         </div>
-                        <div class="order-detail-row">
+                        <div class="dropoff-detail-row">
                             <span class="detail-label" data-i18n="licensePlate">License Plate</span>
-                            <span class="detail-value" id="orderCardPlate"></span>
+                            <span class="detail-value" id="dropoffCardPlate"></span>
                         </div>
-                        <div class="order-detail-row">
+                        <div class="dropoff-detail-row">
                             <span class="detail-label" data-i18n="status">Status</span>
-                            <span class="detail-value" id="orderCardStatus"></span>
+                            <span class="detail-value" id="dropoffCardStatus"></span>
                         </div>
-                        <!-- Order Items Collapsible Section -->
-                        <div class="order-items-section" id="orderItemsSection" style="display:none;">
-                            <div class="order-items-header" onclick="toggleOrderItems()">
-                                <span class="order-items-title">
+                        <!-- Truck Gross Weight (for scrap operator reference) -->
+                        <div class="dropoff-detail-row truck-weight-row" id="truckWeightRow" style="display:none;">
+                            <span class="detail-label" data-i18n="truckGrossWeight">Truck Weight (Gross)</span>
+                            <span class="detail-value truck-weight-value" id="dropoffTruckGross">--</span>
+                        </div>
+                        <!-- Dropoff Items Collapsible Section -->
+                        <div class="dropoff-items-section" id="dropoffItemsSection" style="display:none;">
+                            <div class="dropoff-items-header" onclick="toggleDropoffItems()">
+                                <span class="dropoff-items-title">
                                     <span data-i18n="expectedItems">Expected Items</span>
-                                    <span class="order-items-count" id="orderItemsCount">0</span>
+                                    <span class="dropoff-items-count" id="dropoffItemsCount">0</span>
                                 </span>
-                                <span class="order-items-toggle" id="orderItemsToggle">▼</span>
+                                <span class="dropoff-items-toggle" id="dropoffItemsToggle">▼</span>
                             </div>
-                            <div class="order-items-list" id="orderItemsList"></div>
+                            <div class="dropoff-items-list" id="dropoffItemsList"></div>
                         </div>
-                    </div>
-                    <!-- Re-weight warning (shown when order already processed) -->
-                    <div id="reweightWarning" class="reweight-warning" style="display:none;" data-i18n="reweightWarning">
-                        This order was already processed. Recording will create a re-weight entry.
                     </div>
                 </div>
             </div>
@@ -277,7 +278,7 @@ body {
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
                 <button class="btn-pos btn-secondary" onclick="closeWeightModal()" data-i18n="cancel">Cancel</button>
                 <button class="btn-pos btn-primary" onclick="addToCart()" data-i18n="addToCart">Add to Cart</button>
             </div>
@@ -298,10 +299,10 @@ body {
                 </div>
                 <div class="manual-entry">
                     <label data-i18n="orEnterManually">Or enter manually:</label>
-                    <input type="text" id="manualOrderInput" data-i18n-placeholder="enterOrderId"
-                           placeholder="Enter Order ID..."
-                           onkeyup="if(event.key==='Enter')submitManualOrder()">
-                    <button class="btn-pos btn-primary" onclick="submitManualOrder()" data-i18n="search">Search</button>
+                    <input type="text" id="manualDropoffInput" data-i18n-placeholder="enterDropoffId"
+                           placeholder="Enter Drop-off ID..."
+                           onkeyup="if(event.key==='Enter')submitManualDropoff()">
+                    <button class="btn-pos btn-primary" onclick="submitManualDropoff()" data-i18n="search">Search</button>
                 </div>
             </div>
         </div>
@@ -317,7 +318,7 @@ body {
             <div class="modal-body">
                 <textarea id="remarksInput" data-i18n-placeholder="enterRemarks" placeholder="Enter remarks for this order..." rows="4"></textarea>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
                 <button class="btn-pos btn-secondary" onclick="closeRemarksModal()" data-i18n="cancel">Cancel</button>
                 <button class="btn-pos btn-primary" onclick="saveRemarks()" data-i18n="saveRemarks">Save Remarks</button>
             </div>
@@ -329,9 +330,14 @@ body {
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h3 data-i18n="capturePhoto">Capture Photo</h3>
+                <span id="photoCountBadge" class="photo-count-badge" style="display:none;">0</span>
                 <button class="modal-close" onclick="closePhotoCapture()">&#10005;</button>
             </div>
             <div class="modal-body">
+                <!-- Captured Photos Thumbnails -->
+                <div id="photoThumbnails" class="photo-thumbnails" style="display:none;">
+                    <!-- Thumbnails added dynamically -->
+                </div>
                 <div class="camera-container">
                     <video id="cameraVideo" autoplay playsinline></video>
                     <canvas id="photoCanvas" style="display:none;"></canvas>
@@ -346,9 +352,10 @@ body {
                     </button>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
                 <button class="btn-pos btn-secondary" onclick="closePhotoCapture()" data-i18n="cancel">Cancel</button>
-                <button class="btn-pos btn-success" onclick="savePhoto()" id="savePhotoBtn" disabled data-i18n="savePhoto">Save Photo</button>
+                <button class="btn-pos btn-success" onclick="addPhotoAndContinue()" id="addPhotoBtn" disabled data-i18n="addAnother">Add &amp; Take Another</button>
+                <button class="btn-pos btn-success" onclick="addPhotoAndClose()" id="savePhotoBtn" disabled data-i18n="savePhoto">Save Photo</button>
             </div>
         </div>
     </div>
@@ -363,7 +370,7 @@ body {
             <div class="modal-body" id="summaryContent">
                 Loading...
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
                 <button class="btn-pos btn-secondary" onclick="closeSummaryModal()" data-i18n="close">Close</button>
             </div>
         </div>
@@ -380,8 +387,8 @@ body {
                 <!-- Order Info -->
                 <div class="confirm-order-info">
                     <div class="confirm-row">
-                        <span class="confirm-label" data-i18n="orderId">Order ID</span>
-                        <span class="confirm-value" id="confirmOrderId"></span>
+                        <span class="confirm-label" data-i18n="dropoffId">Drop-off ID</span>
+                        <span class="confirm-value" id="confirmDropoffId"></span>
                     </div>
                     <div class="confirm-row">
                         <span class="confirm-label" data-i18n="supplier">Supplier</span>
@@ -436,7 +443,7 @@ body {
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
                 <button class="btn-pos btn-secondary" onclick="closeConfirmModal()" data-i18n="cancel">Cancel</button>
                 <button class="btn-pos btn-success" onclick="confirmAndRecord()" id="confirmRecordBtn" data-i18n="confirmRecord">Confirm & Record</button>
             </div>
@@ -454,7 +461,7 @@ body {
                 <p data-i18n="confirmCloseSession">Are you sure you want to close this session?</p>
                 <div id="closeSessionSummary"></div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
                 <button class="btn-pos btn-secondary" onclick="closeCloseSessionModal()" data-i18n="cancel">Cancel</button>
                 <button class="btn-pos btn-danger" onclick="closeSession()" data-i18n="closeSession">Close Session</button>
             </div>
@@ -505,9 +512,12 @@ body {
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
                 <button class="btn-pos btn-success btn-large" onclick="confirmScaleSelection()" id="confirmScaleBtn" disabled data-i18n="confirmScale">
-                    Confirm Scale
+                    Confirm & Connect Scale
+                </button>
+                <button class="btn-pos btn-secondary" onclick="confirmScaleManualMode()" id="manualModeBtn" disabled data-i18n="confirmScaleManual">
+                    Confirm Scale (Manual Entry)
                 </button>
             </div>
         </div>
@@ -568,6 +578,7 @@ body {
             <div class="modal-footer" id="scaleConnectionFooter" style="display:none;">
                 <button class="btn-pos btn-secondary" onclick="closeScaleConnectionModal()" data-i18n="tryAgain">Try Again</button>
                 <button class="btn-pos btn-primary" onclick="openScaleTestPage()" data-i18n="reconfigureScale">Reconfigure Scale</button>
+                <button class="btn-pos btn-warning" onclick="useManualEntryMode()" data-i18n="useManualEntry">Use Manual Entry</button>
             </div>
             <div class="modal-footer" id="scaleConnectionSuccessFooter" style="display:none;">
                 <button class="btn-pos btn-success btn-large" onclick="completeScaleSelection()" data-i18n="continue">Continue</button>
@@ -593,7 +604,10 @@ const state = {
     cart: [],
     currentItem: null,
     remarks: '',
-    capturedPhotoData: null,
+    capturedPhotos: [],  // Array of captured photo data URLs (new photos)
+    existingPhotos: [],  // Array of existing photos from server
+    currentPhotoData: null,  // Temporary storage for current capture
+    scrapWeights: [],  // Scrap weights from API (includes photos)
     scannerStream: null,
     cameraStream: null,
     scale: null,
@@ -926,7 +940,7 @@ function onScanSuccess(decodedText) {
     } catch (e) {}
 
     closeScanner();
-    searchAndSelectOrder(decodedText);
+    searchAndSelectDropoff(decodedText);
 }
 
 async function closeScanner() {
@@ -939,12 +953,12 @@ async function closeScanner() {
     document.getElementById('scannerModal').style.display = 'none';
 }
 
-function submitManualOrder() {
-    const input = document.getElementById('manualOrderInput');
+function submitManualDropoff() {
+    const input = document.getElementById('manualDropoffInput');
     const orderId = input.value.trim();
     if (orderId) {
         closeScanner();
-        searchAndSelectOrder(orderId);
+        searchAndSelectDropoff(orderId);
     }
 }
 
@@ -969,29 +983,29 @@ function parseQRValue(rawValue) {
     return rawValue;
 }
 
-async function searchAndSelectOrder(query) {
+async function searchAndSelectDropoff(query) {
     const parsedQuery = parseQRValue(query);
 
     try {
-        const data = await callAPI('scrap_metal_suite.api.v1.pos.lookup_order', { query: parsedQuery });
+        const data = await callAPI('scrap_metal_suite.api.v1.dropoff.lookup_dropoff', { query: parsedQuery });
 
         if (data.message && data.message.length > 0) {
             const o = data.message[0];
-            selectOrder(o.name, o.order_id, o.supplier, o.supplier_name || '', o.license_plate || '', o.order_date || '', o.status || 'Pending');
+            selectDropoff(o.name, o.dropoff_date || '', o.license_plate || '', o.supplier_name || '', o.status || 'Draft');
         } else {
-            frappe.msgprint(t('orderNotFound') + ': ' + parsedQuery);
+            frappe.msgprint(t('dropoffNotFound') + ': ' + parsedQuery);
         }
     } catch (error) {
-        console.error('Order search error:', error);
-        frappe.msgprint(t('errorSearching'));
+        console.error('Dropoff search error:', error);
+        frappe.msgprint(t('errorSearchingDropoff'));
     }
 }
 
 // ===== Order Search =====
 let searchTimeout;
-async function searchOrder(query) {
+async function searchDropoff(query) {
     clearTimeout(searchTimeout);
-    const resultsDiv = document.getElementById('orderResults');
+    const resultsDiv = document.getElementById('dropoffResults');
 
     if (query.length < 2) {
         resultsDiv.innerHTML = '';
@@ -1001,82 +1015,92 @@ async function searchOrder(query) {
 
     searchTimeout = setTimeout(async () => {
         try {
-            const data = await callAPI('scrap_metal_suite.api.v1.pos.lookup_order', { query: query });
+            const data = await callAPI('scrap_metal_suite.api.v1.dropoff.lookup_dropoff', { query: query });
 
             if (data.message && data.message.length > 0) {
-                resultsDiv.innerHTML = data.message.map(o => `
-                    <div class="order-result" onclick="selectOrder('${o.name}', '${o.order_id || ''}', '${o.supplier}', '${o.supplier_name || ''}', '${o.license_plate || ''}', '${o.order_date || ''}', '${o.status || 'Pending'}')">
-                        <span class="order-id">${o.order_id || o.name}</span>
-                        <span class="order-details">${o.supplier_name || o.supplier} ${o.license_plate ? '| ' + o.license_plate : ''} ${o.status === 'Processed' ? '| ✓' : ''}</span>
-                    </div>
-                `).join('');
+                resultsDiv.innerHTML = data.message.map(function(o) {
+                    return '<div class="dropoff-result" onclick="selectDropoff(\'' + o.name + '\', \'' + (o.dropoff_date || '') + '\', \'' + (o.license_plate || '') + '\', \'' + (o.supplier_name || '') + '\', \'' + (o.status || 'Draft') + '\')">' +
+                        '<span class="dropoff-id">' + o.name + '</span>' +
+                        '<span class="dropoff-details">' + (o.supplier_name || '') + (o.license_plate ? ' | ' + o.license_plate : '') + (o.status === 'Closed' ? ' | ✓' : '') + '</span>' +
+                    '</div>';
+                }).join('');
                 resultsDiv.style.display = 'block';
             } else {
-                resultsDiv.innerHTML = `<div class="no-results">${t('noOrdersFound')}</div>`;
+                resultsDiv.innerHTML = '<div class="no-results">' + t('noDropoffsFound') + '</div>';
                 resultsDiv.style.display = 'block';
             }
         } catch (error) {
-            console.error('Order search error:', error);
-            resultsDiv.innerHTML = `<div class="no-results">${t('errorSearching')}</div>`;
+            console.error('Dropoff search error:', error);
+            resultsDiv.innerHTML = '<div class="no-results">' + t('errorSearchingDropoff') + '</div>';
             resultsDiv.style.display = 'block';
         }
     }, 300);
 }
 
-function selectOrder(name, orderId, supplier, supplierName, licensePlate, orderDate, status) {
-    state.order = {
+function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
+    state.dropoff = {
         name: name,
-        orderId: orderId || name,
-        supplier: supplier,
+        dropoffId: name,
         supplierName: supplierName,
         licensePlate: licensePlate,
-        orderDate: orderDate,
-        status: status || 'Pending'
+        dropoffDate: dropoffDate,
+        status: status || 'Draft'
     };
 
-    document.getElementById('orderSearch').style.display = 'none';
-    document.getElementById('orderResults').style.display = 'none';
+    document.getElementById('dropoffSearch').style.display = 'none';
+    document.getElementById('dropoffResults').style.display = 'none';
 
-    const card = document.getElementById('orderDetailsCard');
-    document.getElementById('orderCardId').textContent = orderId || name;
-    document.getElementById('orderCardSupplier').textContent = supplierName || supplier;
-    document.getElementById('orderCardDate').textContent = orderDate ? new Date(orderDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
-    document.getElementById('orderCardPlate').textContent = licensePlate || '-';
+    const card = document.getElementById('dropoffDetailsCard');
+    document.getElementById('dropoffCardId').textContent = name;
+    document.getElementById('dropoffCardSupplier').textContent = supplierName || '-';
+    document.getElementById('dropoffCardDate').textContent = dropoffDate ? new Date(dropoffDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+    document.getElementById('dropoffCardPlate').textContent = licensePlate || '-';
 
-    const statusEl = document.getElementById('orderCardStatus');
-    statusEl.textContent = status || 'Pending';
-    statusEl.className = 'detail-value status-' + (status || 'Pending').toLowerCase();
+    const statusEl = document.getElementById('dropoffCardStatus');
+    statusEl.textContent = status || 'Draft';
+    statusEl.className = 'detail-value status-' + (status || 'Draft').toLowerCase();
 
-    const reweightWarning = document.getElementById('reweightWarning');
-    reweightWarning.style.display = status === 'Processed' ? 'block' : 'none';
 
     card.style.display = 'block';
 
-    // Fetch full order details including dropoff_date and order_items
-    fetchOrderDetails(name);
+    // Fetch full dropoff details including expected_items
+    fetchDropoffDetails(name);
 
     updateButtonStates();
 }
 
-// Fetch order details from API
-async function fetchOrderDetails(orderName) {
+// Fetch dropoff details from API
+async function fetchDropoffDetails(dropoffName) {
     try {
         const response = await frappe.call({
-            method: 'scrap_metal_suite.api.v1.pos.get_order_details',
-            args: { order_id: orderName }
+            method: 'scrap_metal_suite.api.v1.dropoff.get_dropoff_details',
+            args: { dropoff: dropoffName }
         });
 
         if (response.message) {
             const details = response.message;
 
             // Update dropoff date
-            const dropoffEl = document.getElementById('orderCardDropoffDate');
+            const dropoffEl = document.getElementById('dropoffCardDate');
             if (dropoffEl) {
                 dropoffEl.textContent = details.dropoff_date ? new Date(details.dropoff_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
             }
 
-            // Update order items section
-            renderOrderItems(details.order_items || []);
+            // Update dropoff items section
+            renderDropoffItems(details.expected_items || []);
+
+            // Update truck gross weight display (for scrap operator reference)
+            const truckWeightRow = document.getElementById('truckWeightRow');
+            const truckGrossEl = document.getElementById('dropoffTruckGross');
+            if (details.gross_weight && details.gross_weight > 0) {
+                if (truckWeightRow) truckWeightRow.style.display = 'flex';
+                if (truckGrossEl) truckGrossEl.textContent = parseFloat(details.gross_weight).toFixed(2) + ' Kg';
+            } else {
+                if (truckWeightRow) truckWeightRow.style.display = 'none';
+            }
+
+            // Store scrap weights (including photos) for later use
+            state.scrapWeights = details.scrap_weights || [];
 
             // Check for existing scrap weight (reweight scenario)
             if (details.existing_scrap_weight) {
@@ -1084,14 +1108,22 @@ async function fetchOrderDetails(orderName) {
                 state.isReweight = true;
                 await loadExistingScrapWeight(details.existing_scrap_weight);
                 showReweightBanner(true);
+
+                // Load existing photos from the scrap weight
+                loadExistingPhotos(details.existing_scrap_weight);
             } else {
                 state.existingScrapWeight = null;
                 state.isReweight = false;
                 showReweightBanner(false);
+                // Clear any existing photos for new weighing
+                state.capturedPhotos = [];
+    state.existingPhotos = [];
+    state.scrapWeights = [];
+                state.existingPhotos = [];
             }
         }
     } catch (err) {
-        console.error('Failed to fetch order details:', err);
+        console.error('Failed to fetch dropoff details:', err);
     }
 }
 
@@ -1099,7 +1131,7 @@ async function fetchOrderDetails(orderName) {
 async function loadExistingScrapWeight(scrapWeightId) {
     try {
         const response = await frappe.call({
-            method: 'scrap_metal_suite.api.v1.pos.load_scrap_weight',
+            method: 'scrap_metal_suite.api.v1.dropoff.load_scrap_weight',
             args: { scrap_weight_id: scrapWeightId }
         });
 
@@ -1131,6 +1163,24 @@ async function loadExistingScrapWeight(scrapWeightId) {
     }
 }
 
+// Load existing photos from scrap weight
+function loadExistingPhotos(scrapWeightId) {
+    // Find the scrap weight in state.scrapWeights
+    const sw = state.scrapWeights.find(s => s.name === scrapWeightId);
+    if (sw && sw.photos && sw.photos.length > 0) {
+        // Store existing photos separately (they are URLs, not base64)
+        state.existingPhotos = sw.photos.map(p => ({
+            name: p.name,
+            url: p.photo,
+            file_name: p.file_name,
+            isExisting: true
+        }));
+        console.log('Loaded existing photos:', state.existingPhotos.length);
+    } else {
+        state.existingPhotos = [];
+    }
+}
+
 // Show/hide reweight warning banner
 function showReweightBanner(show) {
     const banner = document.getElementById('reweightBanner');
@@ -1140,20 +1190,20 @@ function showReweightBanner(show) {
 }
 
 // Render order items in collapsible section
-function renderOrderItems(items) {
-    const section = document.getElementById('orderItemsSection');
-    const list = document.getElementById('orderItemsList');
-    const countEl = document.getElementById('orderItemsCount');
+function renderDropoffItems(items) {
+    const section = document.getElementById('dropoffItemsSection');
+    const list = document.getElementById('dropoffItemsList');
+    const countEl = document.getElementById('dropoffItemsCount');
     const fromOrderTab = document.getElementById('fromOrderTab');
 
     // Store in state for filtering
-    state.orderItems = items || [];
+    state.dropoffItems = items || [];
 
     // Show/hide "From Order" tab
     if (fromOrderTab) {
         fromOrderTab.style.display = (items && items.length > 0) ? '' : 'none';
 
-        // Auto-select "From Order" tab if there are order items
+        // Auto-select "From Order" tab if there are dropoff items
         if (items && items.length > 0) {
             filterCategory(fromOrderTab, 'fromOrder');
         }
@@ -1167,45 +1217,43 @@ function renderOrderItems(items) {
     section.style.display = 'block';
     countEl.textContent = items.length;
 
-    let html = '';
-    items.forEach(item => {
-        const weight = item.weight ? parseFloat(item.weight).toFixed(2) + ' ' + (item.uom || 'Kg') : '-';
-        html += `
-            <div class="order-item-row">
-                <span class="order-item-name">${item.item_name || item.item_code}</span>
-                <span class="order-item-weight">${weight}</span>
-            </div>
-        `;
+    var html = '';
+    items.forEach(function(item) {
+        var weight = item.weight ? parseFloat(item.weight).toFixed(2) + ' ' + (item.uom || 'Kg') : '-';
+        html += '<div class="order-item-row">' +
+            '<span class="order-item-name">' + (item.item_name || item.item_code) + '</span>' +
+            '<span class="order-item-weight">' + weight + '</span>' +
+        '</div>';
     });
 
     list.innerHTML = html;
 }
 
-// Toggle order items expansion
-function toggleOrderItems() {
-    const list = document.getElementById('orderItemsList');
-    const toggle = document.getElementById('orderItemsToggle');
+// Toggle dropoff items expansion
+function toggleDropoffItems() {
+    const list = document.getElementById('dropoffItemsList');
+    const toggle = document.getElementById('dropoffItemsToggle');
 
     list.classList.toggle('expanded');
     toggle.classList.toggle('expanded');
 }
 
-// Toggle order details collapse/expand
-function toggleOrderDetails(event) {
+// Toggle dropoff details collapse/expand
+function toggleDropoffDetails(event) {
     // Don't toggle if clicking clear button
     if (event.target.classList.contains('clear-btn')) return;
 
-    const body = document.getElementById('orderCardBody');
-    const indicator = document.getElementById('orderCollapseIndicator');
-    const summary = document.getElementById('orderSummary');
+    const body = document.getElementById('dropoffCardBody');
+    const indicator = document.getElementById('dropoffCollapseIndicator');
+    const summary = document.getElementById('dropoffSummary');
 
     body.classList.toggle('collapsed');
     indicator.classList.toggle('collapsed');
 
     // Update summary when collapsed
     if (body.classList.contains('collapsed')) {
-        const supplier = document.getElementById('orderCardSupplier').textContent;
-        const plate = document.getElementById('orderCardPlate').textContent;
+        const supplier = document.getElementById('dropoffCardSupplier').textContent;
+        const plate = document.getElementById('dropoffCardPlate').textContent;
         summary.textContent = supplier + (plate && plate !== '-' ? ' • ' + plate : '');
         summary.style.display = 'block';
     } else {
@@ -1233,16 +1281,22 @@ function updateCartCount() {
     }
 }
 
-function clearOrder() {
-    state.order = null;
-    state.orderItems = [];
+function clearDropoff() {
+    state.dropoff = null;
+    state.dropoffItems = [];
     state.existingScrapWeight = null;
     state.isReweight = false;
     state.remarks = '';
-    state.capturedPhotoData = null;
-    document.getElementById('orderSearch').value = '';
-    document.getElementById('orderSearch').style.display = 'block';
-    document.getElementById('orderDetailsCard').style.display = 'none';
+    state.capturedPhotos = [];
+    state.existingPhotos = [];
+    state.scrapWeights = [];
+    document.getElementById('dropoffSearch').value = '';
+    document.getElementById('dropoffSearch').style.display = 'block';
+    document.getElementById('dropoffDetailsCard').style.display = 'none';
+
+    // Hide truck weight row
+    const truckWeightRow = document.getElementById('truckWeightRow');
+    if (truckWeightRow) truckWeightRow.style.display = 'none';
 
     // Hide reweight banner
     showReweightBanner(false);
@@ -1271,7 +1325,7 @@ function filterCategory(btn, category) {
     // Special handling for "From Order" filter
     if (category === 'fromOrder') {
         // Get item codes from order items
-        const orderItemCodes = state.orderItems.map(i => i.item_code);
+        const orderItemCodes = state.dropoffItems.map(i => i.item_code);
 
         document.querySelectorAll(".item-btn").forEach(item => {
             const itemCode = item.getAttribute("data-item-code") || "";
@@ -1389,22 +1443,25 @@ function renderCart() {
 function removeFromCart(index) {
     state.cart.splice(index, 1);
     renderCart();
+    updateCartCount();
     updateButtonStates();
 }
+
 
 function clearCart() {
     state.cart = [];
     renderCart();
+    updateCartCount();
     updateButtonStates();
 }
 
 function clearTransaction() {
     clearCart();
-    clearOrder();
+    clearDropoff();
 }
 
 function updateButtonStates() {
-    const hasOrder = !!state.order;
+    const hasOrder = !!state.dropoff;
     const hasItems = state.cart.length > 0;
 
     document.getElementById('recordWeightBtn').disabled = !hasOrder || !hasItems;
@@ -1414,7 +1471,7 @@ function updateButtonStates() {
 
 // ===== Remarks =====
 function openRemarksModal() {
-    if (!state.order) return;
+    if (!state.dropoff) return;
     document.getElementById('remarksInput').value = state.remarks || '';
     document.getElementById('remarksModal').style.display = 'flex';
 }
@@ -1431,7 +1488,7 @@ function saveRemarks() {
 
 // ===== Photo Capture =====
 async function openPhotoCapture() {
-    if (!state.order) return;
+    if (!state.dropoff) return;
 
     const modal = document.getElementById('photoModal');
     const video = document.getElementById('cameraVideo');
@@ -1442,6 +1499,13 @@ async function openPhotoCapture() {
     document.getElementById('captureBtn').style.display = 'inline-block';
     document.getElementById('retakeBtn').style.display = 'none';
     document.getElementById('savePhotoBtn').disabled = true;
+    document.getElementById('addPhotoBtn').disabled = true;
+
+    // Reset current photo data
+    state.currentPhotoData = null;
+
+    // Update thumbnails display
+    updatePhotoThumbnails();
 
     modal.style.display = 'flex';
 
@@ -1465,6 +1529,7 @@ function closePhotoCapture() {
         state.cameraStream = null;
     }
     video.srcObject = null;
+    state.currentPhotoData = null;
     document.getElementById('photoModal').style.display = 'none';
 }
 
@@ -1477,43 +1542,115 @@ function capturePhoto() {
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
 
-    state.capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
-    capturedImg.src = state.capturedPhotoData;
+    state.currentPhotoData = canvas.toDataURL('image/jpeg', 0.8);
+    capturedImg.src = state.currentPhotoData;
     video.style.display = 'none';
     capturedImg.style.display = 'block';
 
     document.getElementById('captureBtn').style.display = 'none';
     document.getElementById('retakeBtn').style.display = 'inline-block';
     document.getElementById('savePhotoBtn').disabled = false;
+    document.getElementById('addPhotoBtn').disabled = false;
 }
 
 function retakePhoto() {
     const video = document.getElementById('cameraVideo');
     const capturedImg = document.getElementById('capturedPhoto');
 
-    state.capturedPhotoData = null;
+    state.currentPhotoData = null;
     video.style.display = 'block';
     capturedImg.style.display = 'none';
 
     document.getElementById('captureBtn').style.display = 'inline-block';
     document.getElementById('retakeBtn').style.display = 'none';
     document.getElementById('savePhotoBtn').disabled = true;
+    document.getElementById('addPhotoBtn').disabled = true;
 }
 
-function savePhoto() {
-    if (state.capturedPhotoData) {
-        closePhotoCapture();
-        frappe.show_alert({ message: t('photoReady'), indicator: 'green' }, 2);
+function addPhotoAndContinue() {
+    if (state.currentPhotoData) {
+        state.capturedPhotos.push(state.currentPhotoData);
+        state.currentPhotoData = null;
+        updatePhotoThumbnails();
+
+        // Reset camera view for next photo
+        const video = document.getElementById('cameraVideo');
+        const capturedImg = document.getElementById('capturedPhoto');
+        video.style.display = 'block';
+        capturedImg.style.display = 'none';
+        document.getElementById('captureBtn').style.display = 'inline-block';
+        document.getElementById('retakeBtn').style.display = 'none';
+        document.getElementById('savePhotoBtn').disabled = true;
+        document.getElementById('addPhotoBtn').disabled = true;
+
+        frappe.show_alert({ message: t('photoAdded') + ' (' + state.capturedPhotos.length + ')', indicator: 'green' }, 2);
     }
+}
+
+function addPhotoAndClose() {
+    if (state.currentPhotoData) {
+        state.capturedPhotos.push(state.currentPhotoData);
+        state.currentPhotoData = null;
+    }
+    closePhotoCapture();
+    const count = state.capturedPhotos.length;
+    if (count > 0) {
+        frappe.show_alert({ message: count + ' ' + t('photosReady'), indicator: 'green' }, 2);
+    }
+}
+
+function updatePhotoThumbnails() {
+    const container = document.getElementById('photoThumbnails');
+    const badge = document.getElementById('photoCountBadge');
+    const existingCount = (state.existingPhotos || []).length;
+    const newCount = state.capturedPhotos.length;
+    const totalCount = existingCount + newCount;
+
+    if (totalCount === 0) {
+        container.style.display = 'none';
+        badge.style.display = 'none';
+        return;
+    }
+
+    badge.textContent = totalCount;
+    badge.style.display = 'inline-block';
+    container.style.display = 'flex';
+
+    let html = '';
+
+    // Show existing photos first (from server) - with different styling
+    if (state.existingPhotos && state.existingPhotos.length > 0) {
+        state.existingPhotos.forEach((photo, index) => {
+            html += '<div class="photo-thumbnail existing-photo">';
+            html += '<img src="' + photo.url + '" alt="Existing ' + (index + 1) + '">';
+            html += '<span class="thumbnail-existing-badge">&#10003;</span>';
+            html += '</div>';
+        });
+    }
+
+    // Show newly captured photos
+    state.capturedPhotos.forEach((photo, index) => {
+        html += '<div class="photo-thumbnail new-photo">';
+        html += '<img src="' + photo + '" alt="New ' + (index + 1) + '">';
+        html += '<button class="thumbnail-delete" onclick="removePhoto(' + index + ')">&#10005;</button>';
+        html += '</div>';
+    });
+
+    container.innerHTML = html;
+}
+
+function removePhoto(index) {
+    state.capturedPhotos.splice(index, 1);
+    updatePhotoThumbnails();
 }
 
 // ===== Confirmation Modal =====
 function showConfirmModal() {
-    if (!state.order || state.cart.length === 0) return;
+    if (!state.dropoff || state.cart.length === 0) return;
 
     // Populate order info
-    document.getElementById('confirmOrderId').textContent = state.order.orderId || state.order.name;
-    document.getElementById('confirmSupplier').textContent = state.order.supplierName || state.order.supplier;
+    document.getElementById('confirmDropoffId').textContent = state.dropoff.dropoffId || state.dropoff.name;
+    document.getElementById('confirmSupplier').textContent = state.dropoff.supplierNameName || state.dropoff.supplierName;
 
     // Populate date/time and operator name
     const now = new Date();
@@ -1564,7 +1701,7 @@ function showConfirmModal() {
     }
 
     // Show photo count
-    const photoCount = state.capturedPhotoData ? 1 : 0;
+    const photoCount = state.capturedPhotos.length + (state.existingPhotos || []).length;
     document.getElementById('confirmPhotoCount').textContent = photoCount;
     const photoStatus = document.getElementById('confirmPhotoStatus');
     photoStatus.classList.toggle('has-photos', photoCount > 0);
@@ -1592,12 +1729,12 @@ async function confirmAndRecord() {
 
 // ===== Record Weight =====
 async function recordWeight() {
-    if (!state.order || state.cart.length === 0) return;
+    if (!state.dropoff || state.cart.length === 0) return;
 
     try {
         const args = {
             session: state.session,
-            pos_order: state.order.name,
+            dropoff: state.dropoff.name,
             items: JSON.stringify(state.cart.map(item => ({
                 item_code: item.item_code,
                 weight: item.weight,
@@ -1612,11 +1749,11 @@ async function recordWeight() {
             args.reweight_reason = state.reweightReason || null;
         }
 
-        const data = await callAPI('scrap_metal_suite.api.v1.pos.create_scrap_weight', args);
+        const data = await callAPI('scrap_metal_suite.api.v1.dropoff.record_scrap_weight', args);
 
         if (data.message) {
-            if (state.capturedPhotoData) {
-                await attachPhoto(data.message.scrap_weight);
+            if (state.capturedPhotos.length > 0) {
+                await attachPhotos(data.message.scrap_weight);
             }
 
             const reweightMsg = data.message.is_reweight ? ` (${t('reweight')})` : '';
@@ -1638,24 +1775,41 @@ async function recordWeight() {
     }
 }
 
-async function attachPhoto(docname) {
-    if (!state.capturedPhotoData) return;
+async function attachPhotos(scrapWeightName) {
+    if (state.capturedPhotos.length === 0) return;
 
     try {
-        const response = await fetch(state.capturedPhotoData);
-        const blob = await response.blob();
+        for (let i = 0; i < state.capturedPhotos.length; i++) {
+            const photoData = state.capturedPhotos[i];
 
-        const formData = new FormData();
-        formData.append('file', blob, `photo_${Date.now()}.jpg`);
-        formData.append('doctype', 'Scrap Weight');
-        formData.append('docname', docname);
-        formData.append('is_private', '0');
+            // First, upload the file to Frappe
+            const response = await fetch(photoData);
+            const blob = await response.blob();
 
-        await fetch('/api/method/upload_file', {
-            method: 'POST',
-            headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
-            body: formData
-        });
+            const formData = new FormData();
+            formData.append('file', blob, 'scrap_photo_' + scrapWeightName + '_' + (i + 1) + '_' + Date.now() + '.jpg');
+            formData.append('is_private', '0');
+
+            const uploadResponse = await fetch('/api/method/upload_file', {
+                method: 'POST',
+                headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
+                body: formData
+            });
+
+            const uploadResult = await uploadResponse.json();
+
+            if (uploadResult.message && uploadResult.message.file_url) {
+                // Now add to Weight Photo child table
+                await callAPI('scrap_metal_suite.api.v1.dropoff.save_weight_photo', {
+                    parent_doctype: 'Scrap Weight',
+                    parent_doc: scrapWeightName,
+                    photo_url: uploadResult.message.file_url,
+                    weight_type: 'Scrap',
+                    dropoff: state.dropoff.name,
+                    session: state.session
+                });
+            }
+        }
     } catch (err) {
         console.error('Photo upload error:', err);
     }
@@ -1903,11 +2057,13 @@ function onScaleDropdownChange() {
             state.selectedScale = scale;
             showSelectedScaleInfo(scale);
             document.getElementById('confirmScaleBtn').disabled = false;
+            document.getElementById('manualModeBtn').disabled = false;
         }
     } else {
         state.selectedScale = null;
         document.getElementById('selectedScaleInfo').style.display = 'none';
         document.getElementById('confirmScaleBtn').disabled = true;
+        document.getElementById('manualModeBtn').disabled = true;
     }
 }
 
@@ -2292,6 +2448,7 @@ function updateScaleDisplay() {
         const menuHeader = document.getElementById('scaleMenuStatus');
         const connectBtn = document.getElementById('scaleMenuConnect');
         const disconnectBtn = document.getElementById('scaleMenuDisconnect');
+        const disconnectRefreshBtn = document.getElementById('scaleMenuDisconnectRefresh');
 
         if (state.isScaleConnected) {
             indicator.className = 'scale-status-indicator connected';
@@ -2300,6 +2457,7 @@ function updateScaleDisplay() {
             menuHeader.className = 'scale-menu-header connected';
             connectBtn.style.display = 'none';
             disconnectBtn.style.display = 'flex';
+            disconnectRefreshBtn.style.display = 'flex';
         } else {
             indicator.className = 'scale-status-indicator disconnected';
             indicator.title = t('disconnected') || 'Disconnected';
@@ -2307,6 +2465,7 @@ function updateScaleDisplay() {
             menuHeader.className = 'scale-menu-header disconnected';
             connectBtn.style.display = 'flex';
             disconnectBtn.style.display = 'none';
+            disconnectRefreshBtn.style.display = 'none';
         }
     }
 }
@@ -2372,6 +2531,83 @@ async function handleScaleDisconnect() {
     updateScaleDisplay();
 
     frappe.show_alert({ message: t('scaleDisconnected') || 'Scale disconnected', indicator: 'blue' }, 2);
+}
+
+async function disconnectAndReload() {
+    document.getElementById('scaleMenu').style.display = 'none';
+
+    try {
+        await cleanupScaleConnection(false);
+    } catch (e) {
+        console.error('Error disconnecting before reload:', e);
+    }
+
+    window.location.reload();
+}
+
+// Confirm scale selection with manual entry mode (skip WebSerial connection)
+async function confirmScaleManualMode() {
+    if (!state.selectedScale) {
+        frappe.msgprint(t('scaleRequired'));
+        return;
+    }
+
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.set_session_scale', {
+            session: state.session,
+            scale: state.selectedScale.name
+        });
+
+        if (response.message) {
+            state.scale = state.selectedScale;
+            state.isScaleConnected = false;  // Not connected - manual entry mode
+            document.getElementById('scaleModal').style.display = 'none';
+            updateScaleDisplay();
+            frappe.show_alert({
+                message: t('scaleSetManualMode') || 'Scale set - using manual weight entry',
+                indicator: 'blue'
+            }, 3);
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: t('error'),
+            indicator: 'red',
+            message: error.message || 'Failed to set scale'
+        });
+    }
+}
+
+// Use manual entry mode from connection failure modal
+async function useManualEntryMode() {
+    if (!state.selectedScale) {
+        frappe.msgprint(t('scaleRequired'));
+        return;
+    }
+
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.set_session_scale', {
+            session: state.session,
+            scale: state.selectedScale.name
+        });
+
+        if (response.message) {
+            state.scale = state.selectedScale;
+            state.isScaleConnected = false;  // Not connected - manual entry mode
+            document.getElementById('scaleModal').style.display = 'none';
+            document.getElementById('scaleConnectionModal').style.display = 'none';
+            updateScaleDisplay();
+            frappe.show_alert({
+                message: t('scaleSetManualMode') || 'Scale set - using manual weight entry',
+                indicator: 'blue'
+            }, 3);
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: t('error'),
+            indicator: 'red',
+            message: error.message || 'Failed to set scale'
+        });
+    }
 }
 
 // Handle when scale is physically unplugged (USB disconnect event)

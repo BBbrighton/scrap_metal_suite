@@ -95,6 +95,9 @@ const POS_I18N = (function() {
             continue: 'Continue',
             webSerialNotSupported: 'WebSerial API not supported. Please use Chrome or Edge browser.',
             unknownError: 'Unknown error occurred',
+            useManualEntry: 'Use Manual Entry',
+            confirmScaleManual: 'Confirm Scale (Manual Entry)',
+            scaleSetManualMode: 'Scale set - using manual weight entry',
 
             // ===== Live Weight =====
             readingFromScale: 'Reading from scale',
@@ -112,24 +115,36 @@ const POS_I18N = (function() {
             reconnect: 'Reconnect',
             disconnect: 'Disconnect',
 
-            // ===== Orders =====
+            // ===== Drop-off =====
+            dropoffId: 'Drop-off ID',
+            dropoff: 'Drop-off',
+            dropoffs: 'Drop-offs',
+            dropoffDate: 'Drop-off Date',
+            dropoffItems: 'Drop-off Items',
+            indicatedWeight: 'Indicated Weight',
+            noDropoffItems: 'No items in this drop-off',
+            expectedItems: 'Expected Items',
+            dropoffNotFound: 'Drop-off not found',
+            noDropoffsFound: 'No drop-offs found',
+            errorSearchingDropoff: 'Error searching for drop-off',
+            scanDropoffBarcode: 'Scan Drop-off Barcode/QR',
+            pointCamera: 'Point camera at barcode or QR code',
+            orEnterManually: 'Or enter manually:',
+            enterDropoffId: 'Enter Drop-off ID or scan...',
+            scan: 'Scan',
+
+            // ===== Orders (legacy) =====
             orderId: 'Order ID',
             order: 'Order',
             orders: 'Orders',
             orderDate: 'Order Date',
-            dropoffDate: 'Drop-off Date',
             orderItems: 'Order Items',
-            indicatedWeight: 'Indicated Weight',
             noOrderItems: 'No items in this order',
-            expectedItems: 'Expected Items',
             orderNotFound: 'Order not found',
             noOrdersFound: 'No orders found',
             errorSearching: 'Error searching for order',
             scanOrderBarcode: 'Scan order barcode/QR',
-            pointCamera: 'Point camera at barcode or QR code',
-            orEnterManually: 'Or enter manually:',
             enterOrderId: 'Enter order ID or scan...',
-            scan: 'Scan',
 
             // ===== Items =====
             items: 'Items',
@@ -154,12 +169,16 @@ const POS_I18N = (function() {
             reweight: 'Re-weight',
             reweightWarning: 'This order already has weights. Recording will be a re-weigh.',
             pleaseEnterWeight: 'Please enter a valid weight',
+            enterValidWeight: 'Please enter a valid weight greater than 0',
+            noDropoffSelected: 'Please select a dropoff first',
+            failedToRecordWeight: 'Failed to record weight',
             failedToRecord: 'Failed to record weight',
             grossWeight: 'Gross Weight',
             tareWeight: 'Tare Weight',
             netWeight: 'Net Weight',
             recordGross: 'Record Gross',
             recordTare: 'Record Tare',
+            truckGrossWeight: 'Truck Weight (Gross)',
 
             // ===== Supplier =====
             supplier: 'Supplier',
@@ -182,7 +201,10 @@ const POS_I18N = (function() {
             capture: 'Capture',
             retake: 'Retake',
             savePhoto: 'Save Photo',
+            addAnother: 'Add & Take Another',
             photoReady: 'Photo captured and ready to attach',
+            photoAdded: 'Photo added',
+            photosReady: 'photos ready to attach',
             photosAttached: 'photo(s) attached',
 
             // ===== Confirmation =====
@@ -221,6 +243,7 @@ const POS_I18N = (function() {
             saveWeight: 'Save Weight',
             truckWeightRemarks: 'Truck Weight Remarks',
             weightVerification: 'Weight Verification',
+            threshold: 'Threshold',
             netTruckWeight: 'Net Truck Weight',
             totalScrapWeight: 'Total Scrap Weight',
             variance: 'Variance',
@@ -343,6 +366,9 @@ const POS_I18N = (function() {
             continue: 'ดำเนินการต่อ',
             webSerialNotSupported: 'เบราว์เซอร์ไม่รองรับ WebSerial กรุณาใช้ Chrome หรือ Edge',
             unknownError: 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ',
+            useManualEntry: 'ใช้การกรอกเอง',
+            confirmScaleManual: 'ยืนยันเครื่องชั่ง (กรอกเอง)',
+            scaleSetManualMode: 'ตั้งค่าเครื่องชั่งแล้ว - ใช้การกรอกน้ำหนักเอง',
 
             // ===== Live Weight =====
             readingFromScale: 'กำลังอ่านจากเครื่องชั่ง',
@@ -360,24 +386,36 @@ const POS_I18N = (function() {
             reconnect: 'เชื่อมต่อใหม่',
             disconnect: 'ตัดการเชื่อมต่อ',
 
-            // ===== Orders =====
+            // ===== Drop-off =====
+            dropoffId: 'รหัสใบส่งของ',
+            dropoff: 'ใบส่งของ',
+            dropoffs: 'ใบส่งของ',
+            dropoffDate: 'วันที่ส่งมอบ',
+            dropoffItems: 'รายการในใบส่งของ',
+            indicatedWeight: 'น้ำหนักที่แจ้ง',
+            noDropoffItems: 'ไม่มีรายการในใบส่งของนี้',
+            expectedItems: 'รายการที่คาดหวัง',
+            dropoffNotFound: 'ไม่พบใบส่งของ',
+            noDropoffsFound: 'ไม่พบใบส่งของ',
+            errorSearchingDropoff: 'เกิดข้อผิดพลาดในการค้นหาใบส่งของ',
+            scanDropoffBarcode: 'สแกนบาร์โค้ด/QR ใบส่งของ',
+            pointCamera: 'เล็งกล้องไปที่บาร์โค้ดหรือ QR โค้ด',
+            orEnterManually: 'หรือกรอกเอง:',
+            enterDropoffId: 'กรอกรหัสใบส่งของหรือสแกน...',
+            scan: 'สแกน',
+
+            // ===== Orders (legacy) =====
             orderId: 'รหัสออเดอร์',
             order: 'ออเดอร์',
             orders: 'ออเดอร์',
             orderDate: 'วันที่สั่ง',
-            dropoffDate: 'วันที่ส่งมอบ',
             orderItems: 'รายการสินค้า',
-            indicatedWeight: 'น้ำหนักที่แจ้ง',
             noOrderItems: 'ไม่มีรายการในออเดอร์นี้',
-            expectedItems: 'รายการที่คาดหวัง',
             orderNotFound: 'ไม่พบออเดอร์',
             noOrdersFound: 'ไม่พบออเดอร์',
             errorSearching: 'เกิดข้อผิดพลาดในการค้นหา',
             scanOrderBarcode: 'สแกนบาร์โค้ด/QR ออเดอร์',
-            pointCamera: 'เล็งกล้องไปที่บาร์โค้ดหรือ QR โค้ด',
-            orEnterManually: 'หรือกรอกเอง:',
             enterOrderId: 'กรอกรหัสออเดอร์หรือสแกน...',
-            scan: 'สแกน',
 
             // ===== Items =====
             items: 'รายการสินค้า',
@@ -402,12 +440,16 @@ const POS_I18N = (function() {
             reweight: 'ชั่งซ้ำ',
             reweightWarning: 'ออเดอร์นี้ถูกบันทึกแล้ว การบันทึกจะเป็นการชั่งซ้ำ',
             pleaseEnterWeight: 'กรุณากรอกน้ำหนักที่ถูกต้อง',
+            enterValidWeight: 'กรุณากรอกน้ำหนักที่ถูกต้องมากกว่า 0',
+            noDropoffSelected: 'กรุณาเลือกใบส่งของก่อน',
+            failedToRecordWeight: 'ไม่สามารถบันทึกน้ำหนักได้',
             failedToRecord: 'ไม่สามารถบันทึกน้ำหนักได้',
             grossWeight: 'น้ำหนักรวม',
             tareWeight: 'น้ำหนักเปล่า',
             netWeight: 'น้ำหนักสุทธิ',
             recordGross: 'บันทึกน้ำหนักรวม',
             recordTare: 'บันทึกน้ำหนักเปล่า',
+            truckGrossWeight: 'น้ำหนักรถ (ขาเข้า)',
 
             // ===== Supplier =====
             supplier: 'ผู้ขาย',
@@ -430,7 +472,10 @@ const POS_I18N = (function() {
             capture: 'ถ่าย',
             retake: 'ถ่ายใหม่',
             savePhoto: 'บันทึกรูป',
+            addAnother: 'เพิ่มและถ่ายต่อ',
             photoReady: 'ถ่ายรูปแล้ว พร้อมแนบ',
+            photoAdded: 'เพิ่มรูปแล้ว',
+            photosReady: 'รูปพร้อมแนบ',
             photosAttached: 'รูปที่แนบ',
 
             // ===== Confirmation =====
@@ -469,6 +514,7 @@ const POS_I18N = (function() {
             saveWeight: 'บันทึกน้ำหนัก',
             truckWeightRemarks: 'หมายเหตุน้ำหนักรถ',
             weightVerification: 'ตรวจสอบน้ำหนัก',
+            threshold: 'เกณฑ์',
             netTruckWeight: 'น้ำหนักสุทธิรถ',
             totalScrapWeight: 'น้ำหนักเศษวัสดุรวม',
             variance: 'ค่าต่าง',

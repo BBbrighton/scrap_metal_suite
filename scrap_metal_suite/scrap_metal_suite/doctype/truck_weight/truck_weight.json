@@ -17,9 +17,17 @@
   "column_break_weight",
   "operator",
   "remarks",
+  "section_break_reweight",
+  "is_reweight",
+  "reweight_reason",
+  "column_break_reweight",
+  "reweight_at",
+  "reweight_by",
   "section_break_session",
   "session",
-  "pos_profile"
+  "pos_profile",
+  "section_break_photos",
+  "photos"
  ],
  "fields": [
   {
@@ -113,6 +121,46 @@
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "eval:!doc.is_reweight",
+   "fieldname": "section_break_reweight",
+   "fieldtype": "Section Break",
+   "label": "Reweight Info"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_reweight",
+   "fieldtype": "Check",
+   "label": "Is Reweight",
+   "description": "Indicates this weight was recorded after a reweigh"
+  },
+  {
+   "depends_on": "is_reweight",
+   "fieldname": "reweight_reason",
+   "fieldtype": "Small Text",
+   "label": "Reweight Reason",
+   "mandatory_depends_on": "is_reweight"
+  },
+  {
+   "fieldname": "column_break_reweight",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "is_reweight",
+   "fieldname": "reweight_at",
+   "fieldtype": "Datetime",
+   "label": "Reweighed At",
+   "read_only": 1
+  },
+  {
+   "depends_on": "is_reweight",
+   "fieldname": "reweight_by",
+   "fieldtype": "Link",
+   "label": "Reweighed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
    "fieldname": "section_break_session",
    "fieldtype": "Section Break",
    "label": "Session Info"
@@ -130,6 +178,18 @@
    "label": "POS Profile",
    "options": "POS Profile Scrap",
    "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_photos",
+   "fieldtype": "Section Break",
+   "label": "Photos"
+  },
+  {
+   "fieldname": "photos",
+   "fieldtype": "Table",
+   "label": "Photos",
+   "options": "Weight Photo"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -154,5 +214,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "modified": "2025-12-27 19:00:00.000000"
 }
