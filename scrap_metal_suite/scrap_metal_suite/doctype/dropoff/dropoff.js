@@ -49,16 +49,11 @@ function populate_expected_items_from_orders(frm) {
         return;
     }
 
-    // Fetch items from all orders
+    // Fetch items from all orders using our secure API
     frappe.call({
-        method: 'frappe.client.get_list',
+        method: 'scrap_metal_suite.api.v1.dropoff.get_items_from_orders',
         args: {
-            doctype: 'POS Order Item',
-            filters: {
-                parent: ['in', order_names]
-            },
-            fields: ['item_code', 'item_name', 'parent'],
-            limit_page_length: 0
+            order_names: order_names
         },
         callback: function(r) {
             if (r.message && r.message.length > 0) {

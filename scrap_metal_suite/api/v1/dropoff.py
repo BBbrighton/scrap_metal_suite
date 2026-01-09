@@ -43,6 +43,44 @@ def _count_dropoff_orders(parent):
 
 
 # =============================================================================
+# PHASE 8C: AUTO-POPULATE EXPECTED ITEMS
+# =============================================================================
+
+@frappe.whitelist()
+def get_items_from_orders(order_names):
+    """
+    Phase 8C: Get all items from given POS Orders (for auto-populating expected items).
+
+    Security: Checks if user has read permission on each POS Order before fetching items.
+
+    Args:
+        order_names: JSON array of POS Order names
+
+    Returns:
+        list: Unique items from all orders [{item_code, item_name, parent}, ...]
+    """
+    if isinstance(order_names, str):
+        order_names = json.loads(order_names)
+
+    if not order_names:
+        return []
+
+    # Security: Check if user has permission to read each order
+    for order_name in order_names:
+        if not frappe.has_permission("POS Order", "read", order_name):
+            frappe.throw(_("No permission to read POS Order: {0}").format(order_name))
+
+    # Fetch items from all orders
+    items = frappe.get_all(
+        "POS Order Item",
+        filters={"parent": ["in", order_names]},
+        fields=["item_code", "item_name", "parent"]
+    )
+
+    return items
+
+
+# =============================================================================
 # SEARCH & LOOKUP
 # =============================================================================
 
