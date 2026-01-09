@@ -14,6 +14,7 @@
   "section_break_weight",
   "weight",
   "scale",
+  "entry_method",
   "column_break_weight",
   "operator",
   "remarks",
@@ -102,6 +103,15 @@
    "label": "Scale",
    "options": "Scale",
    "description": "Scale used for weighing"
+  },
+  {
+   "default": "Manual Entry",
+   "fieldname": "entry_method",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Entry Method",
+   "options": "Scale (Auto)\nManual Entry",
+   "description": "How this weight was recorded"
   },
   {
    "fieldname": "column_break_weight",

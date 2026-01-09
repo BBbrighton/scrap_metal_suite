@@ -21,6 +21,7 @@
   "column_break_3",
   "pos_profile",
   "scale",
+  "entry_method",
   "section_break_items",
   "items",
   "section_break_totals",
@@ -147,6 +148,15 @@
    "options": "Scale",
    "read_only": 1,
    "description": "Scrap scale used for this weighing"
+  },
+  {
+   "default": "Manual Entry",
+   "fieldname": "entry_method",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Entry Method",
+   "options": "Scale (Auto)\nManual Entry",
+   "description": "How this weight was recorded"
   },
   {
    "fieldname": "section_break_items",

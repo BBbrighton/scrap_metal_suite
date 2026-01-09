@@ -2,7 +2,7 @@
 
 **Created:** 2025-12-28
 **Updated:** 2026-01-10
-**Status:** ✅ COMPLETED (8A, 8B, 8C)
+**Status:** ✅ COMPLETED (8A, 8B, 8C, 8D, 8E)
 
 ---
 
@@ -469,15 +469,24 @@ frappe.call({
   - API method: `scrap_metal_suite.api.v1.dropoff.get_items_from_orders(order_names)`
 - **Modal editing** - Child tables open modal for editing (normal Frappe behavior), inline editing not required
 
-### Phase 8D: Entry Method Tracking
-1. Add `entry_method` to `truck_weight.json` and `scrap_weight.json`
-2. Update APIs to accept entry_method
-3. Update terminals to pass entry_method
+### Phase 8D: Entry Method Tracking ✅ COMPLETED (2026-01-10)
+1. ✅ Add `entry_method` field to `truck_weight.json` and `scrap_weight.json`
+2. ✅ Update API endpoints to accept `entry_method` parameter
+3. ✅ Update terminals to pass `entry_method` based on scale connection status
 
-### Phase 8E: Terminal UI Updates
-1. Update status CSS classes in `pos.css`
-2. Update `terminal.html` status handling
-3. Update `truck.html` status handling + dual variance panel
+**Implementation:**
+- Field: Select field with options "Scale (Auto)" / "Manual Entry"
+- Default: "Manual Entry"
+- In list view: Yes (`in_list_view: 1`)
+- Terminal logic: `state.isScaleConnected ? 'Scale (Auto)' : 'Manual Entry'`
+- APIs updated: `record_truck_weight()` and `record_scrap_weight()`
+
+### Phase 8E: Terminal UI Updates ✅ COMPLETED (Already Done)
+1. ✅ Status CSS classes in `pos.css` - completed in Phase 8A/8B
+2. ✅ `terminal.html` status handling - completed in Phase 8A
+3. ✅ `truck.html` dual variance panel - completed in Phase 8B
+
+**Note:** This phase was already completed as part of Phase 8A and 8B implementation.
 
 ### Phase 8F: Notes & Photos Consolidation (Lower Priority)
 1. Add `consolidated_notes` field
@@ -659,4 +668,47 @@ def get_items_from_orders(order_names):
 
 ---
 
-*Updated: 2026-01-10 - Phase 8A, 8B, and 8C completed*
+## Phase 8D Implementation Details (2026-01-10)
+
+### Files Modified
+
+1. **`truck_weight.json`** - Added `entry_method` Select field
+2. **`scrap_weight.json`** - Added `entry_method` Select field
+3. **`api/v1/dropoff.py`** - Updated `record_truck_weight()` and `record_scrap_weight()` to accept `entry_method` parameter
+4. **`truck.html`** - Terminals pass `entry_method` based on `state.isScaleConnected`
+5. **`terminal.html`** - Terminals pass `entry_method` based on `state.isScaleConnected`
+
+### Implementation Summary
+
+**Field Specification:**
+```json
+{
+  "default": "Manual Entry",
+  "fieldname": "entry_method",
+  "fieldtype": "Select",
+  "in_list_view": 1,
+  "label": "Entry Method",
+  "options": "Scale (Auto)\nManual Entry",
+  "description": "How this weight was recorded"
+}
+```
+
+**Terminal Integration:**
+```javascript
+// Both truck.html and terminal.html
+entry_method: state.isScaleConnected ? 'Scale (Auto)' : 'Manual Entry'
+```
+
+**API Changes:**
+- `record_truck_weight(...)` - Added optional `entry_method` parameter, defaults to "Manual Entry"
+- `record_scrap_weight(...)` - Added optional `entry_method` parameter, defaults to "Manual Entry"
+
+**Benefits:**
+- Audit trail for manual vs automated weight capture
+- Quality control - flag manual entries for review
+- Analytics - track scale usage rates
+- Compliance - regulatory requirement tracking
+
+---
+
+*Updated: 2026-01-10 - Phase 8A, 8B, 8C, and 8D completed*

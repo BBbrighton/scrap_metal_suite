@@ -318,7 +318,7 @@ def get_dropoff_details(dropoff):
 
 @frappe.whitelist()
 def record_truck_weight(dropoff, weight_type, weight, scale=None, session=None,
-                        remarks=None, reweight_reason=None):
+                        remarks=None, reweight_reason=None, entry_method=None):
     """
     Record gross or tare weight for the dropoff truck.
     Updates existing Truck Weight record if one exists, otherwise creates new.
@@ -332,6 +332,7 @@ def record_truck_weight(dropoff, weight_type, weight, scale=None, session=None,
         session: POS Session name (optional, for audit)
         remarks: Optional remarks for this weighing
         reweight_reason: Required if updating existing weight (reweight scenario)
+        entry_method: 'Scale (Auto)' or 'Manual Entry' (Phase 8D)
 
     Returns:
         dict: Updated weights, status, truck_weight_record name, is_reweight flag
@@ -409,6 +410,7 @@ def record_truck_weight(dropoff, weight_type, weight, scale=None, session=None,
         truck_weight.weight = weight
         truck_weight.weighed_at = now
         truck_weight.scale = scale or (session_data.scale if session_data else None)
+        truck_weight.entry_method = entry_method or "Manual Entry"  # Phase 8D
         truck_weight.operator = frappe.session.user
         truck_weight.remarks = sanitized_remarks
         truck_weight.is_reweight = 1
@@ -426,6 +428,7 @@ def record_truck_weight(dropoff, weight_type, weight, scale=None, session=None,
             "weight": weight,
             "weighed_at": now,
             "scale": scale or (session_data.scale if session_data else None),
+            "entry_method": entry_method or "Manual Entry",  # Phase 8D
             "operator": frappe.session.user,
             "session": session,
             "pos_profile": session_data.pos_profile if session_data else None,
@@ -611,7 +614,7 @@ def save_truck_photo(dropoff, photo, weight_type=None):
 
 @frappe.whitelist()
 def record_scrap_weight(session, dropoff, items, remarks=None,
-                        existing_scrap_weight=None, reweight_reason=None):
+                        existing_scrap_weight=None, reweight_reason=None, entry_method=None):
     """
     Record scrap weight for a drop-off.
 
@@ -622,6 +625,7 @@ def record_scrap_weight(session, dropoff, items, remarks=None,
         remarks: Optional text
         existing_scrap_weight: For reweight - update this doc
         reweight_reason: Required if reweighting
+        entry_method: 'Scale (Auto)' or 'Manual Entry' (Phase 8D)
 
     Returns:
         dict: scrap_weight name, totals, variance info
@@ -700,6 +704,7 @@ def record_scrap_weight(session, dropoff, items, remarks=None,
         for item_data in weight_items:
             scrap_weight.append("items", item_data)
 
+        scrap_weight.entry_method = entry_method or "Manual Entry"  # Phase 8D
         scrap_weight.is_reweight = 1
         scrap_weight.reweight_reason = sanitized_reweight_reason
         scrap_weight.reweight_at = now_datetime()
@@ -716,6 +721,7 @@ def record_scrap_weight(session, dropoff, items, remarks=None,
             "session": session,
             "pos_profile": session_data.pos_profile,
             "scale": session_data.scale,
+            "entry_method": entry_method or "Manual Entry",  # Phase 8D
             "remarks": sanitized_remarks,
             "is_reweight": 0,
             "items": weight_items

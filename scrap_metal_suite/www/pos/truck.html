@@ -1687,7 +1687,8 @@ async function saveWeight() {
             session: state.session,
             dropoff: state.dropoff.name,
             weight_type: state.weightType,
-            weight: weight
+            weight: weight,
+            entry_method: state.isScaleConnected ? 'Scale (Auto)' : 'Manual Entry'  // Phase 8D
         });
 
         if (response.message) {
@@ -2918,7 +2919,8 @@ async function saveWeightByType(weightType, weight, remarks, reweightReason) {
             session: state.session,
             dropoff: state.dropoff.name,
             weight_type: weightType,
-            weight: weight
+            weight: weight,
+            entry_method: state.isScaleConnected ? 'Scale (Auto)' : 'Manual Entry'  // Phase 8D
         };
 
         if (remarks) params.remarks = remarks;
