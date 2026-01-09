@@ -966,7 +966,7 @@ async function searchAndSelectDropoff(query) {
 
         if (data.message && data.message.length > 0) {
             const d = data.message[0];
-            selectDropoff(d.name, d.dropoff_date || '', d.license_plate || '', d.supplier_name || '', d.status || 'Draft');
+            selectDropoff(d.name, d.dropoff_scheduled_start || '', d.license_plate || '', d.supplier_name || '', d.status || 'Draft');
         } else {
             frappe.msgprint(t('noDropoffsFound') + ': ' + parsedQuery);
         }
@@ -1088,7 +1088,7 @@ async function searchDropoff(query) {
                 dropoffSearchResults = data.message;
                 dropoffActiveIndex = -1;
                 resultsDiv.innerHTML = dropoffSearchResults.map((d, index) => `
-                    <div class="dropoff-result" data-index="${index}" data-name="${d.name}" data-dropoff-date="${d.dropoff_date || ''}" data-license-plate="${d.license_plate || ''}" data-supplier-name="${d.supplier_name || ''}" data-status="${d.status || 'Draft'}" onclick="selectDropoff('${d.name}', '${d.dropoff_date || ''}', '${d.license_plate || ''}', '${d.supplier_name || ''}', '${d.status || 'Draft'}')">
+                    <div class="dropoff-result" data-index="${index}" data-name="${d.name}" data-dropoff-start="${d.dropoff_scheduled_start || ''}" data-license-plate="${d.license_plate || ''}" data-supplier-name="${d.supplier_name || ''}" data-status="${d.status || 'Draft'}" onclick="selectDropoff('${d.name}', '${d.dropoff_scheduled_start || ''}', '${d.license_plate || ''}', '${d.supplier_name || ''}', '${d.status || 'Draft'}')">
                         <span class="dropoff-id">${d.name}</span>
                         <span class="dropoff-details">${d.supplier_name || ''} ${d.license_plate ? '| ' + d.license_plate : ''} ${d.status === 'Closed' ? '| ✓' : ''}</span>
                     </div>

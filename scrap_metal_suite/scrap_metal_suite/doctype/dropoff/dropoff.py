@@ -19,6 +19,7 @@ class Dropoff(Document):
         self.validate_single_supplier()       # Edge Case 13.3
         self.validate_no_duplicate_orders()   # Edge Case 13.12
         self.validate_date_not_changed()      # Edge Case 13.16
+        self.validate_scheduled_times()       # Ensure end > start
         self.validate_closed_immutable()      # Edge Case 13.21
         self.validate_weight_removal()        # Edge Case 13.22 (adapted)
         self.validate_cancellation_reason()   # Part 10.2
@@ -77,11 +78,21 @@ class Dropoff(Document):
 
     def validate_date_not_changed(self):
         """
-        Edge Case 13.16: Lock dropoff_date once status moves past Draft/Scheduled.
+        Edge Case 13.16: Lock dropoff_scheduled_start once status moves past Draft/Scheduled.
         """
         if self.status not in ["Draft", "Scheduled"]:
-            if self.has_value_changed("dropoff_date"):
-                frappe.throw(_("Cannot change drop-off date after weighing has started"))
+            if self.has_value_changed("dropoff_scheduled_start"):
+                frappe.throw(_("Cannot change scheduled start time after weighing has started"))
+
+    def validate_scheduled_times(self):
+        """Ensure scheduled end is after scheduled start."""
+        if self.dropoff_scheduled_start and self.dropoff_scheduled_end:
+            from frappe.utils import get_datetime
+            start = get_datetime(self.dropoff_scheduled_start)
+            end = get_datetime(self.dropoff_scheduled_end)
+
+            if end <= start:
+                frappe.throw(_("Scheduled End must be after Scheduled Start"))
 
     def validate_closed_immutable(self):
         """

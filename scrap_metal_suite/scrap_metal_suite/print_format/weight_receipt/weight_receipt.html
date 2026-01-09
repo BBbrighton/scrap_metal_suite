@@ -316,7 +316,13 @@
         </div>
         <div class="info-row">
             <span class="info-label">Drop-off Date:</span>
-            <span class="info-value">{{ frappe.utils.formatdate(doc.dropoff_date, "dd/MM/yyyy") }}</span>
+            <span class="info-value">
+                {% if doc.dropoff_scheduled_start %}
+                    {{ frappe.utils.format_datetime(doc.dropoff_scheduled_start, "dd/MM/yyyy HH:mm") }}
+                {% else %}
+                    -
+                {% endif %}
+            </span>
         </div>
         <div class="info-row">
             <span class="info-label">Supplier Name:</span>

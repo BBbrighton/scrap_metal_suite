@@ -5,9 +5,8 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
-  "dropoff_date",
-  "dropoff_start_time",
-  "dropoff_end_time",
+  "dropoff_scheduled_start",
+  "dropoff_scheduled_end",
   "column_break_header",
   "license_plate",
   "variance_threshold_percent",
@@ -73,25 +72,21 @@
    "reqd": 1
   },
   {
-   "default": "Today",
-   "fieldname": "dropoff_date",
-   "fieldtype": "Date",
+   "default": "Now",
+   "description": "When truck is expected to arrive",
+   "fieldname": "dropoff_scheduled_start",
+   "fieldtype": "Datetime",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Drop-off Date",
+   "label": "Scheduled Start",
    "reqd": 1
   },
   {
-   "fieldname": "dropoff_start_time",
-   "fieldtype": "Time",
-   "label": "Start Time",
-   "description": "Expected start time for drop-off"
-  },
-  {
-   "fieldname": "dropoff_end_time",
-   "fieldtype": "Time",
-   "label": "End Time",
-   "description": "Expected end time for drop-off"
+   "depends_on": "eval:doc.dropoff_scheduled_start",
+   "description": "When drop-off should be complete",
+   "fieldname": "dropoff_scheduled_end",
+   "fieldtype": "Datetime",
+   "label": "Scheduled End"
   },
   {
    "fieldname": "column_break_header",

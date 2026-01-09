@@ -993,7 +993,7 @@ async function searchAndSelectDropoff(query) {
 
         if (data.message && data.message.length > 0) {
             const o = data.message[0];
-            selectDropoff(o.name, o.dropoff_date || '', o.license_plate || '', o.supplier_name || '', o.status || 'Draft');
+            selectDropoff(o.name, o.dropoff_scheduled_start || '', o.license_plate || '', o.supplier_name || '', o.status || 'Draft');
         } else {
             frappe.msgprint(t('dropoffNotFound') + ': ' + parsedQuery);
         }
@@ -1115,7 +1115,7 @@ async function searchDropoff(query) {
                 dropoffSearchResults = data.message;
                 dropoffActiveIndex = -1;
                 resultsDiv.innerHTML = dropoffSearchResults.map(function(o, index) {
-                    return '<div class="dropoff-result" data-index="' + index + '" data-name="' + o.name + '" data-dropoff-date="' + (o.dropoff_date || '') + '" data-license-plate="' + (o.license_plate || '') + '" data-supplier-name="' + (o.supplier_name || '') + '" data-status="' + (o.status || 'Draft') + '" onclick="selectDropoff(\'' + o.name + '\', \'' + (o.dropoff_date || '') + '\', \'' + (o.license_plate || '') + '\', \'' + (o.supplier_name || '') + '\', \'' + (o.status || 'Draft') + '\')">' +
+                    return '<div class="dropoff-result" data-index="' + index + '" data-name="' + o.name + '" data-dropoff-start="' + (o.dropoff_scheduled_start || '') + '" data-license-plate="' + (o.license_plate || '') + '" data-supplier-name="' + (o.supplier_name || '') + '" data-status="' + (o.status || 'Draft') + '" onclick="selectDropoff(\'' + o.name + '\', \'' + (o.dropoff_scheduled_start || '') + '\', \'' + (o.license_plate || '') + '\', \'' + (o.supplier_name || '') + '\', \'' + (o.status || 'Draft') + '\')">' +
                         '<span class="dropoff-id">' + o.name + '</span>' +
                         '<span class="dropoff-details">' + (o.supplier_name || '') + (o.license_plate ? ' | ' + o.license_plate : '') + (o.status === 'Closed' ? ' | ✓' : '') + '</span>' +
                     '</div>';
@@ -1183,7 +1183,11 @@ async function fetchDropoffDetails(dropoffName) {
             // Update dropoff date
             const dropoffEl = document.getElementById('dropoffCardDate');
             if (dropoffEl) {
-                dropoffEl.textContent = details.dropoff_date ? new Date(details.dropoff_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+                dropoffEl.textContent = details.dropoff_scheduled_start ? new Date(details.dropoff_scheduled_start).toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                }) : '-';
             }
 
             // Update dropoff items section

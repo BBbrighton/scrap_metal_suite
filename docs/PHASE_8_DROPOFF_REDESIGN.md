@@ -1,8 +1,19 @@
 # Phase 8: Dropoff System Redesign
 
 **Created:** 2025-12-28
-**Updated:** 2025-12-29
+**Updated:** 2026-01-09
 **Status:** READY FOR IMPLEMENTATION
+
+---
+
+## Prerequisites ✅ COMPLETED
+
+**DateTime Migration (2026-01-09):** Migrated from separate date/time fields to datetime fields.
+- **Old:** `dropoff_date` (Date) + `dropoff_start_time` (Time) + `dropoff_end_time` (Time)
+- **New:** `dropoff_scheduled_start` (Datetime) + `dropoff_scheduled_end` (Datetime)
+- **See:** [DROPOFF_DATETIME_MIGRATION.md](./DROPOFF_DATETIME_MIGRATION.md)
+
+This enables calendar view with time slots and better date range queries.
 
 ---
 

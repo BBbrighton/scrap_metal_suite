@@ -102,7 +102,7 @@ def lookup_dropoff(query):
     exact = frappe.db.get_value(
         "Dropoff",
         {"name": query},
-        ["name", "dropoff_date", "license_plate", "supplier_name", "status"],
+        ["name", "dropoff_scheduled_start", "license_plate", "supplier_name", "status"],
         as_dict=True
     )
     if exact:
@@ -113,7 +113,7 @@ def lookup_dropoff(query):
     plate_match = frappe.db.get_value(
         "Dropoff",
         {"license_plate": query},
-        ["name", "dropoff_date", "license_plate", "supplier_name", "status"],
+        ["name", "dropoff_scheduled_start", "license_plate", "supplier_name", "status"],
         as_dict=True
     )
     if plate_match:
@@ -121,16 +121,18 @@ def lookup_dropoff(query):
         return [plate_match]
 
     # Partial search within recent dates (+/- 3 days)
+    from frappe.utils import get_datetime
     today = nowdate()
-    date_start = add_to_date(today, days=-3)
-    date_end = add_to_date(today, days=3)
+    date_start = get_datetime(add_to_date(today, days=-3)).replace(hour=0, minute=0, second=0)
+    date_end = get_datetime(add_to_date(today, days=3)).replace(hour=23, minute=59, second=59)
 
     dropoffs = frappe.db.sql("""
-        SELECT name, dropoff_date, license_plate, supplier_name, status
+        SELECT name, dropoff_scheduled_start, license_plate, supplier_name, status
         FROM `tabDropoff`
-        WHERE dropoff_date BETWEEN %(start)s AND %(end)s
+        WHERE dropoff_scheduled_start >= %(start)s
+          AND dropoff_scheduled_start <= %(end)s
           AND (name LIKE %(q)s OR license_plate LIKE %(q)s)
-        ORDER BY dropoff_date DESC, creation DESC
+        ORDER BY dropoff_scheduled_start DESC, creation DESC
         LIMIT 10
     """, {"start": date_start, "end": date_end, "q": f"%{query}%"}, as_dict=True)
 
@@ -264,9 +266,8 @@ def get_dropoff_details(dropoff):
 
     return {
         "name": doc.name,
-        "dropoff_date": doc.dropoff_date,
-        "dropoff_start_time": doc.dropoff_start_time,
-        "dropoff_end_time": doc.dropoff_end_time,
+        "dropoff_scheduled_start": doc.dropoff_scheduled_start,
+        "dropoff_scheduled_end": doc.dropoff_scheduled_end,
         "license_plate": doc.license_plate,
         "supplier": doc.supplier,
         "supplier_name": doc.supplier_name,

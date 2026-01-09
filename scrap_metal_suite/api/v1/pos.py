@@ -226,6 +226,9 @@ def lookup_order(query):
 
     Returns:
         list: Matching orders with supplier_name, order_date, dropoff_date, license_plate, status
+
+    TODO: Phase 8 - This API references POS Order.dropoff_date (legacy field on POS Order),
+    NOT Dropoff.dropoff_date. This field should be deprecated once Dropoff system is fully adopted.
     """
     check_pos_operator()
     from frappe.utils import add_days
@@ -233,6 +236,7 @@ def lookup_order(query):
     if not query or len(query) < 2:
         return []
 
+    # TODO: Phase 8 - dropoff_date is legacy POS Order field, mark for future removal
     fields = ["name", "order_id", "supplier", "supplier_name", "order_date", "dropoff_date", "license_plate", "status"]
 
     # Step 1: Try exact match on name (document ID)
