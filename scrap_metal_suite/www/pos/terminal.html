@@ -273,6 +273,7 @@ body {
                     </div>
                     <div class="weight-display" id="weightInputDisplay">
                         <input type="number" id="weightInput" step="0.01" min="0" placeholder="0.00"
+                               oninput="state.currentItemWeightFromScale = false"
                                onkeyup="if(event.key==='Enter')addToCart()">
                         <span class="weight-uom" id="modalUom">Kg</span>
                     </div>
@@ -1523,7 +1524,8 @@ function addToCart() {
         item_code: state.currentItem.code,
         item_name: state.currentItem.name,
         weight: weight,
-        uom: state.currentItem.uom
+        uom: state.currentItem.uom,
+        fromScale: state.currentItemWeightFromScale || false  // Phase 8D: Track source
     });
 
     renderCart();
@@ -1856,6 +1858,9 @@ async function recordWeight() {
     if (!state.dropoff || state.cart.length === 0) return;
 
     try {
+        // Phase 8D: Determine entry_method - if ALL items are from scale, mark as "Scale (Auto)"
+        const allFromScale = state.cart.length > 0 && state.cart.every(item => item.fromScale);
+
         const args = {
             session: state.session,
             dropoff: state.dropoff.name,
@@ -1865,7 +1870,7 @@ async function recordWeight() {
                 uom: item.uom
             }))),
             remarks: state.remarks || null,
-            entry_method: state.isScaleConnected ? 'Scale (Auto)' : 'Manual Entry'  // Phase 8D
+            entry_method: allFromScale ? 'Scale (Auto)' : 'Manual Entry'  // Phase 8D
         };
 
         // Add reweight params if applicable
@@ -2755,6 +2760,7 @@ function handleScaleUnplugged() {
 function useLiveWeight() {
     if (state.liveWeight !== null) {
         document.getElementById('weightInput').value = state.liveWeight.toFixed(2);
+        state.currentItemWeightFromScale = true;  // Phase 8D: Track scale capture
         addToCart();
     }
 }

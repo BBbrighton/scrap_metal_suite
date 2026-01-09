@@ -394,6 +394,7 @@ body {
                 <!-- Manual Input -->
                 <div class="weight-display">
                     <input type="number" id="weightInput" step="0.01" min="0" placeholder="0.00"
+                           oninput="state.weightCapturedFromScale = false"
                            onkeyup="if(event.key==='Enter')saveWeight()">
                     <span class="weight-uom">Kg</span>
                 </div>
@@ -1688,7 +1689,7 @@ async function saveWeight() {
             dropoff: state.dropoff.name,
             weight_type: state.weightType,
             weight: weight,
-            entry_method: state.isScaleConnected ? 'Scale (Auto)' : 'Manual Entry'  // Phase 8D
+            entry_method: state.weightCapturedFromScale ? 'Scale (Auto)' : 'Manual Entry'  // Phase 8D
         });
 
         if (response.message) {
@@ -2841,6 +2842,7 @@ function captureAndSaveWeight() {
 
     if (weight && weight > 0) {
         document.getElementById('weightInput').value = weight.toFixed(2);
+        state.weightCapturedFromScale = true;  // Phase 8D: Track scale capture
         saveWeight();
     } else {
         frappe.msgprint(t('waitForStableWeight') || 'Please wait for a stable weight reading');
@@ -2920,7 +2922,7 @@ async function saveWeightByType(weightType, weight, remarks, reweightReason) {
             dropoff: state.dropoff.name,
             weight_type: weightType,
             weight: weight,
-            entry_method: state.isScaleConnected ? 'Scale (Auto)' : 'Manual Entry'  // Phase 8D
+            entry_method: state.weightCapturedFromScale ? 'Scale (Auto)' : 'Manual Entry'  // Phase 8D
         };
 
         if (remarks) params.remarks = remarks;
