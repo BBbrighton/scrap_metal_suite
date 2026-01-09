@@ -24,7 +24,6 @@
   "column_break_fulfillment",
   "fulfillment_percent",
   "fulfillment_status",
-  "dropoff_status",
   "section_break_status",
   "processed_by",
   "processed_time"
@@ -161,15 +160,6 @@
    "options": "Pending\nPartial\nFulfilled\nOver-delivered",
    "read_only": 1,
    "description": "Auto-calculated based on fulfillment percentage"
-  },
-  {
-   "default": "No Drop-off",
-   "fieldname": "dropoff_status",
-   "fieldtype": "Select",
-   "label": "Drop-off Status",
-   "options": "No Drop-off\nScheduled\nIn Progress\nReceived",
-   "read_only": 1,
-   "description": "Status of linked drop-offs"
   },
   {
    "fieldname": "section_break_status",

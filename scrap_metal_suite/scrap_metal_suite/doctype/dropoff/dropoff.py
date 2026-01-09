@@ -31,7 +31,9 @@ class Dropoff(Document):
         self.calculate_net_weight()
         self.sync_actual_items()
         self.calculate_totals()
-        self.allocate_weights_if_closing()
+        self.auto_transition_status()           # NEW: Phase 8A
+        self.calculate_verification_status()    # NEW: Phase 8A
+        self.allocate_weights_if_completed()    # UPDATED: Phase 8A
 
     def on_update(self):
         """After save, update linked POS Orders if we just closed."""
@@ -96,9 +98,10 @@ class Dropoff(Document):
 
     def validate_closed_immutable(self):
         """
-        Edge Case 13.21: Cannot remove orders from a Closed Drop-off.
+        Edge Case 13.21: Cannot remove orders from a Completed Drop-off.
+        Phase 8A: Changed from "Closed" to "Completed".
         """
-        if self.status != "Closed":
+        if self.status != "Completed":
             return
 
         old_doc = self.get_doc_before_save()
@@ -112,7 +115,7 @@ class Dropoff(Document):
 
         if removed:
             frappe.throw(
-                _("Cannot remove orders from a Closed Drop-off: {0}").format(
+                _("Cannot remove orders from a Completed Drop-off: {0}").format(
                     ", ".join(removed)
                 )
             )
@@ -182,6 +185,59 @@ class Dropoff(Document):
     # =========================================================================
     # BEFORE SAVE LOGIC
     # =========================================================================
+
+    def auto_transition_status(self):
+        """
+        Auto-transition status based on data. Runs on before_save.
+        Phase 8A: Simplified status flow (5 statuses with auto-transitions)
+
+        Flow:
+        - Draft → Scheduled: when has license_plate AND dropoff_scheduled_start
+        - Scheduled → In Progress: when first weight recorded
+        - In Progress → Completed: when all weights done (gross + tare + scrap)
+        """
+        if self.status == "Cancelled":
+            return  # Never auto-transition cancelled
+
+        has_gross = self.gross_weight and self.gross_weight > 0
+        has_tare = self.tare_weight and self.tare_weight > 0
+        has_scrap = self.total_scrap_weight and self.total_scrap_weight > 0
+
+        # Draft → Scheduled: when has license_plate AND dropoff_scheduled_start
+        if self.status == "Draft":
+            if self.license_plate and self.dropoff_scheduled_start:
+                self.status = "Scheduled"
+
+        # Scheduled → In Progress: when first weight recorded
+        if self.status == "Scheduled":
+            if has_gross or has_tare or has_scrap:
+                self.status = "In Progress"
+
+        # In Progress → Completed: when all weights done
+        if self.status == "In Progress":
+            if has_gross and has_tare and has_scrap:
+                self.status = "Completed"
+
+    def calculate_verification_status(self):
+        """
+        Compute verification_status based on weights and variance.
+        Phase 8A: Read-only informational field (doesn't affect workflow)
+
+        Values:
+        - Pending: Missing weights
+        - Verified: All weights AND variance within threshold
+        - Needs Review: All weights AND variance NOT ok
+        """
+        has_gross = self.gross_weight and self.gross_weight > 0
+        has_tare = self.tare_weight and self.tare_weight > 0
+        has_scrap = self.total_scrap_weight and self.total_scrap_weight > 0
+
+        if not (has_gross and has_tare and has_scrap):
+            self.verification_status = "Pending"
+        elif self.truck_variance_ok and self.indicated_variance_ok:
+            self.verification_status = "Verified"
+        else:
+            self.verification_status = "Needs Review"
 
     def set_supplier_from_orders(self):
         """Auto-set supplier from the first linked order."""
@@ -282,26 +338,47 @@ class Dropoff(Document):
 
         self.total_scrap_weight = flt(total_scrap)
 
-        # Calculate variance
+        # Calculate variance (Truck vs Scrap)
         if self.total_truck_weight:
             self.truck_variance = self.total_truck_weight - self.total_scrap_weight
             self.truck_variance_percent = abs(self.truck_variance / self.total_truck_weight * 100)
-            self.variance_ok = self.truck_variance_percent <= flt(self.variance_threshold_percent or 0.01)
+            self.truck_variance_ok = self.truck_variance_percent <= flt(self.truck_variance_threshold_percent or 0.001)
         else:
             self.truck_variance = 0
             self.truck_variance_percent = 0
-            self.variance_ok = 1
+            self.truck_variance_ok = 1
 
-    def allocate_weights_if_closing(self):
-        """
-        Allocate scrap weights to linked POS Orders when Drop-off is closing.
-        Called in before_save so allocations are saved with the document.
-        """
-        old_doc = self.get_doc_before_save()
-        old_status = old_doc.status if old_doc else None
+        # Phase 8B: Calculate indicated variance (Indicated vs Actual)
+        self.calculate_indicated_variance()
 
-        # Only allocate when transitioning TO Closed status
-        if self.status != "Closed" or old_status == "Closed":
+    def calculate_indicated_variance(self):
+        """
+        Phase 8B: Calculate variance between indicated weight (what supplier claimed)
+        and actual weight (what was actually weighed).
+
+        Indicated weight = total_indicated_weight (sum from expected_items)
+        Actual weight = total_actual_weight (sum from actual_items)
+        """
+        indicated = flt(self.total_indicated_weight)
+        actual = flt(self.total_actual_weight)
+
+        if indicated > 0:
+            self.indicated_variance = indicated - actual
+            self.indicated_variance_percent = abs(self.indicated_variance / indicated * 100)
+            self.indicated_variance_ok = self.indicated_variance_percent <= flt(self.indicated_variance_threshold_percent or 0.001)
+        else:
+            self.indicated_variance = 0
+            self.indicated_variance_percent = 0
+            self.indicated_variance_ok = 1
+
+    def allocate_weights_if_completed(self):
+        """
+        Allocate scrap weights to linked POS Orders when Drop-off is Completed.
+        Phase 8A: Run on EVERY save when Completed (not just transition).
+        This fixes Issue #1 (reweight doesn't re-allocate).
+        """
+        # Run allocation on EVERY save when status is Completed
+        if self.status != "Completed":
             return
 
         if not self.orders:
@@ -336,10 +413,11 @@ class Dropoff(Document):
 
     def update_pos_orders_if_closed(self):
         """
-        Update linked POS Orders after save if status is Closed.
+        Update linked POS Orders after save if status is Completed.
+        Phase 8A: Changed from "Closed" to "Completed".
         Called in on_update after allocations are committed to DB.
         """
-        if self.status != "Closed":
+        if self.status != "Completed":
             return
 
         # Update fulfillment on each linked POS Order

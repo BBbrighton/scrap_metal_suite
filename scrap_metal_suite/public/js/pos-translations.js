@@ -264,6 +264,13 @@ const POS_I18N = (function() {
             scanScaleQRCode: 'Scan Scale QR Code',
             pointCameraAtScaleQR: 'Point camera at scale QR code',
 
+            // ===== Variance (Phase 8B) =====
+            truckVarianceTitle: 'Truck Variance (Net vs Scrap)',
+            indicatedVarianceTitle: 'Indicated Variance (Supplier vs Actual)',
+            truckVariance: 'Truck Variance',
+            indicatedVariance: 'Indicated Variance',
+            totalActualWeight: 'Total Actual Weight',
+
             // ===== Errors & Messages =====
             connectionError: 'Connection error. Please try again.',
             serverError: 'Server error. Please contact support.',
@@ -540,6 +547,13 @@ const POS_I18N = (function() {
             notTruckScale: 'นี่ไม่ใช่เครื่องชั่งรถบรรทุก กรุณาสแกนเครื่องชั่งรถบรรทุก',
             scanScaleQRCode: 'สแกน QR เครื่องชั่ง',
             pointCameraAtScaleQR: 'เล็งกล้องไปที่ QR เครื่องชั่ง',
+
+            // ===== Variance (Phase 8B) =====
+            truckVarianceTitle: 'ค่าต่างรถ (สุทธิ vs เศษวัสดุ)',
+            indicatedVarianceTitle: 'ค่าต่างแจ้ง (ผู้ขาย vs จริง)',
+            truckVariance: 'ค่าต่างรถ',
+            indicatedVariance: 'ค่าต่างแจ้ง',
+            totalActualWeight: 'น้ำหนักจริงรวม',
 
             // ===== Errors & Messages =====
             connectionError: 'เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่',

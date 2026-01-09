@@ -5,8 +5,9 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
-  "dropoff_scheduled_start",
-  "dropoff_scheduled_end",
+  "dropoff_date",
+  "dropoff_start_time",
+  "dropoff_end_time",
   "column_break_header",
   "license_plate",
   "variance_threshold_percent",
@@ -41,18 +42,10 @@
   "section_break_verification",
   "total_truck_weight",
   "total_scrap_weight",
-  "section_break_truck_variance",
-  "truck_variance_threshold_percent",
+  "column_break_verification",
   "truck_variance",
   "truck_variance_percent",
-  "truck_variance_ok",
-  "section_break_indicated_variance",
-  "indicated_variance_threshold_percent",
-  "indicated_variance",
-  "indicated_variance_percent",
-  "indicated_variance_ok",
-  "section_break_verification_status",
-  "verification_status",
+  "variance_ok",
   "section_break_unallocated",
   "unallocated_weight",
   "unallocated_items",
@@ -80,21 +73,25 @@
    "reqd": 1
   },
   {
-   "default": "Now",
-   "description": "When truck is expected to arrive",
-   "fieldname": "dropoff_scheduled_start",
-   "fieldtype": "Datetime",
+   "default": "Today",
+   "fieldname": "dropoff_date",
+   "fieldtype": "Date",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Scheduled Start",
+   "label": "Drop-off Date",
    "reqd": 1
   },
   {
-   "depends_on": "eval:doc.dropoff_scheduled_start",
-   "description": "When drop-off should be complete",
-   "fieldname": "dropoff_scheduled_end",
-   "fieldtype": "Datetime",
-   "label": "Scheduled End"
+   "fieldname": "dropoff_start_time",
+   "fieldtype": "Time",
+   "label": "Start Time",
+   "description": "Expected start time for drop-off"
+  },
+  {
+   "fieldname": "dropoff_end_time",
+   "fieldtype": "Time",
+   "label": "End Time",
+   "description": "Expected end time for drop-off"
   },
   {
    "fieldname": "column_break_header",
@@ -110,13 +107,20 @@
    "description": "Truck license plate number"
   },
   {
+   "default": "0.01",
+   "fieldname": "variance_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Variance Threshold %",
+   "description": "Maximum acceptable variance percentage (default 0.01%)"
+  },
+  {
    "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nScheduled\nIn Progress\nCompleted\nCancelled",
+   "options": "Draft\nScheduled\nWeighing\nUnloading\nVerified\nNeeds Attention\nClosed\nCancelled",
    "reqd": 1
   },
   {
@@ -312,88 +316,25 @@
    "fieldtype": "Column Break"
   },
   {
-   "collapsible": 1,
-   "fieldname": "section_break_truck_variance",
-   "fieldtype": "Section Break",
-   "label": "Truck Variance (Net Truck Weight vs Scrap Weight)"
-  },
-  {
-   "default": "0.001",
-   "fieldname": "truck_variance_threshold_percent",
-   "fieldtype": "Percent",
-   "label": "Truck Variance Threshold %",
-   "description": "Maximum acceptable variance between net truck weight and total scrap weight (default 0.1%)"
-  },
-  {
    "fieldname": "truck_variance",
    "fieldtype": "Float",
-   "label": "Truck Variance (kg)",
+   "label": "Variance (kg)",
    "read_only": 1,
-   "precision": 2,
-   "description": "Net truck weight minus total scrap weight"
+   "description": "Truck weight - Scrap weight"
   },
   {
    "fieldname": "truck_variance_percent",
    "fieldtype": "Percent",
-   "label": "Truck Variance %",
-   "read_only": 1,
-   "description": "Percentage difference between net truck and scrap weights"
+   "label": "Variance %",
+   "read_only": 1
   },
   {
    "default": "0",
-   "fieldname": "truck_variance_ok",
+   "fieldname": "variance_ok",
    "fieldtype": "Check",
-   "label": "Truck Variance OK",
+   "label": "Variance OK",
    "read_only": 1,
-   "description": "Auto-calculated: truck variance within threshold"
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "section_break_indicated_variance",
-   "fieldtype": "Section Break",
-   "label": "Indicated Variance (Supplier Indicated vs Actual Weighed)"
-  },
-  {
-   "default": "0.001",
-   "fieldname": "indicated_variance_threshold_percent",
-   "fieldtype": "Percent",
-   "label": "Indicated Variance Threshold %",
-   "description": "Maximum acceptable variance between supplier's indicated weight and actual weighed weight (default 0.1%)"
-  },
-  {
-   "fieldname": "indicated_variance",
-   "fieldtype": "Float",
-   "label": "Indicated Variance (kg)",
-   "read_only": 1,
-   "precision": 2,
-   "description": "Indicated weight minus actual weighed weight"
-  },
-  {
-   "fieldname": "indicated_variance_percent",
-   "fieldtype": "Percent",
-   "label": "Indicated Variance %",
-   "read_only": 1,
-   "description": "Percentage difference between indicated and actual weights"
-  },
-  {
-   "default": "0",
-   "fieldname": "indicated_variance_ok",
-   "fieldtype": "Check",
-   "label": "Indicated Variance OK",
-   "read_only": 1,
-   "description": "Auto-calculated: indicated variance within threshold"
-  },
-  {
-   "fieldname": "section_break_verification_status",
-   "fieldtype": "Section Break",
-   "label": "Verification Summary"
-  },
-  {
-   "fieldname": "verification_status",
-   "fieldtype": "Data",
-   "label": "Verification Status",
-   "read_only": 1,
-   "description": "Auto-calculated: Pending / Verified / Needs Review"
+   "description": "Auto-set: variance within threshold"
   },
   {
    "collapsible": 1,

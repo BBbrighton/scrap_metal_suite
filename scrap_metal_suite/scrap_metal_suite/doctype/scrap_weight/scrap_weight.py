@@ -49,13 +49,14 @@ class ScrapWeight(Document):
 
     def before_cancel(self):
         """
-        Edge Case 13.13: Prevent deletion if linked to Closed drop-off.
+        Edge Case 13.13: Prevent deletion if linked to Completed drop-off.
+        Phase 8A: Changed from "Closed" to "Completed".
         """
         if self.dropoff:
             dropoff_status = frappe.db.get_value("Dropoff", self.dropoff, "status")
-            if dropoff_status == "Closed":
+            if dropoff_status == "Completed":
                 frappe.throw(
-                    _("Cannot delete Scrap Weight linked to a Closed Drop-off. Cancel the Drop-off first.")
+                    _("Cannot delete Scrap Weight linked to a Completed Drop-off. Cancel the Drop-off first.")
                 )
 
     def update_dropoff_totals(self):

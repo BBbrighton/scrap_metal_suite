@@ -1158,7 +1158,9 @@ function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
 
     const statusEl = document.getElementById('dropoffCardStatus');
     statusEl.textContent = status || 'Draft';
-    statusEl.className = 'detail-value status-' + (status || 'Draft').toLowerCase();
+    // Phase 8A: Handle new statuses with spaces (e.g., "In Progress")
+    const statusClass = (status || 'Draft').toLowerCase().replace(/\s+/g, '-');
+    statusEl.className = 'detail-value status-' + statusClass;
 
 
     card.style.display = 'block';
@@ -1179,6 +1181,18 @@ async function fetchDropoffDetails(dropoffName) {
 
         if (response.message) {
             const details = response.message;
+
+            // Update supplier if available
+            if (details.supplier_name) {
+                const supplierEl = document.getElementById('dropoffCardSupplier');
+                if (supplierEl) {
+                    supplierEl.textContent = details.supplier_name;
+                }
+                // Update state as well
+                if (state.dropoff) {
+                    state.dropoff.supplierName = details.supplier_name;
+                }
+            }
 
             // Update dropoff date
             const dropoffEl = document.getElementById('dropoffCardDate');

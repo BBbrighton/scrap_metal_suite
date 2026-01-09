@@ -281,28 +281,49 @@ body {
                     </div>
                 </div>
 
-            <!-- Weight Verification Panel (styled like dropoff card) -->
-            <div class="verification-panel dropoff-card" id="variancePanel" style="display:none;">
+            <!-- Weight Verification Panel (Phase 8B: Dual Variance) -->
+            <div class="verification-panel dropoff-card" id="variancePanel">
                 <div class="verification-panel-header">
                     <span class="verification-panel-title">
                         <span data-i18n="weightVerification">Weight Verification</span>
                     </span>
-                    <span class="verification-threshold" id="varianceThreshold">Threshold: 2%</span>
                 </div>
                 <div class="verification-panel-content">
-                    <div class="verification-row">
-                        <span class="verification-label" data-i18n="netTruckWeight">Net Truck Weight</span>
-                        <span class="verification-value" id="varNet">--</span>
+                    <!-- Truck Variance Section -->
+                    <div class="variance-section truck-variance-section">
+                        <div class="variance-section-title" data-i18n="truckVarianceTitle">Truck Variance (Net vs Scrap)</div>
+                        <div class="verification-row">
+                            <span class="verification-label" data-i18n="netTruckWeight">Net Truck Weight</span>
+                            <span class="verification-value" id="varNet">--</span>
+                        </div>
+                        <div class="verification-row">
+                            <span class="verification-label" data-i18n="totalScrapWeight">Total Scrap Weight</span>
+                            <span class="verification-value" id="varScrap">--</span>
+                        </div>
+                        <div class="verification-row verification-variance">
+                            <span class="verification-label" data-i18n="truckVariance">Truck Variance</span>
+                            <span class="verification-value" id="varTruckDiff">--</span>
+                        </div>
+                        <div class="verification-status" id="truckVarianceStatus"></div>
                     </div>
-                    <div class="verification-row">
-                        <span class="verification-label" data-i18n="totalScrapWeight">Total Scrap Weight</span>
-                        <span class="verification-value" id="varScrap">--</span>
+
+                    <!-- Indicated Variance Section (conditionally shown) -->
+                    <div class="variance-section indicated-variance-section" id="indicatedVarianceSection">
+                        <div class="variance-section-title" data-i18n="indicatedVarianceTitle">Indicated Variance (Supplier vs Actual)</div>
+                        <div class="verification-row">
+                            <span class="verification-label" data-i18n="indicatedWeight">Indicated Weight</span>
+                            <span class="verification-value" id="varIndicated">--</span>
+                        </div>
+                        <div class="verification-row">
+                            <span class="verification-label" data-i18n="totalActualWeight">Actual Weight</span>
+                            <span class="verification-value" id="varActual">--</span>
+                        </div>
+                        <div class="verification-row verification-variance">
+                            <span class="verification-label" data-i18n="indicatedVariance">Indicated Variance</span>
+                            <span class="verification-value" id="varIndicatedDiff">--</span>
+                        </div>
+                        <div class="verification-status" id="indicatedVarianceStatus"></div>
                     </div>
-                    <div class="verification-row verification-variance">
-                        <span class="verification-label" data-i18n="variance">Variance</span>
-                        <span class="verification-value" id="varDiff">--</span>
-                    </div>
-                    <div class="verification-status" id="varianceStatus"></div>
                 </div>
             </div>
 
@@ -632,13 +653,18 @@ body {
                         <span class="summary-label" data-i18n="totalScrapWeight">Total Scrap Weight</span>
                         <span class="summary-value" id="completeSummaryScrap">--</span>
                     </div>
-                    <div class="summary-row variance-row" id="completeSummaryVarianceRow">
-                        <span class="summary-label" data-i18n="variance">Variance</span>
-                        <span class="summary-value" id="completeSummaryVariance">--</span>
+                    <!-- Phase 8B: Dual Variance Display -->
+                    <div class="summary-row variance-row" id="completeSummaryTruckVarianceRow">
+                        <span class="summary-label" data-i18n="truckVarianceTitle">Truck Variance (Net vs Scrap)</span>
+                        <span class="summary-value" id="completeSummaryTruckVariance">--</span>
+                    </div>
+                    <div class="summary-row variance-row" id="completeSummaryIndicatedVarianceRow" style="display:none;">
+                        <span class="summary-label" data-i18n="indicatedVarianceTitle">Indicated Variance (Supplier vs Actual)</span>
+                        <span class="summary-value" id="completeSummaryIndicatedVariance">--</span>
                     </div>
                 </div>
 
-                <!-- Blockers Warning -->
+                <!-- Blockers Warning (prevents completion) -->
                 <div class="blockers-warning" id="completeBlockersWarning" style="display:none;">
                     <span class="warning-icon">&#9888;</span>
                     <div class="blockers-list" id="completeBlockersList"></div>
@@ -703,6 +729,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyLanguage(state.language);
     updateClock();
     setInterval(updateClock, 1000);
+
+    // Hide panels initially (no dropoff selected on load)
+    const variancePanel = document.getElementById('variancePanel');
+    if (variancePanel) variancePanel.style.display = 'none';
+    const scrapPanel = document.getElementById('scrapPanel');
+    if (scrapPanel) scrapPanel.style.display = 'none';
 
     // Check if scale is already set for this session
     await checkSessionScale();
@@ -1132,7 +1164,9 @@ function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
 
     const statusEl = document.getElementById('dropoffCardStatus');
     statusEl.textContent = status || 'Draft';
-    statusEl.className = 'detail-value status-' + (status || 'Draft').toLowerCase();
+    // Phase 8A: Handle new statuses with spaces (e.g., "In Progress")
+    const statusClass = (status || 'Draft').toLowerCase().replace(/\s+/g, '-');
+    statusEl.className = 'detail-value status-' + statusClass;
 
     card.style.display = 'block';
 
@@ -1158,9 +1192,11 @@ async function fetchDropoffDetails(dropoffName) {
         if (response.message) {
             const details = response.message;
 
-            // Store variance threshold from dropoff
+            // Phase 8B: Store variance thresholds and indicated weight from dropoff
             if (state.dropoff) {
-                state.dropoff.variance_threshold_percent = details.variance_threshold_percent || 0.01;
+                state.dropoff.truck_variance_threshold_percent = details.truck_variance_threshold_percent || 0.001;
+                state.dropoff.indicated_variance_threshold_percent = details.indicated_variance_threshold_percent || 0.001;
+                state.dropoff.total_indicated_weight = details.total_indicated_weight || 0;
             }
 
             // Store truck weights with photos
@@ -1404,53 +1440,93 @@ function updateWeightDisplay() {
         }
     }
 
-    // Variance section (if elements exist)
+    // Phase 8B: Dual Variance Section (client-side calculation)
     const variancePanel = document.getElementById('variancePanel');
     if (variancePanel) {
         if (w.net_truck_weight && w.total_scrap_weight) {
             variancePanel.style.display = 'block';
 
-            // Get threshold from dropoff document (default to 2%)
-            const threshold = state.dropoff ? (state.dropoff.variance_threshold_percent || 2) : 2;
-
-            // Update threshold display
-            const thresholdEl = document.getElementById('varianceThreshold');
-            if (thresholdEl) thresholdEl.textContent = t('threshold') + ': ' + threshold + '%';
-
+            // 1. Truck Variance (Net Truck vs Scrap)
             const varNet = document.getElementById('varNet');
             const varScrap = document.getElementById('varScrap');
-            if (varNet) varNet.textContent = w.net_truck_weight.toFixed(2) + ' Kg';
-            if (varScrap) varScrap.textContent = w.total_scrap_weight.toFixed(2) + ' Kg';
+            if (varNet) varNet.textContent = w.net_truck_weight.toFixed(2) + ' ' + t('kg');
+            if (varScrap) varScrap.textContent = w.total_scrap_weight.toFixed(2) + ' ' + t('kg');
 
-            const variance = w.weight_variance || 0;
-            const variancePercent = w.weight_variance_percent || 0;
-            const diffEl = document.getElementById('varDiff');
-            if (diffEl) {
-                diffEl.textContent = variance.toFixed(2) + ' Kg (' + variancePercent.toFixed(1) + '%)';
+            const truckVariance = w.net_truck_weight - w.total_scrap_weight;
+            const truckVariancePercent = (Math.abs(truckVariance) / w.net_truck_weight) * 100;
+            const truckDiffEl = document.getElementById('varTruckDiff');
+            const truckStatusEl = document.getElementById('truckVarianceStatus');
 
-                const statusEl = document.getElementById('varianceStatus');
-                const absPercent = Math.abs(variancePercent);
+            if (truckDiffEl) {
+                truckDiffEl.textContent = truckVariance.toFixed(2) + ' ' + t('kg') + ' (' + truckVariancePercent.toFixed(2) + '%)';
 
-                // Use threshold from dropoff document
-                if (absPercent <= threshold) {
-                    if (statusEl) {
-                        statusEl.innerHTML = '&#10004; ' + t('varianceWithinTolerance') + ' (&le;' + threshold + '%)';
-                        statusEl.className = 'verification-status status-ok';
+                // Use truck variance threshold from document (default 0.1% = 0.001)
+                const truckThreshold = state.dropoff ? ((state.dropoff.truck_variance_threshold_percent || 0.001) * 100) : 0.1;
+
+                if (truckVariancePercent <= truckThreshold) {
+                    truckDiffEl.className = 'verification-value variance-ok';
+                    if (truckStatusEl) {
+                        truckStatusEl.innerHTML = '&#10004; ' + t('varianceWithinTolerance');
+                        truckStatusEl.className = 'verification-status status-ok';
                     }
-                    diffEl.className = 'verification-value variance-ok';
-                } else if (absPercent <= threshold * 2) {
-                    if (statusEl) {
-                        statusEl.innerHTML = '&#9888; ' + t('varianceWarning') + ' (' + threshold + '-' + (threshold * 2) + '%)';
-                        statusEl.className = 'verification-status status-warning';
+                } else if (truckVariancePercent <= truckThreshold * 2) {
+                    truckDiffEl.className = 'verification-value variance-warning';
+                    if (truckStatusEl) {
+                        truckStatusEl.innerHTML = '&#9888; ' + t('varianceWarning');
+                        truckStatusEl.className = 'verification-status status-warning';
                     }
-                    diffEl.className = 'verification-value variance-warning';
                 } else {
-                    if (statusEl) {
-                        statusEl.innerHTML = '&#10008; ' + t('varianceExceedsTolerance') + ' (>' + (threshold * 2) + '%)';
-                        statusEl.className = 'verification-status status-error';
+                    truckDiffEl.className = 'verification-value variance-error';
+                    if (truckStatusEl) {
+                        truckStatusEl.innerHTML = '&#10008; ' + t('varianceExceedsTolerance');
+                        truckStatusEl.className = 'verification-status status-error';
                     }
-                    diffEl.className = 'verification-value variance-error';
                 }
+            }
+
+            // 2. Indicated Variance (Supplier Indicated vs Actual)
+            const indicatedVarianceSection = document.getElementById('indicatedVarianceSection');
+            if (indicatedVarianceSection && state.dropoff && state.dropoff.total_indicated_weight) {
+                indicatedVarianceSection.style.display = 'block';
+
+                const varIndicated = document.getElementById('varIndicated');
+                const varActual = document.getElementById('varActual');
+                if (varIndicated) varIndicated.textContent = state.dropoff.total_indicated_weight.toFixed(2) + ' ' + t('kg');
+                if (varActual) varActual.textContent = w.total_scrap_weight.toFixed(2) + ' ' + t('kg');
+
+                const indicatedVariance = state.dropoff.total_indicated_weight - w.total_scrap_weight;
+                const indicatedVariancePercent = (Math.abs(indicatedVariance) / state.dropoff.total_indicated_weight) * 100;
+                const indicatedDiffEl = document.getElementById('varIndicatedDiff');
+                const indicatedStatusEl = document.getElementById('indicatedVarianceStatus');
+
+                if (indicatedDiffEl) {
+                    indicatedDiffEl.textContent = indicatedVariance.toFixed(2) + ' ' + t('kg') + ' (' + indicatedVariancePercent.toFixed(2) + '%)';
+
+                    // Use indicated variance threshold from document (default 0.1% = 0.001)
+                    const indicatedThreshold = state.dropoff ? ((state.dropoff.indicated_variance_threshold_percent || 0.001) * 100) : 0.1;
+
+                    if (indicatedVariancePercent <= indicatedThreshold) {
+                        indicatedDiffEl.className = 'verification-value variance-ok';
+                        if (indicatedStatusEl) {
+                            indicatedStatusEl.innerHTML = '&#10004; ' + t('varianceWithinTolerance');
+                            indicatedStatusEl.className = 'verification-status status-ok';
+                        }
+                    } else if (indicatedVariancePercent <= indicatedThreshold * 2) {
+                        indicatedDiffEl.className = 'verification-value variance-warning';
+                        if (indicatedStatusEl) {
+                            indicatedStatusEl.innerHTML = '&#9888; ' + t('varianceWarning');
+                            indicatedStatusEl.className = 'verification-status status-warning';
+                        }
+                    } else {
+                        indicatedDiffEl.className = 'verification-value variance-error';
+                        if (indicatedStatusEl) {
+                            indicatedStatusEl.innerHTML = '&#10008; ' + t('varianceExceedsTolerance');
+                            indicatedStatusEl.className = 'verification-status status-error';
+                        }
+                    }
+                }
+            } else {
+                if (indicatedVarianceSection) indicatedVarianceSection.style.display = 'none';
             }
         } else {
             variancePanel.style.display = 'none';
@@ -3078,28 +3154,54 @@ function showCompleteDropoffModal() {
     // Populate summary
     document.getElementById('completeSummaryId').textContent = state.dropoff.name;
     document.getElementById('completeSummaryNet').textContent =
-        state.weights.net_truck_weight ? state.weights.net_truck_weight.toFixed(2) + ' Kg' : '--';
+        state.weights.net_truck_weight ? state.weights.net_truck_weight.toFixed(2) + ' ' + t('kg') : '--';
     document.getElementById('completeSummaryScrap').textContent =
-        state.weights.total_scrap_weight ? state.weights.total_scrap_weight.toFixed(2) + ' Kg' : '--';
+        state.weights.total_scrap_weight ? state.weights.total_scrap_weight.toFixed(2) + ' ' + t('kg') : '--';
 
-    // Variance
+    // Phase 8B: Client-side variance calculation using thresholds from document
+    // 1. Truck Variance (Net Truck vs Scrap)
     if (state.weights.net_truck_weight && state.weights.total_scrap_weight) {
-        const variance = state.weights.net_truck_weight - state.weights.total_scrap_weight;
-        const variancePercent = state.weights.weight_variance_percent || 0;
-        const varianceEl = document.getElementById('completeSummaryVariance');
-        varianceEl.textContent = `${variance.toFixed(2)} Kg (${variancePercent.toFixed(2)}%)`;
+        const truckVariance = state.weights.net_truck_weight - state.weights.total_scrap_weight;
+        const truckVariancePercent = (Math.abs(truckVariance) / state.weights.net_truck_weight) * 100;
+        const truckVarianceEl = document.getElementById('completeSummaryTruckVariance');
+        truckVarianceEl.textContent = `${truckVariance.toFixed(2)} ${t('kg')} (${truckVariancePercent.toFixed(2)}%)`;
 
-        // Color code
-        const threshold = state.dropoff.variance_threshold_percent || 0.01;
-        const row = document.getElementById('completeSummaryVarianceRow');
-        row.classList.remove('variance-ok', 'variance-warning', 'variance-error');
-        if (Math.abs(variancePercent) <= threshold) {
-            row.classList.add('variance-ok');
-        } else if (Math.abs(variancePercent) <= threshold * 2) {
-            row.classList.add('variance-warning');
+        // Use threshold from document (default 0.1% = 0.001)
+        const truckThreshold = (state.dropoff.truck_variance_threshold_percent || 0.001) * 100;
+        const truckRow = document.getElementById('completeSummaryTruckVarianceRow');
+        truckRow.classList.remove('variance-ok', 'variance-warning', 'variance-error');
+        if (truckVariancePercent <= truckThreshold) {
+            truckRow.classList.add('variance-ok');
+        } else if (truckVariancePercent <= truckThreshold * 2) {
+            truckRow.classList.add('variance-warning');
         } else {
-            row.classList.add('variance-error');
+            truckRow.classList.add('variance-error');
         }
+    }
+
+    // 2. Indicated Variance (Supplier Indicated vs Actual)
+    if (state.dropoff.total_indicated_weight && state.dropoff.total_indicated_weight > 0 && state.weights.total_scrap_weight) {
+        const indicatedWeight = state.dropoff.total_indicated_weight;
+        const actualWeight = state.weights.total_scrap_weight;
+        const indicatedVariance = indicatedWeight - actualWeight;
+        const indicatedVariancePercent = (Math.abs(indicatedVariance) / indicatedWeight) * 100;
+        const indicatedVarianceEl = document.getElementById('completeSummaryIndicatedVariance');
+        indicatedVarianceEl.textContent = `${indicatedVariance.toFixed(2)} ${t('kg')} (${indicatedVariancePercent.toFixed(2)}%)`;
+
+        // Use threshold from document (default 0.1% = 0.001)
+        const indicatedThreshold = (state.dropoff.indicated_variance_threshold_percent || 0.001) * 100;
+        const indicatedRow = document.getElementById('completeSummaryIndicatedVarianceRow');
+        indicatedRow.style.display = 'flex';
+        indicatedRow.classList.remove('variance-ok', 'variance-warning', 'variance-error');
+        if (indicatedVariancePercent <= indicatedThreshold) {
+            indicatedRow.classList.add('variance-ok');
+        } else if (indicatedVariancePercent <= indicatedThreshold * 2) {
+            indicatedRow.classList.add('variance-warning');
+        } else {
+            indicatedRow.classList.add('variance-error');
+        }
+    } else {
+        document.getElementById('completeSummaryIndicatedVarianceRow').style.display = 'none';
     }
 
     // Check for blockers
@@ -3149,8 +3251,8 @@ async function confirmCompleteDropoff() {
             // Update status display
             const statusEl = document.getElementById('dropoffCardStatus');
             if (statusEl) {
-                statusEl.textContent = 'Closed';
-                statusEl.className = 'detail-value status-closed';
+                statusEl.textContent = 'Completed';
+                statusEl.className = 'detail-value status-completed';
             }
 
             // Hide complete button

@@ -1,8 +1,8 @@
 # Phase 8: Dropoff System Redesign
 
 **Created:** 2025-12-28
-**Updated:** 2026-01-09
-**Status:** READY FOR IMPLEMENTATION
+**Updated:** 2026-01-10
+**Status:** ✅ COMPLETED (8A, 8B)
 
 ---
 
@@ -410,17 +410,45 @@ frappe.call({
 
 ## Implementation Phases
 
-### Phase 8A: Status Simplification + Re-allocation Fix
-1. Update `dropoff.json` - new status options, add `verification_status`
-2. Update `dropoff.py` - `auto_transition_status()`, `calculate_verification_status()`, fix allocation
-3. Update `dropoff_list.js` - color indicators
-4. Update `api/v1/dropoff.py` - status checks
-5. Migration script for existing data
+### Phase 8A: Status Simplification + Re-allocation Fix ✅ COMPLETED (2026-01-09)
+1. ✅ Update `dropoff.json` - new status options (5 statuses), add `verification_status`
+2. ✅ Update `dropoff.py` - `auto_transition_status()`, `calculate_verification_status()`, fix allocation
+3. ✅ Update `dropoff_list.js` - color indicators for new statuses
+4. ✅ Update `api/v1/dropoff.py` - status checks updated
+5. ✅ Migration script - migrated existing dropoffs to new status flow
+6. ✅ Update terminal CSS - `.status-in-progress`, `.status-completed` classes
+7. ✅ Update terminal.html - status handling for "In Progress" (space in name)
 
-### Phase 8B: Dual Variance
-1. Add indicated variance fields to `dropoff.json`
-2. Update `dropoff.py` - `calculate_indicated_variance()`
-3. Update terminal UI for dual variance display
+**Key Changes:**
+- Status options: Draft → Scheduled → In Progress → Completed | Cancelled
+- Auto-transitions on weight recording (first weight → In Progress, all weights → Completed)
+- Read-only `verification_status` field (Pending/Verified/Needs Review)
+- Re-allocation now runs on EVERY save when Completed (fixes reweight issue)
+
+### Phase 8B: Dual Variance ✅ COMPLETED (2026-01-10)
+1. ✅ Add indicated variance fields to `dropoff.json`:
+   - `truck_variance_threshold_percent` (default 0.001 = 0.1%)
+   - `indicated_variance_threshold_percent` (default 0.001 = 0.1%)
+   - `total_indicated_weight` (calculated from expected_items)
+   - `indicated_variance`, `indicated_variance_percent`, `indicated_variance_ok`
+2. ✅ Update `dropoff.py` - `calculate_indicated_variance()` method
+3. ✅ Update `api/v1/dropoff.py` - return all variance fields including `total_indicated_weight`
+4. ✅ Update terminal UI for dual variance display:
+   - Truck terminal shows TWO variance sections
+   - Client-side real-time calculation using document thresholds
+   - Proper translation support (EN/TH)
+   - No inline CSS, uses dedicated CSS classes
+5. ✅ Add POS Order status auto-transition - "Pending" → "Processing" → "Processed"
+
+**Key Changes:**
+- **Truck Variance**: Net Truck Weight vs Total Scrap Weight (detects unloading loss)
+- **Indicated Variance**: Supplier Indicated vs Actual Weighed (detects over/under-delivery)
+- Both variances have separate thresholds (configurable per dropoff)
+- Variances are WARNINGS ONLY (informational, not blockers)
+- Client-side calculation in terminals for real-time feedback
+- Verification panel hidden on initial load (no dropoff selected)
+- Translation keys added: `truckVarianceTitle`, `indicatedVarianceTitle`, `truckVariance`, `indicatedVariance`, `totalActualWeight`
+- POS Order now auto-transitions status based on fulfillment progress
 
 ### Phase 8C: Auto-populate Expected Items
 1. Add `from_order` field to `dropoff_expected_item.json`
@@ -500,13 +528,55 @@ def migrate_dropoff_statuses():
 
 This redesign simplifies the Dropoff workflow while adding more useful verification information:
 
-- **Fewer statuses** (8 → 5) with clear auto-transitions
-- **Dual variance** tracking for both truck/scrap and indicated/actual
-- **Instant expected items** population when orders are linked
-- **Fixed reweight issue** - re-allocation happens on every save
-- **Entry method tracking** for audit trail
-- **Cleaner terminals** with updated status displays
+- ✅ **Fewer statuses** (8 → 5) with clear auto-transitions
+- ✅ **Dual variance** tracking for both truck/scrap and indicated/actual
+- ✅ **Fixed reweight issue** - re-allocation happens on every save
+- ✅ **POS Order status** - auto-transitions based on fulfillment
+- 🔜 **Instant expected items** population when orders are linked
+- 🔜 **Entry method tracking** for audit trail
+- 🔜 **Cleaner terminals** with updated status displays
 
 ---
 
-*Updated: 2025-12-29 - Consolidated all decisions from Session 5-6 discussion*
+## Completed Implementation Summary (2026-01-10)
+
+### Files Modified
+
+#### Backend
+1. **`dropoff.json`** - Added dual variance fields, updated status options
+2. **`dropoff.py`** - Added `calculate_indicated_variance()`, auto-transitions
+3. **`pos_order.py`** - Added `update_status()` auto-transition logic
+4. **`api/v1/dropoff.py`** - Return `total_indicated_weight` in API responses
+
+#### Frontend
+5. **`truck.html`** - Dual variance verification panel, client-side calculations, translation support
+6. **`terminal.html`** - Status CSS handling for "In Progress"
+7. **`pos-translations.js`** - Added variance translation keys (EN/TH)
+8. **`pos.css`** - Variance section styles
+
+### Technical Highlights
+
+**Percentage Representation:**
+- UI displays: 0.1% (user-friendly)
+- Database stores: 0.001 (decimal)
+- JavaScript converts: `(doc.threshold || 0.001) * 100` for display
+
+**Client-Side Variance Calculation:**
+- Uses `state.dropoff.truck_variance_threshold_percent` from document
+- Uses `state.dropoff.indicated_variance_threshold_percent` from document
+- Real-time calculation before save (no server round-trip)
+- Conditional display (indicated variance only shown if data exists)
+
+**Translation Architecture:**
+- All labels use `data-i18n` attributes
+- JavaScript uses `POS_I18N.t('key')` helper
+- Supports EN/TH out of the box
+
+**Status Auto-Transitions:**
+- Dropoff: Draft → Scheduled → In Progress → Completed
+- POS Order: Pending → Processing → Processed
+- Both update automatically on save
+
+---
+
+*Updated: 2026-01-10 - Phase 8A and 8B completed*

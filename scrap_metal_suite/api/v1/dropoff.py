@@ -39,40 +39,7 @@ def _count_dropoff_orders(parent):
     return result[0][0] if result else 0
 
 
-def _auto_transition_status(dropoff_doc):
-    """
-    Auto-transition dropoff status based on weights recorded.
-    Called after recording truck/scrap weights.
-
-    Transitions:
-    - Draft/Scheduled -> Weighing (first truck weight)
-    - Weighing -> Unloading (first scrap weight)
-    - Unloading -> Verified (all done, variance OK)
-    - Unloading -> Needs Attention (all done, variance NOT OK)
-    """
-    current = dropoff_doc.status
-
-    # Check if we have truck weights
-    has_gross = dropoff_doc.gross_weight and dropoff_doc.gross_weight > 0
-    has_tare = dropoff_doc.tare_weight and dropoff_doc.tare_weight > 0
-    has_truck_weight = has_gross or has_tare
-
-    # Check if we have scrap weights
-    has_scrap = dropoff_doc.total_scrap_weight and dropoff_doc.total_scrap_weight > 0
-
-    # All weights complete = both truck weights AND scrap weights
-    all_complete = has_gross and has_tare and has_scrap
-
-    if current in ["Draft", "Scheduled"] and has_truck_weight:
-        dropoff_doc.status = "Weighing"
-    elif current == "Weighing" and has_scrap:
-        dropoff_doc.status = "Unloading"
-    elif current == "Unloading" and all_complete:
-        # Check variance
-        if dropoff_doc.variance_ok:
-            dropoff_doc.status = "Verified"
-        else:
-            dropoff_doc.status = "Needs Attention"
+# Phase 8A: Auto-transition removed - now handled in dropoff.py controller
 
 
 # =============================================================================
@@ -272,7 +239,9 @@ def get_dropoff_details(dropoff):
         "supplier": doc.supplier,
         "supplier_name": doc.supplier_name,
         "status": doc.status,
-        "variance_threshold_percent": doc.variance_threshold_percent,
+        "truck_variance_threshold_percent": doc.truck_variance_threshold_percent,
+        "indicated_variance_threshold_percent": doc.indicated_variance_threshold_percent,
+        "total_indicated_weight": doc.total_indicated_weight,
         # Truck weights (inline)
         "gross_weight": doc.gross_weight,
         "gross_weight_time": doc.gross_weight_time,
@@ -300,7 +269,8 @@ def get_dropoff_details(dropoff):
         "total_truck_weight": doc.total_truck_weight,
         "truck_variance": doc.truck_variance,
         "truck_variance_percent": doc.truck_variance_percent,
-        "variance_ok": doc.variance_ok
+        "truck_variance_ok": doc.truck_variance_ok,
+        "indicated_variance_ok": doc.indicated_variance_ok
     }
 
 
@@ -444,9 +414,7 @@ def record_truck_weight(dropoff, weight_type, weight, scale=None, session=None,
     if is_reweight:
         doc.is_reweighed = 1
 
-    # Auto-transition status
-    _auto_transition_status(doc)
-
+    # Phase 8A: Auto-transition now handled in controller (dropoff.py before_save)
     doc.save()
 
     return {
@@ -720,7 +688,7 @@ def record_scrap_weight(session, dropoff, items, remarks=None,
     dropoff_doc = frappe.get_doc("Dropoff", dropoff)
 
     # Auto-transition status
-    _auto_transition_status(dropoff_doc)
+    # Phase 8A: Auto-transition now handled in controller (dropoff.py before_save)
     dropoff_doc.save()
 
     return {
@@ -818,14 +786,17 @@ def get_dropoff_verification(dropoff):
         blockers.append("Missing tare weight")
     if not doc.total_scrap_weight:
         blockers.append("No scrap weights recorded")
-    if not doc.variance_ok:
-        blockers.append(f"Variance {doc.truck_variance_percent:.2f}% exceeds threshold {doc.variance_threshold_percent}%")
-    if doc.status == "Closed":
-        blockers.append("Already closed")
+    if not doc.truck_variance_ok:
+        blockers.append(f"Truck variance {doc.truck_variance_percent:.2f}% exceeds threshold {doc.truck_variance_threshold_percent}%")
+    if not doc.indicated_variance_ok:
+        blockers.append(f"Indicated variance {doc.indicated_variance_percent:.2f}% exceeds threshold {doc.indicated_variance_threshold_percent}%")
+    if doc.status == "Completed":
+        blockers.append("Already completed")
     if doc.status == "Cancelled":
         blockers.append("Dropoff is cancelled")
 
-    can_complete = len(blockers) == 0 and doc.status in ["Verified", "Unloading"]
+    # Phase 8A: Can complete from "In Progress" status (auto-transitions to Completed when all weights done)
+    can_complete = len(blockers) == 0 and doc.status in ["In Progress", "Completed"]
 
     return {
         "dropoff": doc.name,
@@ -839,12 +810,18 @@ def get_dropoff_verification(dropoff):
         # Scrap
         "scrap_records": scrap_records,
         "total_scrap_weight": doc.total_scrap_weight,
-        # Variance
+        # Phase 8B: Dual Variance
         "total_truck_weight": doc.total_truck_weight,
         "truck_variance": doc.truck_variance,
         "truck_variance_percent": doc.truck_variance_percent,
-        "variance_threshold_percent": doc.variance_threshold_percent,
-        "variance_ok": doc.variance_ok,
+        "truck_variance_threshold_percent": doc.truck_variance_threshold_percent,
+        "truck_variance_ok": doc.truck_variance_ok,
+        "total_indicated_weight": doc.total_indicated_weight,
+        "total_actual_weight": doc.total_actual_weight,
+        "indicated_variance": doc.indicated_variance,
+        "indicated_variance_percent": doc.indicated_variance_percent,
+        "indicated_variance_threshold_percent": doc.indicated_variance_threshold_percent,
+        "indicated_variance_ok": doc.indicated_variance_ok,
         # Orders
         "orders": orders,
         # Completion
@@ -868,9 +845,9 @@ def complete_dropoff(dropoff):
 
     doc = frappe.get_doc("Dropoff", dropoff)
 
-    # Validate can complete
-    if doc.status not in ["Verified", "Unloading"]:
-        frappe.throw(_("Can only complete dropoff from Verified or Unloading status. Current: {0}").format(doc.status))
+    # Phase 8A: Validate can complete (status will auto-transition to Completed)
+    if doc.status not in ["In Progress", "Completed"]:
+        frappe.throw(_("Can only complete dropoff from In Progress status. Current: {0}").format(doc.status))
 
     if not doc.gross_weight or not doc.tare_weight:
         frappe.throw(_("Both gross and tare weights are required"))
@@ -878,8 +855,9 @@ def complete_dropoff(dropoff):
     if not doc.total_scrap_weight:
         frappe.throw(_("No scrap weights recorded"))
 
-    # Set status to Closed - this triggers allocation via controller
-    doc.status = "Closed"
+    # Phase 8A: Set status to Completed - auto-transition in controller will handle this
+    # But we force it here for the API to ensure it's completed
+    doc.status = "Completed"
     doc.save()
 
     # Get updated order info
@@ -897,7 +875,7 @@ def complete_dropoff(dropoff):
 
     return {
         "dropoff": doc.name,
-        "status": "Closed",
+        "status": "Completed",
         "orders_updated": orders_updated
     }
 
