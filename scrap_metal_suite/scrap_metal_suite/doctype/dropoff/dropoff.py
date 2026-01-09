@@ -539,3 +539,50 @@ def _get_fulfillment_status(percent):
         return "Over-delivered"
 
 
+@frappe.whitelist()
+def get_events(start, end, filters=None):
+    """
+    Get dropoff events for calendar view.
+
+    Args:
+        start: Start datetime for calendar range
+        end: End datetime for calendar range
+        filters: Optional additional filters
+
+    Returns:
+        list: Events for calendar display
+    """
+    from frappe.desk.calendar import get_event_conditions
+
+    conditions = get_event_conditions("Dropoff", filters)
+
+    events = frappe.db.sql("""
+        SELECT
+            name,
+            dropoff_scheduled_start as start,
+            dropoff_scheduled_end as end,
+            status,
+            license_plate,
+            supplier_name
+        FROM `tabDropoff`
+        WHERE (
+            (dropoff_scheduled_start BETWEEN %(start)s AND %(end)s)
+            OR (dropoff_scheduled_end BETWEEN %(start)s AND %(end)s)
+            OR (dropoff_scheduled_start <= %(start)s AND dropoff_scheduled_end >= %(end)s)
+        )
+        {conditions}
+        ORDER BY dropoff_scheduled_start
+    """.format(conditions=conditions), {
+        "start": start,
+        "end": end
+    }, as_dict=True)
+
+    # Format events for calendar display
+    for event in events:
+        event["title"] = f"{event.name} - {event.license_plate or 'No Plate'}"
+        if event.supplier_name:
+            event["title"] += f" ({event.supplier_name})"
+
+    return events
+
+
