@@ -229,13 +229,14 @@ body {
             <div class="dropoff-section">
                 <div class="dropoff-label-row">
                     <label data-i18n="dropoffId">Drop-off ID</label>
+                </div>
+                <div class="order-input-group" style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="dropoffSearch" data-i18n-placeholder="enterDropoffId"
+                           placeholder="Enter Drop-off ID or scan..."
+                           oninput="searchDropoff(this.value)" autocomplete="off" style="flex: 1;">
                     <button class="scan-btn" onclick="openScanner()" title="Scan Barcode/QR">
                         <span>&#128247;</span> <span data-i18n="scan">Scan</span>
                     </button>
-                </div>
-                <div class="order-input-group">
-                    <input type="text" id="dropoffSearch" placeholder="Enter Drop-off ID or scan..."
-                           oninput="searchDropoff(this.value)" autocomplete="off">
                     <div id="dropoffResults" class="order-results"></div>
                 </div>
 
@@ -664,6 +665,7 @@ function t(key) {
 const state = {
     session: '{{ session.name }}',
     theme: localStorage.getItem('posTheme') || 'dark',
+    language: localStorage.getItem('posLanguage') || 'en',
     dropoff: null,
     weightType: null,
     remarks: '',
@@ -696,92 +698,54 @@ const state = {
 // ===== Initialization =====
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize unified translation system
-    POS_I18N.init();
+    POS_I18N.init(state.language);
     applyTheme(state.theme);
-    applyLanguage();
+    applyLanguage(state.language);
     updateClock();
     setInterval(updateClock, 1000);
 
     // Check if scale is already set for this session
     await checkSessionScale();
+
+    document.addEventListener('keydown', handleDropoffSearchKeydown);
 });
 
 
 // ===== Language Functions =====
 function toggleLanguage() {
-    POS_I18N.toggleLanguage();
-    applyLanguage();
+    state.language = POS_I18N.toggleLanguage();
+    applyLanguage(state.language);
 }
 
-function applyLanguage() {
-    const lang = POS_I18N.getLanguage();
+function applyLanguage(lang) {
     const langLabel = document.getElementById('langLabel');
     if (langLabel) {
         langLabel.textContent = lang.toUpperCase();
     }
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        el.textContent = t(key);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = t(key);
+    });
     updateTranslations();
 }
 
 function updateTranslations() {
-    // Panel header
     const panelHeader = document.querySelector('.panel-items .panel-header h2');
     if (panelHeader) panelHeader.innerHTML = '&#128666; ' + t('truckWeights');
 
-    // Empty state
     const emptyStateText = document.querySelector('#weightEmptyState p');
-    if (emptyStateText) emptyStateText.textContent = t('selectOrderToRecordWeights');
+    if (emptyStateText) emptyStateText.textContent = t('selectDropoffToRecordWeights');
 
-    // Weight card headers
-    const grossHeader = document.querySelector('.gross-card .weight-card-header');
-    if (grossHeader) grossHeader.textContent = t('grossWeight');
+    updateRemarksButton();
+    updatePhotoButtonStates();
 
-    const tareHeader = document.querySelector('.tare-card .weight-card-header');
-    if (tareHeader) tareHeader.textContent = t('tareWeight');
-
-    const netHeader = document.querySelector('.net-card .weight-card-header');
-    if (netHeader) netHeader.textContent = t('netWeight');
-
-    // Buttons - only update if not showing recorded state
-    const btnGross = document.getElementById('btnGross');
-    if (btnGross && !state.weights.gross_weight) {
-        btnGross.textContent = t('recordGross');
-    }
-
-    const btnTare = document.getElementById('btnTare');
-    if (btnTare && !state.weights.tare_weight) {
-        btnTare.textContent = t('recordTare');
-    }
-
-    // Remarks and Photo buttons
-    const remarksBtn = document.getElementById('remarksBtn');
-    if (remarksBtn) {
-        const hasRemarks = state.weights.truck_weight_remarks;
-        remarksBtn.innerHTML = '&#128172; ' + t('remarks') + (hasRemarks ? ' &#10004;' : '');
-    }
-
-    const photoBtn = document.getElementById('photoBtn');
-    if (photoBtn) {
-        const hasPhoto = state.weights.truck_weight_photo;
-        photoBtn.innerHTML = '&#128247; ' + t('photo') + (hasPhoto ? ' &#10004;' : '');
-    }
-
-    // Order section label
-    const orderLabel = document.querySelector('.order-label-row label');
-    if (orderLabel) orderLabel.textContent = t('orderId');
-
-    // Scan button
-    const scanBtn = document.querySelector('.scan-btn');
+    const scanBtn = document.querySelector('.dropoff-section .scan-btn');
     if (scanBtn) scanBtn.innerHTML = '<span>&#128247;</span> ' + t('scan');
 
-    // Order search placeholder
-    const orderSearch = document.getElementById('orderSearch');
-    if (orderSearch) orderSearch.placeholder = t('enterOrderId');
-
-    // End session button
-    const closeSessionBtn = document.querySelector('.btn-header.btn-danger');
-    if (closeSessionBtn) closeSessionBtn.textContent = t('closeSession');
-
-    // Scale modal translations
     const scaleModalTitle = document.querySelector('#scaleModal .modal-header h3');
     if (scaleModalTitle) scaleModalTitle.textContent = t('selectScale');
 
@@ -794,39 +758,9 @@ function updateTranslations() {
     const scaleSelectLabel = document.querySelector('.scale-select-section label');
     if (scaleSelectLabel) scaleSelectLabel.textContent = t('selectFromList');
 
-    const confirmScaleBtn = document.getElementById('confirmScaleBtn');
-    if (confirmScaleBtn) confirmScaleBtn.textContent = t('confirmScale');
-    // Order Details Card labels
-    const orderDetailLabels = document.querySelectorAll('#orderDetailsCard .detail-label');
-    if (orderDetailLabels.length >= 3) {
-        orderDetailLabels[0].textContent = t('supplier');
-        orderDetailLabels[1].textContent = t('orderDate');
-        orderDetailLabels[2].textContent = t('licensePlate');
-    }
+    const scaleSelectPlaceholder = document.querySelector('#scaleDropdown option[value=""]');
+    if (scaleSelectPlaceholder) scaleSelectPlaceholder.textContent = '-- ' + t('selectScale') + ' --';
 
-    // Variance Panel header and labels
-    const varianceHeader = document.querySelector('#variancePanel .panel-header h3');
-    if (varianceHeader) varianceHeader.textContent = t('weightVerification');
-
-    const varianceLabels = document.querySelectorAll('#variancePanel .variance-label');
-    if (varianceLabels.length >= 3) {
-        varianceLabels[0].textContent = t('netTruckWeight');
-        varianceLabels[1].textContent = t('totalScrapWeight');
-        varianceLabels[2].textContent = t('variance');
-    }
-
-    // Scrap Panel header and total label
-    const scrapHeader = document.querySelector('#scrapPanel .panel-header h3');
-    if (scrapHeader) scrapHeader.textContent = t('scrapWeightRecords');
-
-    const scrapTotalLabel = document.querySelector('#scrapPanel .scrap-total span:first-child');
-    if (scrapTotalLabel) scrapTotalLabel.textContent = t('total');
-
-    // Net weight label (Gross - Tare)
-    const netLabel = document.querySelector('.net-card .weight-card-label');
-    if (netLabel) netLabel.textContent = t('grossWeight') + ' - ' + t('tareWeight');
-
-    // Scale info labels
     const scaleInfoLabels = document.querySelectorAll('#selectedScaleInfo .info-label');
     if (scaleInfoLabels.length >= 3) {
         scaleInfoLabels[0].textContent = t('scaleName');
@@ -834,40 +768,21 @@ function updateTranslations() {
         scaleInfoLabels[2].textContent = t('location');
     }
 
-    // Scanner modal
-    const scannerModalTitle = document.querySelector('#scannerModal .modal-header h3');
-    if (scannerModalTitle) scannerModalTitle.textContent = t('scanOrderBarcode');
+    const scannerStatus = document.getElementById('scannerStatus');
+    if (scannerStatus) scannerStatus.textContent = t('pointCamera');
 
-    const manualEntryLabel = document.querySelector('#scannerModal .manual-entry label');
-    if (manualEntryLabel) manualEntryLabel.textContent = t('orEnterManually');
+    const manualInput = document.getElementById('manualDropoffInput');
+    if (manualInput) manualInput.placeholder = t('enterDropoffId');
 
-    const manualInput = document.getElementById('manualOrderInput');
-    if (manualInput) manualInput.placeholder = t('enterOrderId');
+    const weightModalTitle = document.getElementById('weightModalTitle');
+    if (weightModalTitle) weightModalTitle.textContent = t('recordWeight');
 
-    const manualSearchBtn = document.querySelector('#scannerModal .manual-entry .btn-pos');
-    if (manualSearchBtn) manualSearchBtn.textContent = t('search');
-
-    // Weight modal buttons
-    const weightModalCancel = document.querySelector('#weightModal .modal-footer .btn-secondary');
-    if (weightModalCancel) weightModalCancel.textContent = t('cancel');
-
-    const weightModalSave = document.querySelector('#weightModal .modal-footer .btn-primary');
-    if (weightModalSave) weightModalSave.textContent = t('saveWeight');
-
-    // End session modal
-    const closeSessionModalTitle = document.querySelector('#closeSessionModal .modal-header h3');
-    if (closeSessionModalTitle) closeSessionModalTitle.textContent = t('closeSession');
-
-    const closeSessionModalText = document.querySelector('#closeSessionModal .modal-body p');
-    if (closeSessionModalText) closeSessionModalText.textContent = t('confirmCloseSession');
+    const weightConfirmTitle = document.getElementById('weightConfirmTitle');
+    if (weightConfirmTitle) weightConfirmTitle.textContent = t('confirmRecording');
 
     const closeSessionCancelBtn = document.querySelector('#closeSessionModal .modal-footer .btn-secondary');
     if (closeSessionCancelBtn) closeSessionCancelBtn.textContent = t('cancel');
 
-    const closeSessionConfirmBtn = document.querySelector('#closeSessionModal .modal-footer .btn-danger');
-    if (closeSessionConfirmBtn) closeSessionConfirmBtn.textContent = t('closeSession');
-
-    // Remarks modal
     const remarksModalTitle = document.querySelector('#remarksModal .modal-header h3');
     if (remarksModalTitle) remarksModalTitle.textContent = t('truckWeightRemarks');
 
@@ -880,25 +795,20 @@ function updateTranslations() {
     const remarksSaveBtn = document.querySelector('#remarksModal .modal-footer .btn-primary');
     if (remarksSaveBtn) remarksSaveBtn.textContent = t('saveRemarks');
 
-    // Photo modal
-    const photoModalTitle = document.querySelector('#photoModal .modal-header h3');
+    const photoModalTitle = document.getElementById('photoModalTitle');
     if (photoModalTitle) photoModalTitle.textContent = t('capturePhoto');
-
-    const captureBtn = document.getElementById('captureBtn');
-    if (captureBtn) captureBtn.innerHTML = '&#128247; ' + t('capture');
-
-    const retakeBtn = document.getElementById('retakeBtn');
-    if (retakeBtn) retakeBtn.innerHTML = '&#128260; ' + t('retake');
 
     const photoCancelBtn = document.querySelector('#photoModal .modal-footer .btn-secondary');
     if (photoCancelBtn) photoCancelBtn.textContent = t('cancel');
 
+    const photoAddBtn = document.getElementById('addPhotoBtn');
+    if (photoAddBtn) photoAddBtn.textContent = t('addAnother');
+
     const photoSaveBtn = document.getElementById('savePhotoBtn');
     if (photoSaveBtn) photoSaveBtn.textContent = t('savePhoto');
 
-    // Scale scanner modal
     const scaleScannerTitle = document.querySelector('#scaleScannnerModal .modal-header h3');
-    if (scaleScannerTitle) scaleScannerTitle.textContent = t('scanScaleQRCode');
+    if (scaleScannerTitle) scaleScannerTitle.textContent = t('scanScaleQR');
 }
 
 // ===== Theme Functions =====
@@ -1068,14 +978,105 @@ async function searchAndSelectDropoff(query) {
 
 // ===== Dropoff Search =====
 let searchTimeout;
+let dropoffSearchResults = [];
+let dropoffActiveIndex = -1;
+
+function clearDropoffSearchResults() {
+    const resultsDiv = document.getElementById('dropoffResults');
+    if (resultsDiv) {
+        resultsDiv.innerHTML = '';
+        resultsDiv.style.display = 'none';
+    }
+    dropoffSearchResults = [];
+    dropoffActiveIndex = -1;
+}
+
+function setDropoffActiveIndex(nextIndex) {
+    const resultsDiv = document.getElementById('dropoffResults');
+    if (!resultsDiv) return;
+
+    const items = resultsDiv.querySelectorAll('.dropoff-result');
+    if (!items.length) {
+        dropoffActiveIndex = -1;
+        return;
+    }
+
+    let index = nextIndex;
+    if (index < 0) index = items.length - 1;
+    if (index >= items.length) index = 0;
+
+    items.forEach(item => item.classList.remove('is-active'));
+    const activeItem = items[index];
+    if (!activeItem) {
+        dropoffActiveIndex = -1;
+        return;
+    }
+
+    activeItem.classList.add('is-active');
+    activeItem.scrollIntoView({ block: 'nearest' });
+    dropoffActiveIndex = index;
+}
+
+function handleDropoffSearchKeydown(event) {
+    const resultsDiv = document.getElementById('dropoffResults');
+    const searchInput = document.getElementById('dropoffSearch');
+    if (!resultsDiv || !searchInput) return;
+
+    if (resultsDiv.style.display === 'none' || searchInput.style.display === 'none') return;
+
+    const activeEl = document.activeElement;
+    const isSearchFocused = activeEl === searchInput;
+    const isBodyFocused = activeEl === document.body || activeEl === document.documentElement;
+    if (!isSearchFocused && !isBodyFocused) return;
+
+    if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) return;
+
+    event.preventDefault();
+
+    const items = resultsDiv.querySelectorAll('.dropoff-result');
+    if (!items.length) {
+        if (event.key === 'Escape') {
+            clearDropoffSearchResults();
+        }
+        return;
+    }
+
+    switch (event.key) {
+        case 'ArrowDown':
+            setDropoffActiveIndex(dropoffActiveIndex + 1);
+            break;
+        case 'ArrowUp':
+            setDropoffActiveIndex(dropoffActiveIndex - 1);
+            break;
+        case 'Enter':
+            if (dropoffActiveIndex < 0) {
+                setDropoffActiveIndex(0);
+            }
+            if (dropoffActiveIndex >= 0 && items[dropoffActiveIndex]) {
+                const data = items[dropoffActiveIndex].dataset;
+                selectDropoff(
+                    data.name || '',
+                    data.dropoffDate || '',
+                    data.licensePlate || '',
+                    data.supplierName || '',
+                    data.status || 'Draft'
+                );
+            }
+            break;
+        case 'Escape':
+            clearDropoffSearchResults();
+            break;
+        default:
+            break;
+    }
+}
 
 async function searchDropoff(query) {
     clearTimeout(searchTimeout);
     const resultsDiv = document.getElementById('dropoffResults');
 
     if (query.length < 2) {
-        resultsDiv.innerHTML = '';
-        resultsDiv.style.display = 'none';
+        clearDropoffSearchResults();
         return;
     }
 
@@ -1084,19 +1085,25 @@ async function searchDropoff(query) {
             const data = await callAPI('scrap_metal_suite.api.v1.dropoff.lookup_dropoff', { query: query });
 
             if (data.message && data.message.length > 0) {
-                resultsDiv.innerHTML = data.message.map(d => `
-                    <div class="dropoff-result" onclick="selectDropoff('${d.name}', '${d.dropoff_date || ''}', '${d.license_plate || ''}', '${d.supplier_name || ''}', '${d.status || 'Draft'}')">
+                dropoffSearchResults = data.message;
+                dropoffActiveIndex = -1;
+                resultsDiv.innerHTML = dropoffSearchResults.map((d, index) => `
+                    <div class="dropoff-result" data-index="${index}" data-name="${d.name}" data-dropoff-date="${d.dropoff_date || ''}" data-license-plate="${d.license_plate || ''}" data-supplier-name="${d.supplier_name || ''}" data-status="${d.status || 'Draft'}" onclick="selectDropoff('${d.name}', '${d.dropoff_date || ''}', '${d.license_plate || ''}', '${d.supplier_name || ''}', '${d.status || 'Draft'}')">
                         <span class="dropoff-id">${d.name}</span>
                         <span class="dropoff-details">${d.supplier_name || ''} ${d.license_plate ? '| ' + d.license_plate : ''} ${d.status === 'Closed' ? '| ✓' : ''}</span>
                     </div>
                 `).join('');
                 resultsDiv.style.display = 'block';
             } else {
+                dropoffSearchResults = [];
+                dropoffActiveIndex = -1;
                 resultsDiv.innerHTML = `<div class="no-results">${t('noDropoffsFound')}</div>`;
                 resultsDiv.style.display = 'block';
             }
         } catch (error) {
             console.error('Dropoff search error:', error);
+            dropoffSearchResults = [];
+            dropoffActiveIndex = -1;
             resultsDiv.innerHTML = `<div class="no-results">${t('errorSearchingDropoff')}</div>`;
             resultsDiv.style.display = 'block';
         }
@@ -1115,7 +1122,7 @@ function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
 
     // Hide search input, show dropoff card
     document.getElementById('dropoffSearch').style.display = 'none';
-    document.getElementById('dropoffResults').style.display = 'none';
+    clearDropoffSearchResults();
 
     const card = document.getElementById('dropoffDetailsCard');
     document.getElementById('dropoffCardId').textContent = name;
@@ -1279,6 +1286,7 @@ function clearDropoff() {
         searchInput.value = '';
         searchInput.style.display = 'block';
     }
+    clearDropoffSearchResults();
 
     const detailsCard = document.getElementById('dropoffDetailsCard');
     if (detailsCard) detailsCard.style.display = 'none';

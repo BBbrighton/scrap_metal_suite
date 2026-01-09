@@ -403,6 +403,10 @@
     background: #334155;
 }
 
+.dropoff-result.is-active {
+    background: #334155;
+}
+
 .order-result .order-id,
 .dropoff-result .dropoff-id {
     color: #3b82f6;
@@ -1463,6 +1467,10 @@
     background: #f1f5f9;
 }
 
+.pos-terminal.light-theme .dropoff-result.is-active {
+    background: #f1f5f9;
+}
+
 .pos-terminal.light-theme .order-result .order-details,
 .pos-terminal.light-theme .dropoff-result .dropoff-details {
     color: #64748b;
@@ -1471,6 +1479,11 @@
 .pos-terminal.light-theme .dropoff-details-card {
     background: #fff;
     border-color: #e2e8f0;
+}
+
+.pos-terminal.light-theme .dropoff-card-header {
+    background: rgba(59, 130, 246, 0.05);
+    border-bottom-color: #e2e8f0;
 }
 
 .pos-terminal.light-theme .dropoff-card-id {
@@ -1483,6 +1496,10 @@
 
 .pos-terminal.light-theme .detail-value {
     color: #1e293b;
+}
+
+.pos-terminal.light-theme .dropoff-detail-row {
+    border-bottom-color: #e2e8f0;
 }
 
 .pos-terminal.light-theme .cart-header {
@@ -1599,8 +1616,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: #334155;
-    border-bottom: 1px solid #475569;
+    background: rgba(59, 130, 246, 0.1);
+    border-bottom: 1px solid rgba(51, 65, 85, 0.6);
 }
 
 .order-card-, .dropoff-card-id {
@@ -4826,7 +4843,7 @@ button.category-tab.from-order-tab.active {
 
 /* Order Details Card - Collapsible */
 .order-details, .dropoff-details-card {
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
 }
 
@@ -4836,7 +4853,7 @@ button.category-tab.from-order-tab.active {
 }
 
 .order-card-, .dropoff-card-header:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(59, 130, 246, 0.15);
 }
 
 .order-card-, .dropoff-card-header .collapse-indicator,
@@ -4854,7 +4871,8 @@ button.category-tab.from-order-tab.active {
 }
 
 /* Order Summary (shown when collapsed) */
-.order-summary {
+.order-summary,
+.dropoff-summary {
     display: none;
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.7);
@@ -4881,7 +4899,8 @@ button.category-tab.from-order-tab.active {
 }
 
 /* Order Summary - shown when collapsed */
-.order-summary {
+.order-summary,
+.dropoff-summary {
     display: none;
     flex: 1;
     color: rgba(255, 255, 255, 0.7);
@@ -4893,7 +4912,9 @@ button.category-tab.from-order-tab.active {
 }
 
 .order-card-, .dropoff-card-body.collapsed ~ .order-summary,
-.order-details, .dropoff-details-card .order-card-, .dropoff-card-body.collapsed + .reweight-warning ~ .order-summary {
+.order-card-, .dropoff-card-body.collapsed ~ .dropoff-summary,
+.order-details, .dropoff-details-card .order-card-, .dropoff-card-body.collapsed + .reweight-warning ~ .order-summary,
+.order-details, .dropoff-details-card .order-card-, .dropoff-card-body.collapsed + .reweight-warning ~ .dropoff-summary {
     display: block;
 }
 
@@ -4981,14 +5002,15 @@ button.category-tab.from-order-tab.active {
 }
 
 .pos-terminal.light-theme .order-card-, .dropoff-card-header:hover {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(59, 130, 246, 0.08);
 }
 
 .pos-terminal.light-theme .order-card-, .dropoff-card-header .collapse-indicator {
     color: rgba(0, 0, 0, 0.4);
 }
 
-.pos-terminal.light-theme .order-summary {
+.pos-terminal.light-theme .order-summary,
+.pos-terminal.light-theme .dropoff-summary {
     color: rgba(0, 0, 0, 0.6);
 }
 
@@ -5071,7 +5093,8 @@ button.category-tab.from-order-tab.active {
     gap: 8px;
 }
 
-.order-summary {
+.order-summary,
+.dropoff-summary {
     width: 100%;
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.6);
@@ -5080,7 +5103,8 @@ button.category-tab.from-order-tab.active {
     display: none;
 }
 
-.pos-terminal.light-theme .order-summary {
+.pos-terminal.light-theme .order-summary,
+.pos-terminal.light-theme .dropoff-summary {
     color: rgba(0, 0, 0, 0.5);
 }
 
@@ -6512,7 +6536,7 @@ button.category-tab.from-order-tab.active {
 /* ===== Weight Verification Panel (styled like dropoff card) ===== */
 .verification-panel {
     background: #1e293b;
-    border-radius: 8px;
+    border-radius: 12px;
     border: 1px solid #334155;
     overflow: hidden;
     margin-bottom: 12px;

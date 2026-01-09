@@ -74,7 +74,7 @@ body {
                         <span>⏹️</span> <span data-i18n="disconnect">Disconnect</span>
                     </button>
                     <button class="scale-menu-item" id="scaleMenuDisconnectRefresh" onclick="disconnectAndReload()" style="display:none;">
-                        <span>🔄</span> <span>Disconnect & Refresh</span>
+                        <span>R</span> <span>Disconnect & Refresh</span>
                     </button>
                     <button class="scale-menu-item" onclick="openScaleTestPage()">
                         <span>🔧</span> <span data-i18n="reconfigureScale">Reconfigure Scale</span>
@@ -137,22 +137,21 @@ body {
             </div>
 
             <!-- Order Section with Scanner -->
-            <!-- Dropoff Section with Scanner -->
             <div class="dropoff-section">
                 <div class="dropoff-label-row">
                     <label data-i18n="dropoffId">Drop-off ID</label>
-                </div>
-                <div class="order-input-group" style="display: flex; gap: 8px; align-items: center;">
-                    <input type="text" id="dropoffSearch" data-i18n-placeholder="enterDropoffId"
-                           placeholder="Enter Drop-off ID or scan..."
-                           oninput="searchDropoff(this.value)" autocomplete="off" style="flex: 1;">
                     <button class="scan-btn" onclick="openScanner()" title="Scan Barcode/QR">
                         <span>&#128247;</span> <span data-i18n="scan">Scan</span>
                     </button>
+                </div>
+                <div class="order-input-group">
+                    <input type="text" id="dropoffSearch" data-i18n-placeholder="enterDropoffId"
+                           placeholder="Enter Drop-off ID or scan..."
+                           oninput="searchDropoff(this.value)" autocomplete="off">
                     <div id="dropoffResults" class="order-results"></div>
                 </div>
 
-                <!-- Dropoff Details Card (shown when dropoff selected) -->
+                <!-- Order Details Card (shown when order selected) -->
                 <div id="dropoffDetailsCard" class="dropoff-details-card" style="display:none;">
                     <div class="dropoff-card-header" onclick="toggleDropoffDetails(event)">
                         <div class="dropoff-card-title">
@@ -184,7 +183,7 @@ body {
                             <span class="detail-label" data-i18n="truckGrossWeight">Truck Weight (Gross)</span>
                             <span class="detail-value truck-weight-value" id="dropoffTruckGross">--</span>
                         </div>
-                        <!-- Dropoff Items Collapsible Section -->
+                        <!-- Order Items Collapsible Section -->
                         <div class="dropoff-items-section" id="dropoffItemsSection" style="display:none;">
                             <div class="dropoff-items-header" onclick="toggleDropoffItems()">
                                 <span class="dropoff-items-title">
@@ -195,6 +194,10 @@ body {
                             </div>
                             <div class="dropoff-items-list" id="dropoffItemsList"></div>
                         </div>
+                    </div>
+                    <!-- Re-weight warning (shown when order already processed) -->
+                    <div id="reweightWarning" class="reweight-warning" style="display:none;" data-i18n="reweightWarning">
+                        This order was already processed. Recording will create a re-weight entry.
                     </div>
                 </div>
             </div>
@@ -278,7 +281,7 @@ body {
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
+            <div class="modal-footer">
                 <button class="btn-pos btn-secondary" onclick="closeWeightModal()" data-i18n="cancel">Cancel</button>
                 <button class="btn-pos btn-primary" onclick="addToCart()" data-i18n="addToCart">Add to Cart</button>
             </div>
@@ -289,7 +292,7 @@ body {
     <div id="scannerModal" class="modal" style="display:none;">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h3 data-i18n="scanOrderBarcode">Scan Order Barcode/QR</h3>
+                <h3 data-i18n="scanDropoffBarcode">Scan Order Barcode/QR</h3>
                 <button class="modal-close" onclick="closeScanner()">&#10005;</button>
             </div>
             <div class="modal-body">
@@ -300,7 +303,7 @@ body {
                 <div class="manual-entry">
                     <label data-i18n="orEnterManually">Or enter manually:</label>
                     <input type="text" id="manualDropoffInput" data-i18n-placeholder="enterDropoffId"
-                           placeholder="Enter Drop-off ID..."
+                           placeholder="Enter Drop-off ID or scan..."
                            onkeyup="if(event.key==='Enter')submitManualDropoff()">
                     <button class="btn-pos btn-primary" onclick="submitManualDropoff()" data-i18n="search">Search</button>
                 </div>
@@ -318,7 +321,7 @@ body {
             <div class="modal-body">
                 <textarea id="remarksInput" data-i18n-placeholder="enterRemarks" placeholder="Enter remarks for this order..." rows="4"></textarea>
             </div>
-            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
+            <div class="modal-footer">
                 <button class="btn-pos btn-secondary" onclick="closeRemarksModal()" data-i18n="cancel">Cancel</button>
                 <button class="btn-pos btn-primary" onclick="saveRemarks()" data-i18n="saveRemarks">Save Remarks</button>
             </div>
@@ -330,14 +333,9 @@ body {
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h3 data-i18n="capturePhoto">Capture Photo</h3>
-                <span id="photoCountBadge" class="photo-count-badge" style="display:none;">0</span>
                 <button class="modal-close" onclick="closePhotoCapture()">&#10005;</button>
             </div>
             <div class="modal-body">
-                <!-- Captured Photos Thumbnails -->
-                <div id="photoThumbnails" class="photo-thumbnails" style="display:none;">
-                    <!-- Thumbnails added dynamically -->
-                </div>
                 <div class="camera-container">
                     <video id="cameraVideo" autoplay playsinline></video>
                     <canvas id="photoCanvas" style="display:none;"></canvas>
@@ -352,10 +350,9 @@ body {
                     </button>
                 </div>
             </div>
-            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
+            <div class="modal-footer">
                 <button class="btn-pos btn-secondary" onclick="closePhotoCapture()" data-i18n="cancel">Cancel</button>
-                <button class="btn-pos btn-success" onclick="addPhotoAndContinue()" id="addPhotoBtn" disabled data-i18n="addAnother">Add &amp; Take Another</button>
-                <button class="btn-pos btn-success" onclick="addPhotoAndClose()" id="savePhotoBtn" disabled data-i18n="savePhoto">Save Photo</button>
+                <button class="btn-pos btn-success" onclick="savePhoto()" id="savePhotoBtn" disabled data-i18n="savePhoto">Save Photo</button>
             </div>
         </div>
     </div>
@@ -370,7 +367,7 @@ body {
             <div class="modal-body" id="summaryContent">
                 Loading...
             </div>
-            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
+            <div class="modal-footer">
                 <button class="btn-pos btn-secondary" onclick="closeSummaryModal()" data-i18n="close">Close</button>
             </div>
         </div>
@@ -385,7 +382,7 @@ body {
             </div>
             <div class="modal-body">
                 <!-- Order Info -->
-                <div class="confirm-order-info">
+                <div class="confirm-dropoff-info">
                     <div class="confirm-row">
                         <span class="confirm-label" data-i18n="dropoffId">Drop-off ID</span>
                         <span class="confirm-value" id="confirmDropoffId"></span>
@@ -443,7 +440,7 @@ body {
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
+            <div class="modal-footer">
                 <button class="btn-pos btn-secondary" onclick="closeConfirmModal()" data-i18n="cancel">Cancel</button>
                 <button class="btn-pos btn-success" onclick="confirmAndRecord()" id="confirmRecordBtn" data-i18n="confirmRecord">Confirm & Record</button>
             </div>
@@ -461,7 +458,7 @@ body {
                 <p data-i18n="confirmCloseSession">Are you sure you want to close this session?</p>
                 <div id="closeSessionSummary"></div>
             </div>
-            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
+            <div class="modal-footer">
                 <button class="btn-pos btn-secondary" onclick="closeCloseSessionModal()" data-i18n="cancel">Cancel</button>
                 <button class="btn-pos btn-danger" onclick="closeSession()" data-i18n="closeSession">Close Session</button>
             </div>
@@ -604,10 +601,7 @@ const state = {
     cart: [],
     currentItem: null,
     remarks: '',
-    capturedPhotos: [],  // Array of captured photo data URLs (new photos)
-    existingPhotos: [],  // Array of existing photos from server
-    currentPhotoData: null,  // Temporary storage for current capture
-    scrapWeights: [],  // Scrap weights from API (includes photos)
+    capturedPhotos: [],  // Array of captured photo data URLs
     scannerStream: null,
     cameraStream: null,
     scale: null,
@@ -630,8 +624,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Check if scale is already set for this session
     await checkSessionScale();
-
-    document.addEventListener('keydown', handleDropoffSearchKeydown);
 });
 
 // ===== Language Functions =====
@@ -942,7 +934,7 @@ function onScanSuccess(decodedText) {
     } catch (e) {}
 
     closeScanner();
-    searchAndSelectDropoff(decodedText);
+    searchAndSelectOrder(decodedText);
 }
 
 async function closeScanner() {
@@ -960,7 +952,7 @@ function submitManualDropoff() {
     const orderId = input.value.trim();
     if (orderId) {
         closeScanner();
-        searchAndSelectDropoff(orderId);
+        searchAndSelectOrder(orderId);
     }
 }
 
@@ -985,7 +977,7 @@ function parseQRValue(rawValue) {
     return rawValue;
 }
 
-async function searchAndSelectDropoff(query) {
+async function searchAndSelectOrder(query) {
     const parsedQuery = parseQRValue(query);
 
     try {
@@ -995,7 +987,7 @@ async function searchAndSelectDropoff(query) {
             const o = data.message[0];
             selectDropoff(o.name, o.dropoff_date || '', o.license_plate || '', o.supplier_name || '', o.status || 'Draft');
         } else {
-            frappe.msgprint(t('dropoffNotFound') + ': ' + parsedQuery);
+            frappe.msgprint(t('orderNotFound') + ': ' + parsedQuery);
         }
     } catch (error) {
         console.error('Dropoff search error:', error);
@@ -1005,105 +997,13 @@ async function searchAndSelectDropoff(query) {
 
 // ===== Order Search =====
 let searchTimeout;
-let dropoffSearchResults = [];
-let dropoffActiveIndex = -1;
-
-function clearDropoffSearchResults() {
-    const resultsDiv = document.getElementById('dropoffResults');
-    if (resultsDiv) {
-        resultsDiv.innerHTML = '';
-        resultsDiv.style.display = 'none';
-    }
-    dropoffSearchResults = [];
-    dropoffActiveIndex = -1;
-}
-
-function setDropoffActiveIndex(nextIndex) {
-    const resultsDiv = document.getElementById('dropoffResults');
-    if (!resultsDiv) return;
-
-    const items = resultsDiv.querySelectorAll('.dropoff-result');
-    if (!items.length) {
-        dropoffActiveIndex = -1;
-        return;
-    }
-
-    let index = nextIndex;
-    if (index < 0) index = items.length - 1;
-    if (index >= items.length) index = 0;
-
-    items.forEach(item => item.classList.remove('is-active'));
-    const activeItem = items[index];
-    if (!activeItem) {
-        dropoffActiveIndex = -1;
-        return;
-    }
-
-    activeItem.classList.add('is-active');
-    activeItem.scrollIntoView({ block: 'nearest' });
-    dropoffActiveIndex = index;
-}
-
-function handleDropoffSearchKeydown(event) {
-    const resultsDiv = document.getElementById('dropoffResults');
-    const searchInput = document.getElementById('dropoffSearch');
-    if (!resultsDiv || !searchInput) return;
-
-    if (resultsDiv.style.display === 'none' || searchInput.style.display === 'none') return;
-
-    const activeEl = document.activeElement;
-    const isSearchFocused = activeEl === searchInput;
-    const isBodyFocused = activeEl === document.body || activeEl === document.documentElement;
-    if (!isSearchFocused && !isBodyFocused) return;
-
-    if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) return;
-
-    event.preventDefault();
-
-    const items = resultsDiv.querySelectorAll('.dropoff-result');
-    if (!items.length) {
-        if (event.key === 'Escape') {
-            clearDropoffSearchResults();
-        }
-        return;
-    }
-
-    switch (event.key) {
-        case 'ArrowDown':
-            setDropoffActiveIndex(dropoffActiveIndex + 1);
-            break;
-        case 'ArrowUp':
-            setDropoffActiveIndex(dropoffActiveIndex - 1);
-            break;
-        case 'Enter':
-            if (dropoffActiveIndex < 0) {
-                setDropoffActiveIndex(0);
-            }
-            if (dropoffActiveIndex >= 0 && items[dropoffActiveIndex]) {
-                const data = items[dropoffActiveIndex].dataset;
-                selectDropoff(
-                    data.name || '',
-                    data.dropoffDate || '',
-                    data.licensePlate || '',
-                    data.supplierName || '',
-                    data.status || 'Draft'
-                );
-            }
-            break;
-        case 'Escape':
-            clearDropoffSearchResults();
-            break;
-        default:
-            break;
-    }
-}
-
 async function searchDropoff(query) {
     clearTimeout(searchTimeout);
     const resultsDiv = document.getElementById('dropoffResults');
 
     if (query.length < 2) {
-        clearDropoffSearchResults();
+        resultsDiv.innerHTML = '';
+        resultsDiv.style.display = 'none';
         return;
     }
 
@@ -1112,26 +1012,20 @@ async function searchDropoff(query) {
             const data = await callAPI('scrap_metal_suite.api.v1.dropoff.lookup_dropoff', { query: query });
 
             if (data.message && data.message.length > 0) {
-                dropoffSearchResults = data.message;
-                dropoffActiveIndex = -1;
-                resultsDiv.innerHTML = dropoffSearchResults.map(function(o, index) {
-                    return '<div class="dropoff-result" data-index="' + index + '" data-name="' + o.name + '" data-dropoff-date="' + (o.dropoff_date || '') + '" data-license-plate="' + (o.license_plate || '') + '" data-supplier-name="' + (o.supplier_name || '') + '" data-status="' + (o.status || 'Draft') + '" onclick="selectDropoff(\'' + o.name + '\', \'' + (o.dropoff_date || '') + '\', \'' + (o.license_plate || '') + '\', \'' + (o.supplier_name || '') + '\', \'' + (o.status || 'Draft') + '\')">' +
-                        '<span class="dropoff-id">' + o.name + '</span>' +
-                        '<span class="dropoff-details">' + (o.supplier_name || '') + (o.license_plate ? ' | ' + o.license_plate : '') + (o.status === 'Closed' ? ' | ✓' : '') + '</span>' +
-                    '</div>';
-                }).join('');
+                resultsDiv.innerHTML = data.message.map(o => `
+                    <div class="dropoff-result" onclick="selectDropoff('${o.name}', '${o.dropoff_date || ''}', '${o.license_plate || ''}', '${o.supplier_name || ''}', '${o.status || 'Draft'}')">
+                        <span class="dropoff-id">${o.name}</span>
+                        <span class="dropoff-details">${o.supplier_name || ''} ${o.license_plate ? '| ' + o.license_plate : ''} ${o.status === 'Closed' ? '| ✓' : ''}</span>
+                    </div>
+                `).join('');
                 resultsDiv.style.display = 'block';
             } else {
-                dropoffSearchResults = [];
-                dropoffActiveIndex = -1;
-                resultsDiv.innerHTML = '<div class="no-results">' + t('noDropoffsFound') + '</div>';
+                resultsDiv.innerHTML = `<div class="no-results">${t('noDropoffsFound')}</div>`;
                 resultsDiv.style.display = 'block';
             }
         } catch (error) {
             console.error('Dropoff search error:', error);
-            dropoffSearchResults = [];
-            dropoffActiveIndex = -1;
-            resultsDiv.innerHTML = '<div class="no-results">' + t('errorSearchingDropoff') + '</div>';
+            resultsDiv.innerHTML = `<div class="no-results">${t('errorSearchingDropoff')}</div>`;
             resultsDiv.style.display = 'block';
         }
     }, 300);
@@ -1148,7 +1042,7 @@ function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
     };
 
     document.getElementById('dropoffSearch').style.display = 'none';
-    clearDropoffSearchResults();
+    document.getElementById('dropoffResults').style.display = 'none';
 
     const card = document.getElementById('dropoffDetailsCard');
     document.getElementById('dropoffCardId').textContent = name;
@@ -1160,6 +1054,8 @@ function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
     statusEl.textContent = status || 'Draft';
     statusEl.className = 'detail-value status-' + (status || 'Draft').toLowerCase();
 
+    const reweightWarning = document.getElementById('reweightWarning');
+    reweightWarning.style.display = status === 'Closed' ? 'block' : 'none';
 
     card.style.display = 'block';
 
@@ -1169,7 +1065,7 @@ function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
     updateButtonStates();
 }
 
-// Fetch dropoff details from API
+// Fetch order details from API
 async function fetchDropoffDetails(dropoffName) {
     try {
         const response = await frappe.call({
@@ -1186,7 +1082,7 @@ async function fetchDropoffDetails(dropoffName) {
                 dropoffEl.textContent = details.dropoff_date ? new Date(details.dropoff_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
             }
 
-            // Update dropoff items section
+            // Update order items section
             renderDropoffItems(details.expected_items || []);
 
             // Update truck gross weight display (for scrap operator reference)
@@ -1199,31 +1095,20 @@ async function fetchDropoffDetails(dropoffName) {
                 if (truckWeightRow) truckWeightRow.style.display = 'none';
             }
 
-            // Store scrap weights (including photos) for later use
-            state.scrapWeights = details.scrap_weights || [];
-
             // Check for existing scrap weight (reweight scenario)
             if (details.existing_scrap_weight) {
                 state.existingScrapWeight = details.existing_scrap_weight;
                 state.isReweight = true;
                 await loadExistingScrapWeight(details.existing_scrap_weight);
                 showReweightBanner(true);
-
-                // Load existing photos from the scrap weight
-                loadExistingPhotos(details.existing_scrap_weight);
             } else {
                 state.existingScrapWeight = null;
                 state.isReweight = false;
                 showReweightBanner(false);
-                // Clear any existing photos for new weighing
-                state.capturedPhotos = [];
-    state.existingPhotos = [];
-    state.scrapWeights = [];
-                state.existingPhotos = [];
             }
         }
     } catch (err) {
-        console.error('Failed to fetch dropoff details:', err);
+        console.error('Failed to fetch order details:', err);
     }
 }
 
@@ -1263,24 +1148,6 @@ async function loadExistingScrapWeight(scrapWeightId) {
     }
 }
 
-// Load existing photos from scrap weight
-function loadExistingPhotos(scrapWeightId) {
-    // Find the scrap weight in state.scrapWeights
-    const sw = state.scrapWeights.find(s => s.name === scrapWeightId);
-    if (sw && sw.photos && sw.photos.length > 0) {
-        // Store existing photos separately (they are URLs, not base64)
-        state.existingPhotos = sw.photos.map(p => ({
-            name: p.name,
-            url: p.photo,
-            file_name: p.file_name,
-            isExisting: true
-        }));
-        console.log('Loaded existing photos:', state.existingPhotos.length);
-    } else {
-        state.existingPhotos = [];
-    }
-}
-
 // Show/hide reweight warning banner
 function showReweightBanner(show) {
     const banner = document.getElementById('reweightBanner');
@@ -1303,7 +1170,7 @@ function renderDropoffItems(items) {
     if (fromOrderTab) {
         fromOrderTab.style.display = (items && items.length > 0) ? '' : 'none';
 
-        // Auto-select "From Order" tab if there are dropoff items
+        // Auto-select "From Order" tab if there are order items
         if (items && items.length > 0) {
             filterCategory(fromOrderTab, 'fromOrder');
         }
@@ -1317,19 +1184,21 @@ function renderDropoffItems(items) {
     section.style.display = 'block';
     countEl.textContent = items.length;
 
-    var html = '';
-    items.forEach(function(item) {
-        var weight = item.weight ? parseFloat(item.weight).toFixed(2) + ' ' + (item.uom || 'Kg') : '-';
-        html += '<div class="order-item-row">' +
-            '<span class="order-item-name">' + (item.item_name || item.item_code) + '</span>' +
-            '<span class="order-item-weight">' + weight + '</span>' +
-        '</div>';
+    let html = '';
+    items.forEach(item => {
+        const weight = item.weight ? parseFloat(item.weight).toFixed(2) + ' ' + (item.uom || 'Kg') : '-';
+        html += `
+            <div class="order-item-row">
+                <span class="order-item-name">${item.item_name || item.item_code}</span>
+                <span class="order-item-weight">${weight}</span>
+            </div>
+        `;
     });
 
     list.innerHTML = html;
 }
 
-// Toggle dropoff items expansion
+// Toggle order items expansion
 function toggleDropoffItems() {
     const list = document.getElementById('dropoffItemsList');
     const toggle = document.getElementById('dropoffItemsToggle');
@@ -1338,7 +1207,7 @@ function toggleDropoffItems() {
     toggle.classList.toggle('expanded');
 }
 
-// Toggle dropoff details collapse/expand
+// Toggle order details collapse/expand
 function toggleDropoffDetails(event) {
     // Don't toggle if clicking clear button
     if (event.target.classList.contains('clear-btn')) return;
@@ -1388,21 +1257,9 @@ function clearDropoff() {
     state.isReweight = false;
     state.remarks = '';
     state.capturedPhotos = [];
-    state.existingPhotos = [];
-    state.scrapWeights = [];
-    const searchInput = document.getElementById('dropoffSearch');
-    if (searchInput) {
-        searchInput.value = '';
-        searchInput.style.display = 'block';
-    }
-    clearDropoffSearchResults();
-
-    const detailsCard = document.getElementById('dropoffDetailsCard');
-    if (detailsCard) detailsCard.style.display = 'none';
-
-    // Hide truck weight row
-    const truckWeightRow = document.getElementById('truckWeightRow');
-    if (truckWeightRow) truckWeightRow.style.display = 'none';
+    document.getElementById('dropoffSearch').value = '';
+    document.getElementById('dropoffSearch').style.display = 'block';
+    document.getElementById('dropoffDetailsCard').style.display = 'none';
 
     // Hide reweight banner
     showReweightBanner(false);
@@ -1549,15 +1406,12 @@ function renderCart() {
 function removeFromCart(index) {
     state.cart.splice(index, 1);
     renderCart();
-    updateCartCount();
     updateButtonStates();
 }
-
 
 function clearCart() {
     state.cart = [];
     renderCart();
-    updateCartCount();
     updateButtonStates();
 }
 
@@ -1605,13 +1459,6 @@ async function openPhotoCapture() {
     document.getElementById('captureBtn').style.display = 'inline-block';
     document.getElementById('retakeBtn').style.display = 'none';
     document.getElementById('savePhotoBtn').disabled = true;
-    document.getElementById('addPhotoBtn').disabled = true;
-
-    // Reset current photo data
-    state.currentPhotoData = null;
-
-    // Update thumbnails display
-    updatePhotoThumbnails();
 
     modal.style.display = 'flex';
 
@@ -1635,7 +1482,6 @@ function closePhotoCapture() {
         state.cameraStream = null;
     }
     video.srcObject = null;
-    state.currentPhotoData = null;
     document.getElementById('photoModal').style.display = 'none';
 }
 
@@ -1648,106 +1494,55 @@ function capturePhoto() {
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
 
-    state.currentPhotoData = canvas.toDataURL('image/jpeg', 0.8);
-    capturedImg.src = state.currentPhotoData;
+    const photoData = canvas.toDataURL('image/jpeg', 0.8);
+    state.capturedPhotos.push(photoData);
+    capturedImg.src = photoData;
     video.style.display = 'none';
     capturedImg.style.display = 'block';
 
     document.getElementById('captureBtn').style.display = 'none';
     document.getElementById('retakeBtn').style.display = 'inline-block';
     document.getElementById('savePhotoBtn').disabled = false;
-    document.getElementById('addPhotoBtn').disabled = false;
 }
 
 function retakePhoto() {
     const video = document.getElementById('cameraVideo');
     const capturedImg = document.getElementById('capturedPhoto');
 
-    state.currentPhotoData = null;
+    // Remove the last captured photo (allows retaking the most recent shot)
+    if (state.capturedPhotos.length > 0) {
+        state.capturedPhotos.pop();
+    }
     video.style.display = 'block';
     capturedImg.style.display = 'none';
 
     document.getElementById('captureBtn').style.display = 'inline-block';
     document.getElementById('retakeBtn').style.display = 'none';
     document.getElementById('savePhotoBtn').disabled = true;
-    document.getElementById('addPhotoBtn').disabled = true;
 }
 
-function addPhotoAndContinue() {
-    if (state.currentPhotoData) {
-        state.capturedPhotos.push(state.currentPhotoData);
-        state.currentPhotoData = null;
-        updatePhotoThumbnails();
-
-        // Reset camera view for next photo
-        const video = document.getElementById('cameraVideo');
-        const capturedImg = document.getElementById('capturedPhoto');
-        video.style.display = 'block';
-        capturedImg.style.display = 'none';
-        document.getElementById('captureBtn').style.display = 'inline-block';
-        document.getElementById('retakeBtn').style.display = 'none';
-        document.getElementById('savePhotoBtn').disabled = true;
-        document.getElementById('addPhotoBtn').disabled = true;
-
-        frappe.show_alert({ message: t('photoAdded') + ' (' + state.capturedPhotos.length + ')', indicator: 'green' }, 2);
+function savePhoto() {
+    if (state.capturedPhotos.length > 0) {
+        closePhotoCapture();
+        const count = state.capturedPhotos.length;
+        frappe.show_alert({
+            message: `${t('photoReady')} (${count} ${count === 1 ? 'photo' : 'photos'})`,
+            indicator: 'green'
+        }, 2);
+        // Update photo button to show count
+        updatePhotoButton();
     }
 }
 
-function addPhotoAndClose() {
-    if (state.currentPhotoData) {
-        state.capturedPhotos.push(state.currentPhotoData);
-        state.currentPhotoData = null;
+function updatePhotoButton() {
+    const btn = document.getElementById('photoBtn');
+    if (btn && state.capturedPhotos.length > 0) {
+        btn.innerHTML = `&#128247; ${t('photo')} (${state.capturedPhotos.length})`;
+        btn.classList.add('has-photo');
+    } else if (btn) {
+        btn.innerHTML = `&#128247; <span data-i18n="photo">${t('photo')}</span>`;
+        btn.classList.remove('has-photo');
     }
-    closePhotoCapture();
-    const count = state.capturedPhotos.length;
-    if (count > 0) {
-        frappe.show_alert({ message: count + ' ' + t('photosReady'), indicator: 'green' }, 2);
-    }
-}
-
-function updatePhotoThumbnails() {
-    const container = document.getElementById('photoThumbnails');
-    const badge = document.getElementById('photoCountBadge');
-    const existingCount = (state.existingPhotos || []).length;
-    const newCount = state.capturedPhotos.length;
-    const totalCount = existingCount + newCount;
-
-    if (totalCount === 0) {
-        container.style.display = 'none';
-        badge.style.display = 'none';
-        return;
-    }
-
-    badge.textContent = totalCount;
-    badge.style.display = 'inline-block';
-    container.style.display = 'flex';
-
-    let html = '';
-
-    // Show existing photos first (from server) - with different styling
-    if (state.existingPhotos && state.existingPhotos.length > 0) {
-        state.existingPhotos.forEach((photo, index) => {
-            html += '<div class="photo-thumbnail existing-photo">';
-            html += '<img src="' + photo.url + '" alt="Existing ' + (index + 1) + '">';
-            html += '<span class="thumbnail-existing-badge">&#10003;</span>';
-            html += '</div>';
-        });
-    }
-
-    // Show newly captured photos
-    state.capturedPhotos.forEach((photo, index) => {
-        html += '<div class="photo-thumbnail new-photo">';
-        html += '<img src="' + photo + '" alt="New ' + (index + 1) + '">';
-        html += '<button class="thumbnail-delete" onclick="removePhoto(' + index + ')">&#10005;</button>';
-        html += '</div>';
-    });
-
-    container.innerHTML = html;
-}
-
-function removePhoto(index) {
-    state.capturedPhotos.splice(index, 1);
-    updatePhotoThumbnails();
 }
 
 // ===== Confirmation Modal =====
@@ -1756,7 +1551,7 @@ function showConfirmModal() {
 
     // Populate order info
     document.getElementById('confirmDropoffId').textContent = state.dropoff.dropoffId || state.dropoff.name;
-    document.getElementById('confirmSupplier').textContent = state.dropoff.supplierNameName || state.dropoff.supplierName;
+    document.getElementById('confirmSupplier').textContent = state.dropoff.supplierName || state.dropoff.supplier;
 
     // Populate date/time and operator name
     const now = new Date();
@@ -1807,7 +1602,7 @@ function showConfirmModal() {
     }
 
     // Show photo count
-    const photoCount = state.capturedPhotos.length + (state.existingPhotos || []).length;
+    const photoCount = state.capturedPhotos.length;
     document.getElementById('confirmPhotoCount').textContent = photoCount;
     const photoStatus = document.getElementById('confirmPhotoStatus');
     photoStatus.classList.toggle('has-photos', photoCount > 0);
@@ -1881,41 +1676,31 @@ async function recordWeight() {
     }
 }
 
-async function attachPhotos(scrapWeightName) {
+async function attachPhotos(docname) {
     if (state.capturedPhotos.length === 0) return;
 
     try {
+        // Upload all photos in sequence
         for (let i = 0; i < state.capturedPhotos.length; i++) {
             const photoData = state.capturedPhotos[i];
-
-            // First, upload the file to Frappe
             const response = await fetch(photoData);
             const blob = await response.blob();
 
             const formData = new FormData();
-            formData.append('file', blob, 'scrap_photo_' + scrapWeightName + '_' + (i + 1) + '_' + Date.now() + '.jpg');
+            // Naming: scrap_photo_{docname}_{index}_{timestamp}.jpg
+            const fileName = `scrap_photo_${docname}_${i + 1}_${Date.now()}.jpg`;
+            formData.append('file', blob, fileName);
+            formData.append('doctype', 'Scrap Weight');
+            formData.append('docname', docname);
             formData.append('is_private', '0');
 
-            const uploadResponse = await fetch('/api/method/upload_file', {
+            await fetch('/api/method/upload_file', {
                 method: 'POST',
                 headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
                 body: formData
             });
-
-            const uploadResult = await uploadResponse.json();
-
-            if (uploadResult.message && uploadResult.message.file_url) {
-                // Now add to Weight Photo child table
-                await callAPI('scrap_metal_suite.api.v1.dropoff.save_weight_photo', {
-                    parent_doctype: 'Scrap Weight',
-                    parent_doc: scrapWeightName,
-                    photo_url: uploadResult.message.file_url,
-                    weight_type: 'Scrap',
-                    dropoff: state.dropoff.name,
-                    session: state.session
-                });
-            }
         }
+        console.log(`Uploaded ${state.capturedPhotos.length} photos to ${docname}`);
     } catch (err) {
         console.error('Photo upload error:', err);
     }
@@ -2269,7 +2054,7 @@ async function onScaleScanSuccess(decodedText) {
         }
     } catch (error) {
         console.error('Scale lookup error:', error);
-        frappe.msgprint(t('errorSearching'));
+        frappe.msgprint(t('errorSearchingDropoff'));
     }
 }
 
@@ -2544,6 +2329,71 @@ async function completeScaleSelection() {
     }
 }
 
+// Confirm scale selection with manual entry mode (skip WebSerial connection)
+async function confirmScaleManualMode() {
+    if (!state.selectedScale) {
+        frappe.msgprint(t('scaleRequired'));
+        return;
+    }
+
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.set_session_scale', {
+            session: state.session,
+            scale: state.selectedScale.name
+        });
+
+        if (response.message) {
+            state.scale = state.selectedScale;
+            state.isScaleConnected = false;  // Not connected - manual entry mode
+            document.getElementById('scaleModal').style.display = 'none';
+            updateScaleDisplay();
+            frappe.show_alert({
+                message: t('scaleSetManualMode') || 'Scale set - using manual weight entry',
+                indicator: 'blue'
+            }, 3);
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: t('error'),
+            indicator: 'red',
+            message: error.message || 'Failed to set scale'
+        });
+    }
+}
+
+// Use manual entry mode from connection failure modal
+async function useManualEntryMode() {
+    if (!state.selectedScale) {
+        frappe.msgprint(t('scaleRequired'));
+        return;
+    }
+
+    try {
+        const response = await callAPI('scrap_metal_suite.api.v1.pos.set_session_scale', {
+            session: state.session,
+            scale: state.selectedScale.name
+        });
+
+        if (response.message) {
+            state.scale = state.selectedScale;
+            state.isScaleConnected = false;  // Not connected - manual entry mode
+            document.getElementById('scaleModal').style.display = 'none';
+            document.getElementById('scaleConnectionModal').style.display = 'none';
+            updateScaleDisplay();
+            frappe.show_alert({
+                message: t('scaleSetManualMode') || 'Scale set - using manual weight entry',
+                indicator: 'blue'
+            }, 3);
+        }
+    } catch (error) {
+        frappe.msgprint({
+            title: t('error'),
+            indicator: 'red',
+            message: error.message || 'Failed to set scale'
+        });
+    }
+}
+
 function updateScaleDisplay() {
     if (state.scale) {
         document.getElementById('scaleNameDisplay').textContent = state.scale.scale_name;
@@ -2651,71 +2501,6 @@ async function disconnectAndReload() {
     window.location.reload();
 }
 
-// Confirm scale selection with manual entry mode (skip WebSerial connection)
-async function confirmScaleManualMode() {
-    if (!state.selectedScale) {
-        frappe.msgprint(t('scaleRequired'));
-        return;
-    }
-
-    try {
-        const response = await callAPI('scrap_metal_suite.api.v1.pos.set_session_scale', {
-            session: state.session,
-            scale: state.selectedScale.name
-        });
-
-        if (response.message) {
-            state.scale = state.selectedScale;
-            state.isScaleConnected = false;  // Not connected - manual entry mode
-            document.getElementById('scaleModal').style.display = 'none';
-            updateScaleDisplay();
-            frappe.show_alert({
-                message: t('scaleSetManualMode') || 'Scale set - using manual weight entry',
-                indicator: 'blue'
-            }, 3);
-        }
-    } catch (error) {
-        frappe.msgprint({
-            title: t('error'),
-            indicator: 'red',
-            message: error.message || 'Failed to set scale'
-        });
-    }
-}
-
-// Use manual entry mode from connection failure modal
-async function useManualEntryMode() {
-    if (!state.selectedScale) {
-        frappe.msgprint(t('scaleRequired'));
-        return;
-    }
-
-    try {
-        const response = await callAPI('scrap_metal_suite.api.v1.pos.set_session_scale', {
-            session: state.session,
-            scale: state.selectedScale.name
-        });
-
-        if (response.message) {
-            state.scale = state.selectedScale;
-            state.isScaleConnected = false;  // Not connected - manual entry mode
-            document.getElementById('scaleModal').style.display = 'none';
-            document.getElementById('scaleConnectionModal').style.display = 'none';
-            updateScaleDisplay();
-            frappe.show_alert({
-                message: t('scaleSetManualMode') || 'Scale set - using manual weight entry',
-                indicator: 'blue'
-            }, 3);
-        }
-    } catch (error) {
-        frappe.msgprint({
-            title: t('error'),
-            indicator: 'red',
-            message: error.message || 'Failed to set scale'
-        });
-    }
-}
-
 // Handle when scale is physically unplugged (USB disconnect event)
 function handleScaleUnplugged() {
     console.log('Scale was physically disconnected');
@@ -2776,3 +2561,6 @@ function updateWeightModalDisplay() {
 </script>
 
 {% endblock %}
+
+
+

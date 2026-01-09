@@ -25,9 +25,6 @@ class ScrapWeight(Document):
             self.operator = session.operator
             self.pos_profile = session.pos_profile
 
-        # Auto-fill supplier from dropoff
-        if self.dropoff and not self.supplier:
-            self.supplier = frappe.db.get_value("Dropoff", self.dropoff, "supplier")
 
     def validate(self):
         """Validate and calculate totals."""

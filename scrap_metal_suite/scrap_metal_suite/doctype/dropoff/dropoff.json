@@ -6,7 +6,8 @@
  "field_order": [
   "naming_series",
   "dropoff_date",
-  "dropoff_time",
+  "dropoff_start_time",
+  "dropoff_end_time",
   "column_break_header",
   "license_plate",
   "variance_threshold_percent",
@@ -81,9 +82,16 @@
    "reqd": 1
   },
   {
-   "fieldname": "dropoff_time",
+   "fieldname": "dropoff_start_time",
    "fieldtype": "Time",
-   "label": "Drop-off Time"
+   "label": "Start Time",
+   "description": "Expected start time for drop-off"
+  },
+  {
+   "fieldname": "dropoff_end_time",
+   "fieldtype": "Time",
+   "label": "End Time",
+   "description": "Expected end time for drop-off"
   },
   {
    "fieldname": "column_break_header",
@@ -458,5 +466,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "modified": "2025-12-27 13:00:00.000000"
 }

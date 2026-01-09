@@ -41,6 +41,11 @@ The issue is that **stale port objects or reader locks** prevent Chrome from ope
 - `scrap_metal_suite/www/pos/terminal.html` - Reconnect flow, cleanup logic
 - `scrap_metal_suite/public/js/pos-translations.js` - Added `selectPortToReconnect` translation
 
+## Latest Change (Untested) 27.12.2025
+- Added a "Disconnect & Refresh" action in the scale menu to explicitly close the port before reloading the page.
+- This is meant to avoid the stale WebSerial port lock after refresh.
+- **Status:** Untested.
+
 ## Next Steps to Investigate
 
 1. **Compare scale-test flow exactly** - The `autoDetect()` method in ScaleReader might handle port acquisition differently than `testScaleConnection()`
