@@ -31,7 +31,10 @@ frappe.ui.form.on('Dropoff', {
 frappe.ui.form.on('Dropoff Order', {
     pos_order: function(frm, cdt, cdn) {
         // When a POS Order is added/changed, populate expected items
-        populate_expected_items_from_orders(frm);
+        let row = locals[cdt][cdn];
+        if (row.pos_order) {
+            populate_expected_items_from_orders(frm);
+        }
     }
 });
 
@@ -54,6 +57,10 @@ function populate_expected_items_from_orders(frm) {
         method: 'scrap_metal_suite.api.v1.dropoff.get_items_from_orders',
         args: {
             order_names: order_names
+        },
+        error: function(r) {
+            console.error('Failed to fetch items from orders:', r);
+            // Don't show error to user - they can still manually add items
         },
         callback: function(r) {
             if (r.message && r.message.length > 0) {

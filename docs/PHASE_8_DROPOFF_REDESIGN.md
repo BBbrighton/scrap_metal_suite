@@ -2,7 +2,7 @@
 
 **Created:** 2025-12-28
 **Updated:** 2026-01-10
-**Status:** ✅ COMPLETED (8A, 8B)
+**Status:** ✅ COMPLETED (8A, 8B, 8C)
 
 ---
 
@@ -450,10 +450,24 @@ frappe.call({
 - Translation keys added: `truckVarianceTitle`, `indicatedVarianceTitle`, `truckVariance`, `indicatedVariance`, `totalActualWeight`
 - POS Order now auto-transitions status based on fulfillment progress
 
-### Phase 8C: Auto-populate Expected Items
-1. Add `from_order` field to `dropoff_expected_item.json`
-2. Create `dropoff.js` client script
-3. Add safety net in `dropoff.py`
+### Phase 8C: Auto-populate Expected Items ✅ COMPLETED (2026-01-10)
+1. ✅ Create `dropoff.js` client script - auto-populate on POS Order selection
+2. ✅ Add server-side validation in `dropoff.py` - validate expected items match orders
+3. ✅ Create custom whitelisted API `api/v1/dropoff.py::get_items_from_orders()` - bypass child table permissions
+4. ✅ Set `in_list_view: 1` on child table fields for grid visibility
+
+**Key Decisions:**
+- **NO `from_order` field** - User rejected, keeping fields minimal (item, item_name, indicated_weight only)
+- **Auto-populate items ONLY** - Weights NOT auto-populated, user must enter `indicated_weight` manually
+- **Dual validation rules**:
+  1. All expected items must exist in at least one linked order (subset validation)
+  2. Each linked order must have at least one item in expected items (coverage validation)
+- **Simple trigger** - Client script triggers on `pos_order` field change (not status-dependent)
+- **User control** - User can add/edit/delete expected items freely
+- **Permissions workaround** - Child tables with empty permissions array block `frappe.client.get_list`, even for System Manager
+  - Solution: Created custom whitelisted API with explicit `frappe.has_permission()` checks
+  - API method: `scrap_metal_suite.api.v1.dropoff.get_items_from_orders(order_names)`
+- **Modal editing** - Child tables open modal for editing (normal Frappe behavior), inline editing not required
 
 ### Phase 8D: Entry Method Tracking
 1. Add `entry_method` to `truck_weight.json` and `scrap_weight.json`
@@ -579,4 +593,70 @@ This redesign simplifies the Dropoff workflow while adding more useful verificat
 
 ---
 
-*Updated: 2026-01-10 - Phase 8A and 8B completed*
+## Phase 8C Implementation Details (2026-01-10)
+
+### Files Modified
+
+1. **`dropoff.js`** (NEW) - Client script for auto-populating expected items
+2. **`dropoff.py`** - Added `validate_expected_items_match_orders()` method
+3. **`api/v1/dropoff.py`** - Added `get_items_from_orders()` whitelisted API
+4. **`pos_order.json`** - Removed redundant `dropoff_status` field
+
+### Implementation Summary
+
+**Auto-Population Logic:**
+- Triggers when POS Order selected in Dropoff Orders child table
+- Calls custom API `get_items_from_orders(order_names)`
+- Populates `item` and `item_name` only (NOT `indicated_weight`)
+- User manually enters weights after auto-population
+- Avoids duplicates using Set tracking
+
+**Validation Rules:**
+1. **Subset validation**: All expected items must exist in at least one linked order
+2. **Coverage validation**: Each linked order must have at least one item in expected items
+
+**Permissions Workaround:**
+- Problem: Child tables with `"permissions": []` block `frappe.client.get_list` even for System Manager
+- Solution: Created custom whitelisted API with explicit `frappe.has_permission()` checks
+- API path: `scrap_metal_suite.api.v1.dropoff.get_items_from_orders`
+
+**Key Code Snippets:**
+
+Client script trigger:
+```javascript
+frappe.ui.form.on('Dropoff Order', {
+    pos_order: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        if (row.pos_order) {
+            populate_expected_items_from_orders(frm);
+        }
+    }
+});
+```
+
+Custom API with security:
+```python
+@frappe.whitelist()
+def get_items_from_orders(order_names):
+    # Security check
+    for order_name in order_names:
+        if not frappe.has_permission("POS Order", "read", order_name):
+            frappe.throw(_("No permission to read POS Order: {0}").format(order_name))
+
+    # Fetch items from POS Order Item child table
+    items = frappe.get_all(
+        "POS Order Item",
+        filters={"parent": ["in", order_names]},
+        fields=["item_code", "item_name", "parent"]
+    )
+    return items
+```
+
+**Build & Cache Management:**
+- Ran `bench clear-cache && bench build --app scrap_metal_suite`
+- Ran `bench migrate` to reload DocType metadata
+- Required bench restart to serve new JavaScript assets
+
+---
+
+*Updated: 2026-01-10 - Phase 8A, 8B, and 8C completed*
