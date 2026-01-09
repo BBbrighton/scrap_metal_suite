@@ -26,3 +26,69 @@ frappe.ui.form.on('Dropoff', {
         }
     }
 });
+
+// Phase 8C: Auto-populate Expected Items from linked POS Orders
+frappe.ui.form.on('Dropoff Order', {
+    pos_order: function(frm, cdt, cdn) {
+        // When a POS Order is added/changed, populate expected items
+        populate_expected_items_from_orders(frm);
+    }
+});
+
+function populate_expected_items_from_orders(frm) {
+    if (!frm.doc.orders || frm.doc.orders.length === 0) {
+        return;
+    }
+
+    // Collect all order names
+    let order_names = frm.doc.orders
+        .map(row => row.pos_order)
+        .filter(order => order); // Remove empty values
+
+    if (order_names.length === 0) {
+        return;
+    }
+
+    // Fetch items from all orders
+    frappe.call({
+        method: 'frappe.client.get_list',
+        args: {
+            doctype: 'POS Order Item',
+            filters: {
+                parent: ['in', order_names]
+            },
+            fields: ['item_code', 'item_name', 'parent'],
+            limit_page_length: 0
+        },
+        callback: function(r) {
+            if (r.message && r.message.length > 0) {
+                // Get existing items to avoid duplicates
+                let existing_items = frm.doc.expected_items.map(row => row.item);
+
+                // Track items we've added (for duplicates across orders)
+                let added_items = new Set(existing_items);
+
+                // Add unique items
+                r.message.forEach(item => {
+                    if (!added_items.has(item.item_code)) {
+                        let child = frm.add_child('expected_items');
+                        child.item = item.item_code;
+                        child.item_name = item.item_name;
+                        // indicated_weight left empty for user to fill
+
+                        added_items.add(item.item_code);
+                    }
+                });
+
+                frm.refresh_field('expected_items');
+
+                if (r.message.length > existing_items.length) {
+                    frappe.show_alert({
+                        message: __('Expected items populated from orders'),
+                        indicator: 'green'
+                    });
+                }
+            }
+        }
+    });
+}

@@ -18,6 +18,7 @@ class Dropoff(Document):
     def validate(self):
         self.validate_single_supplier()       # Edge Case 13.3
         self.validate_no_duplicate_orders()   # Edge Case 13.12
+        self.validate_expected_items_match_orders()  # Phase 8C
         self.validate_date_not_changed()      # Edge Case 13.16
         self.validate_scheduled_times()       # Ensure end > start
         self.validate_closed_immutable()      # Edge Case 13.21
@@ -77,6 +78,53 @@ class Dropoff(Document):
         orders = [o.pos_order for o in self.orders if o.pos_order]
         if len(orders) != len(set(orders)):
             frappe.throw(_("Same order cannot be linked multiple times to the same Drop-off"))
+
+    def validate_expected_items_match_orders(self):
+        """
+        Phase 8C: Validate that expected items match linked orders.
+
+        Rules:
+        1. All expected items must exist in at least one linked order
+        2. Each linked order must have at least one item in expected items
+        """
+        # Only validate if orders are linked
+        if not self.orders:
+            return
+
+        # Get all items from all orders (union)
+        all_order_items = set()
+        order_items_map = {}  # Track items per order
+
+        for order_row in self.orders:
+            if not order_row.pos_order:
+                continue
+
+            items = frappe.get_all(
+                "POS Order Item",
+                filters={"parent": order_row.pos_order},
+                fields=["item_code"]
+            )
+
+            order_item_codes = {item.item_code for item in items}
+            all_order_items.update(order_item_codes)
+            order_items_map[order_row.pos_order] = order_item_codes
+
+        # Get expected items
+        expected_item_codes = {row.item for row in self.expected_items if row.item}
+
+        # Validation 1: All expected items must exist in at least one order
+        for expected_item in expected_item_codes:
+            if expected_item not in all_order_items:
+                frappe.throw(
+                    _("Item '{0}' in Expected Items is not found in any linked POS Order").format(expected_item)
+                )
+
+        # Validation 2: Each order must have at least one item in expected items
+        for order_name, order_item_codes in order_items_map.items():
+            if not order_item_codes.intersection(expected_item_codes):
+                frappe.throw(
+                    _("POS Order '{0}' is linked but none of its items are in Expected Items. Please add items from this order or remove the order link.").format(order_name)
+                )
 
     def validate_date_not_changed(self):
         """
