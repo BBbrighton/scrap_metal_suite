@@ -472,9 +472,6 @@ def _recalculate_order_fulfillment(pos_order_name):
     # Determine fulfillment status
     order.fulfillment_status = _get_fulfillment_status(order.fulfillment_percent)
 
-    # Update dropoff_status
-    order.dropoff_status = _get_order_dropoff_status(pos_order_name)
-
     order.flags.ignore_validate = True
     order.save()
 
@@ -494,34 +491,3 @@ def _get_fulfillment_status(percent):
         return "Over-delivered"
 
 
-def _get_order_dropoff_status(pos_order_name):
-    """
-    Edge Case 13.5: Calculate dropoff_status for POS Order.
-    """
-    dropoff_orders = frappe.db.get_all(
-        "Dropoff Order",
-        filters={"pos_order": pos_order_name},
-        fields=["parent"]
-    )
-
-    if not dropoff_orders:
-        return "No Drop-off"
-
-    # Get status of each non-cancelled dropoff
-    statuses = []
-    for do in dropoff_orders:
-        dropoff_status = frappe.db.get_value("Dropoff", do.parent, "status")
-        if dropoff_status and dropoff_status != "Cancelled":
-            statuses.append(dropoff_status)
-
-    if not statuses:
-        return "No Drop-off"
-
-    if "Closed" in statuses:
-        return "Received"
-    elif any(s in ["Weighing", "Unloading", "Verified"] for s in statuses):
-        return "In Progress"
-    elif "Scheduled" in statuses:
-        return "Scheduled"
-    else:
-        return "No Drop-off"
