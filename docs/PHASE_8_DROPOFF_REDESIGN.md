@@ -675,8 +675,8 @@ def get_items_from_orders(order_names):
 1. **`truck_weight.json`** - Added `entry_method` Select field
 2. **`scrap_weight.json`** - Added `entry_method` Select field
 3. **`api/v1/dropoff.py`** - Updated `record_truck_weight()` and `record_scrap_weight()` to accept `entry_method` parameter
-4. **`truck.html`** - Terminals pass `entry_method` based on `state.isScaleConnected`
-5. **`terminal.html`** - Terminals pass `entry_method` based on `state.isScaleConnected`
+4. **`truck.html`** - Track actual weight source (button vs manual input)
+5. **`terminal.html`** - Track actual weight source per item (button vs manual input)
 
 ### Implementation Summary
 
@@ -693,21 +693,67 @@ def get_items_from_orders(order_names):
 }
 ```
 
-**Terminal Integration:**
+**Truck Terminal Integration:**
 ```javascript
-// Both truck.html and terminal.html
-entry_method: state.isScaleConnected ? 'Scale (Auto)' : 'Manual Entry'
+// Track when weight is captured from scale button
+function captureAndSaveWeight() {
+    const weight = parseFloat(liveWeightValue.textContent);
+    if (weight && weight > 0) {
+        document.getElementById('weightInput').value = weight.toFixed(2);
+        state.weightCapturedFromScale = true;  // Flag as scale capture
+        saveWeight();
+    }
+}
+
+// Clear flag when user manually types
+<input oninput="state.weightCapturedFromScale = false" />
+
+// Use flag to determine entry_method
+entry_method: state.weightCapturedFromScale ? 'Scale (Auto)' : 'Manual Entry'
+```
+
+**Scrap Terminal Integration:**
+```javascript
+// Track when weight is captured from scale button
+function useLiveWeight() {
+    if (state.liveWeight !== null) {
+        document.getElementById('weightInput').value = state.liveWeight.toFixed(2);
+        state.currentItemWeightFromScale = true;  // Flag as scale capture
+        addToCart();
+    }
+}
+
+// Clear flag when user manually types
+<input oninput="state.currentItemWeightFromScale = false" />
+
+// Track source per cart item
+state.cart.push({
+    item_code: item.code,
+    weight: weight,
+    fromScale: state.currentItemWeightFromScale || false
+});
+
+// entry_method = "Scale (Auto)" ONLY if ALL items from scale
+const allFromScale = state.cart.every(item => item.fromScale);
+entry_method: allFromScale ? 'Scale (Auto)' : 'Manual Entry'
 ```
 
 **API Changes:**
 - `record_truck_weight(...)` - Added optional `entry_method` parameter, defaults to "Manual Entry"
 - `record_scrap_weight(...)` - Added optional `entry_method` parameter, defaults to "Manual Entry"
 
+**Critical Fix Applied:**
+Initial implementation incorrectly used `state.isScaleConnected` (connection status) to determine entry method. This was wrong because users can manually type/edit weight even when scale is connected.
+
+**Correct Logic:**
+- **"Scale (Auto)"** = Weight captured via "Capture Weight" / "Use Live Weight" button
+- **"Manual Entry"** = User typed/edited the value OR mixed sources (scrap terminal)
+
 **Benefits:**
-- Audit trail for manual vs automated weight capture
+- Accurate audit trail for manual vs automated weight capture
 - Quality control - flag manual entries for review
-- Analytics - track scale usage rates
-- Compliance - regulatory requirement tracking
+- Analytics - track actual scale usage rates (not just connection)
+- Compliance - regulatory requirement tracking with correct data
 
 ---
 
