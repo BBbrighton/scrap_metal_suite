@@ -2,7 +2,7 @@
 
 **Created:** 2025-12-28
 **Updated:** 2026-01-10
-**Status:** ✅ COMPLETED (8A, 8B, 8C, 8D, 8E)
+**Status:** ✅ COMPLETED (All core phases done: 8A, 8B, 8C, 8D, 8E)
 
 ---
 
@@ -488,15 +488,17 @@ frappe.call({
 
 **Note:** This phase was already completed as part of Phase 8A and 8B implementation.
 
-### Phase 8F: Notes & Photos Consolidation (Lower Priority)
+### Phase 8F: Notes & Photos Consolidation 🅿️ PARKED
 1. Add `consolidated_notes` field
 2. Add `get_all_photos()` virtual method
 3. Copy notes on complete
 
-### Phase 8G: Per-Item Fulfillment (Lower Priority)
+### Phase 8G: Per-Item Fulfillment 🅿️ PARKED
 1. Create new child table DocTypes
 2. Update allocation logic for per-item
 3. Update POS Order fulfillment display
+
+**Note:** Phases 8F and 8G are parked for future consideration.
 
 ---
 
@@ -757,4 +759,55 @@ Initial implementation incorrectly used `state.isScaleConnected` (connection sta
 
 ---
 
-*Updated: 2026-01-10 - Phase 8A, 8B, 8C, and 8D completed*
+## Next Phases (Future Work)
+
+### Phase 9: Print Forms (DRAFT - To Be Discussed)
+
+**Goal:** Create complete print formats for each document, tailored for different audiences.
+
+**Documents to Cover:**
+- Dropoff (supplier-facing, internal)
+- POS Order
+- Truck Weight
+- Scrap Weight
+- Other weight-related documents
+
+**Considerations:**
+- Different versions for different audiences (supplier vs internal)
+- Branding and styling requirements
+- Required fields for each audience
+- Legal/compliance requirements
+
+**Status:** Draft phase, to be discussed and planned.
+
+---
+
+### Phase 10: Scale Integration RE-work
+
+**Goal:** Fix WebSocket reliability and scale connection stability.
+
+**Current Issues:**
+- ✅ Scale works initially
+- ❌ After terminal refresh, WebSocket connection is lost
+- ❌ Need to unplug/replug USB to reconnect
+- ❌ Not completely stable/reliable
+
+**Planned Fixes:**
+- Implement WebSocket reconnection logic
+- Handle terminal refresh gracefully (persist connection or auto-reconnect)
+- Auto-reconnect on connection loss
+- Better error handling and recovery
+- Keep connection alive across page refreshes
+- Improve scale connection status indicators
+
+**Benefits:**
+- More reliable scale operation
+- Better user experience (no manual USB replug)
+- Reduced downtime
+- Better error recovery
+
+**Status:** Queued for future work.
+
+---
+
+*Updated: 2026-01-10 - Phase 8 COMPLETED (8A, 8B, 8C, 8D, 8E). Phases 8F & 8G parked. Phases 9 & 10 queued.*
