@@ -488,10 +488,12 @@ frappe.call({
 
 **Note:** This phase was already completed as part of Phase 8A and 8B implementation.
 
-### Phase 8F: Notes & Photos Consolidation 🅿️ PARKED
-1. Add `consolidated_notes` field
-2. Add `get_all_photos()` virtual method
-3. Copy notes on complete
+### Phase 8F: Notes & Photos Consolidation ⏭️ SKIPPED
+~~1. Add `consolidated_notes` field~~
+~~2. Add `get_all_photos()` virtual method~~
+~~3. Copy notes on complete~~
+
+**Decision (2026-01-15):** Skipped to avoid cluttering the Dropoff doctype. Notes/photos from linked records (Scrap Weight, Truck Weight) can be viewed by opening those records directly or via print formats which already fetch linked data.
 
 ### Phase 8G: Per-Item Fulfillment 🅿️ PARKED
 1. Create new child table DocTypes
@@ -814,4 +816,4 @@ Initial implementation incorrectly used `state.isScaleConnected` (connection sta
 
 ---
 
-*Updated: 2026-01-15 - Phase 8 COMPLETED (8A-8E). Phase 9 COMPLETED (Print Forms). Phases 8F & 8G parked. Phase 10 queued.*
+*Updated: 2026-01-15 - Phase 8 COMPLETED (8A-8E). Phase 9 COMPLETED (Print Forms). Phase 8F skipped. Phase 8G parked. Phase 10 queued.*
