@@ -1,7 +1,7 @@
 # Phase 8: Dropoff System Redesign
 
 **Created:** 2025-12-28
-**Updated:** 2026-01-10
+**Updated:** 2026-01-15
 **Status:** ✅ COMPLETED (All core phases done: 8A, 8B, 8C, 8D, 8E)
 
 ---
@@ -761,24 +761,28 @@ Initial implementation incorrectly used `state.isScaleConnected` (connection sta
 
 ## Next Phases (Future Work)
 
-### Phase 9: Print Forms (DRAFT - To Be Discussed)
+### Phase 9: Print Forms ✅ COMPLETED (2026-01-15)
 
 **Goal:** Create complete print formats for each document, tailored for different audiences.
 
-**Documents to Cover:**
-- Dropoff (supplier-facing, internal)
-- POS Order
-- Truck Weight
-- Scrap Weight
-- Other weight-related documents
+**Print Formats Created:**
 
-**Considerations:**
-- Different versions for different audiences (supplier vs internal)
-- Branding and styling requirements
-- Required fields for each audience
-- Legal/compliance requirements
+| DocType | Print Format Name | Type | Description |
+|---------|-------------------|------|-------------|
+| Scrap Weight | Scrap Weight Thermal | 80mm thermal | QR codes (Dropoff, Scrap, Truck), entry method, photo count |
+| Truck Weight | Truck Weight Thermal | 80mm thermal | Big weight display, Gross/Tare checkboxes, QR codes |
+| Dropoff | ใบคิวสองภาษา | A4 bilingual | Letterhead, linked documents, verification summary, signatures |
+| POS Order | Weight Receipt | A4 | Original format (kept as-is) |
+| POS Order | ใบสรุปการส่งมอบ | A4 bilingual | Fulfillment summary, ordered vs received comparison, linked dropoffs |
 
-**Status:** Draft phase, to be discussed and planned.
+**Key Features:**
+- Bilingual support (Thai/English) on all new formats
+- Letterhead with company logo (left) and address (right)
+- Consistent date formatting (dd/MM/yy HH:mm)
+- QR codes using custom `qr_src()` Jinja function
+- Thermal formats optimized for 80mm printers (black/white only)
+
+**Status:** COMPLETED
 
 ---
 
@@ -810,4 +814,4 @@ Initial implementation incorrectly used `state.isScaleConnected` (connection sta
 
 ---
 
-*Updated: 2026-01-10 - Phase 8 COMPLETED (8A, 8B, 8C, 8D, 8E). Phases 8F & 8G parked. Phases 9 & 10 queued.*
+*Updated: 2026-01-15 - Phase 8 COMPLETED (8A-8E). Phase 9 COMPLETED (Print Forms). Phases 8F & 8G parked. Phase 10 queued.*
