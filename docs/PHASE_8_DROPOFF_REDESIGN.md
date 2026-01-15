@@ -495,12 +495,51 @@ frappe.call({
 
 **Decision (2026-01-15):** Skipped to avoid cluttering the Dropoff doctype. Notes/photos from linked records (Scrap Weight, Truck Weight) can be viewed by opening those records directly or via print formats which already fetch linked data.
 
-### Phase 8G: Per-Item Fulfillment 🅿️ PARKED
-1. Create new child table DocTypes
-2. Update allocation logic for per-item
-3. Update POS Order fulfillment display
+### Phase 8G: Per-Item Fulfillment ✅ COMPLETED (2026-01-15)
 
-**Note:** Phases 8F and 8G are parked for future consideration.
+**Goal:** Track fulfillment at the item level, not just total weight.
+
+**Problem Solved:**
+- Before: Order with 500kg Copper + 300kg Aluminum shows 100% fulfilled even if received 700kg Copper + 100kg Aluminum
+- After: Shows per-item fulfillment (Copper: 140%, Aluminum: 33%)
+
+**Implementation:**
+
+1. **Enhanced `POS Order Item`** - Added fields:
+   - `received_weight` (Float) - Actual weight received for this item
+   - `item_fulfillment_percent` (Percent) - Per-item fulfillment %
+
+2. **Enhanced `POS Order Weighed Item`** - Added field:
+   - `dropoff` (Link) - Source dropoff for traceability
+
+3. **FIFO Allocation Logic** in `dropoff.py`:
+   - Orders sorted by `order_date` (oldest first)
+   - For each item, allocate to oldest order first until 100% fulfilled
+   - Then move to next order
+   - Populates `POS Order Weighed Item` for detailed tracking
+
+4. **Per-Item Fulfillment Calculation:**
+   - Aggregates received weights from `POS Order Weighed Item` per item
+   - Updates `received_weight` and `item_fulfillment_percent` on `POS Order Item`
+   - Overall fulfillment still calculated for backward compatibility
+
+**Example FIFO Allocation:**
+```
+Dropoff links to:
+- Order A (Jan 5) - wants 500kg Copper
+- Order B (Jan 8) - wants 300kg Copper
+
+Dropoff delivers: 600kg Copper
+
+FIFO Result:
+- Order A: 500kg (100% fulfilled) ← filled first (oldest)
+- Order B: 100kg (33% partial) ← gets remainder
+```
+
+**Files Modified:**
+- `pos_order_item.json` - Added `received_weight`, `item_fulfillment_percent`
+- `pos_order_weighed_item.json` - Added `dropoff` field
+- `dropoff.py` - New `allocate_weights_if_completed()` with FIFO logic
 
 ---
 
@@ -816,4 +855,4 @@ Initial implementation incorrectly used `state.isScaleConnected` (connection sta
 
 ---
 
-*Updated: 2026-01-15 - Phase 8 COMPLETED (8A-8E). Phase 9 COMPLETED (Print Forms). Phase 8F skipped. Phase 8G parked. Phase 10 queued.*
+*Updated: 2026-01-15 - Phase 8 COMPLETED (8A-8E, 8G). Phase 8F skipped. Phase 9 COMPLETED (Print Forms). Phase 10 queued.*

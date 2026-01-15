@@ -423,52 +423,173 @@ class Dropoff(Document):
         """
         Allocate scrap weights to linked POS Orders when Drop-off is Completed.
         Phase 8A: Run on EVERY save when Completed (not just transition).
-        This fixes Issue #1 (reweight doesn't re-allocate).
+        Phase 8G: Per-item FIFO allocation (oldest order first).
         """
-        # Run allocation on EVERY save when status is Completed
         if self.status != "Completed":
             return
 
         if not self.orders:
             return
 
-        total_scrap = flt(self.total_scrap_weight)
-        if not total_scrap:
+        if not self.item_summary:
             return
 
-        # Calculate total contracted weight across all orders
-        total_contracted = 0
-        order_contracts = {}  # {pos_order: contracted_weight}
+        # Get linked POS Orders sorted by order_date (FIFO - oldest first)
+        order_names = [o.pos_order for o in self.orders if o.pos_order]
+        if not order_names:
+            return
 
+        orders_with_dates = []
+        for order_name in order_names:
+            order_date = frappe.db.get_value("POS Order", order_name, "order_date")
+            orders_with_dates.append((order_name, order_date))
+
+        # Sort by order_date (oldest first)
+        orders_with_dates.sort(key=lambda x: x[1] or "9999-99-99")
+        sorted_order_names = [o[0] for o in orders_with_dates]
+
+        # Get order items for each POS Order (what they want per item)
+        # Structure: {order_name: {item_code: contracted_weight}}
+        order_items_map = {}
+        for order_name in sorted_order_names:
+            order_items = frappe.get_all(
+                "POS Order Item",
+                filters={"parent": order_name},
+                fields=["item_code", "weight"]
+            )
+            order_items_map[order_name] = {
+                item.item_code: flt(item.weight) for item in order_items
+            }
+
+        # Track allocations per order (for updating Dropoff Order.allocated_weight)
+        order_allocations = {order_name: 0 for order_name in sorted_order_names}
+
+        # Track per-item allocations to populate POS Order Weighed Item
+        # Structure: {order_name: [{item_code, weight, scrap_weight}, ...]}
+        per_item_allocations = {order_name: [] for order_name in sorted_order_names}
+
+        # For each item in item_summary, allocate using FIFO
+        for item_row in self.item_summary:
+            item_code = item_row.item
+            available_weight = flt(item_row.total_weight)
+
+            if not available_weight:
+                continue
+
+            # Find source scrap_weight records for this item (for traceability)
+            source_scrap_weights = []
+            for actual_item in self.actual_items:
+                if actual_item.item == item_code:
+                    source_scrap_weights.append({
+                        "scrap_weight": actual_item.scrap_weight,
+                        "weight": flt(actual_item.actual_weight)
+                    })
+
+            # Allocate to orders in FIFO order
+            for order_name in sorted_order_names:
+                if available_weight <= 0:
+                    break
+
+                # How much does this order want of this item?
+                wanted = order_items_map.get(order_name, {}).get(item_code, 0)
+                if not wanted:
+                    continue
+
+                # How much has this order already received for this item?
+                already_received = self._get_already_received(order_name, item_code)
+
+                # How much more does this order need?
+                still_needed = max(0, wanted - already_received)
+                if still_needed <= 0:
+                    continue
+
+                # Allocate up to what's needed or available
+                to_allocate = min(still_needed, available_weight)
+
+                if to_allocate > 0:
+                    # Track for Dropoff Order.allocated_weight
+                    order_allocations[order_name] += to_allocate
+
+                    # Track for POS Order Weighed Item (use first source for simplicity)
+                    source_sw = source_scrap_weights[0]["scrap_weight"] if source_scrap_weights else None
+                    per_item_allocations[order_name].append({
+                        "item_code": item_code,
+                        "item_name": item_row.item_name,
+                        "weight": to_allocate,
+                        "scrap_weight": source_sw
+                    })
+
+                    available_weight -= to_allocate
+
+        # Update Dropoff Order.allocated_weight (sum of per-item allocations)
         for order_row in self.orders:
             if order_row.pos_order:
-                contracted = flt(frappe.db.get_value(
-                    "POS Order", order_row.pos_order, "contracted_weight"
-                ))
-                order_contracts[order_row.pos_order] = contracted
-                total_contracted += contracted
+                order_row.allocated_weight = flt(order_allocations.get(order_row.pos_order, 0), 2)
 
-        # Allocate weights to child table rows
-        for order_row in self.orders:
-            if order_row.pos_order:
-                if total_contracted > 0:
-                    # Pro-rata allocation
-                    ratio = order_contracts[order_row.pos_order] / total_contracted
-                    order_row.allocated_weight = flt(total_scrap * ratio, 2)
-                else:
-                    # Equal split if no contracted weights
-                    order_row.allocated_weight = flt(total_scrap / len(self.orders), 2)
+        # Store per-item allocations for use in on_update
+        self._per_item_allocations = per_item_allocations
+
+    def _get_already_received(self, order_name, item_code):
+        """
+        Get how much of an item this order has already received from OTHER dropoffs.
+        Excludes current dropoff to avoid double-counting during re-allocation.
+        """
+        existing = frappe.get_all(
+            "POS Order Weighed Item",
+            filters={
+                "parent": order_name,
+                "item_code": item_code,
+                "dropoff": ["!=", self.name]
+            },
+            fields=["weight"]
+        )
+        return sum(flt(row.weight) for row in existing)
 
     def update_pos_orders_if_closed(self):
         """
         Update linked POS Orders after save if status is Completed.
         Phase 8A: Changed from "Closed" to "Completed".
+        Phase 8G: Populate POS Order Weighed Item with per-item allocations.
         Called in on_update after allocations are committed to DB.
         """
         if self.status != "Completed":
             return
 
-        # Update fulfillment on each linked POS Order
+        # Get per-item allocations calculated in before_save
+        per_item_allocations = getattr(self, "_per_item_allocations", {})
+
+        # Populate POS Order Weighed Item for each order
+        for order_row in self.orders:
+            if not order_row.pos_order:
+                continue
+
+            order_name = order_row.pos_order
+            allocations = per_item_allocations.get(order_name, [])
+
+            if allocations:
+                order_doc = frappe.get_doc("POS Order", order_name)
+
+                # Remove existing entries from this dropoff (for re-allocation)
+                order_doc.items = [
+                    item for item in order_doc.items
+                    if item.dropoff != self.name
+                ]
+
+                # Add new allocations
+                for alloc in allocations:
+                    order_doc.append("items", {
+                        "dropoff": self.name,
+                        "scrap_weight": alloc.get("scrap_weight"),
+                        "item_code": alloc.get("item_code"),
+                        "item_name": alloc.get("item_name"),
+                        "weight": alloc.get("weight"),
+                        "uom": "Kg"
+                    })
+
+                order_doc.flags.ignore_validate = True
+                order_doc.save()
+
+        # Recalculate fulfillment on each linked POS Order
         for order_row in self.orders:
             if order_row.pos_order:
                 _recalculate_order_fulfillment(order_row.pos_order)
@@ -481,36 +602,66 @@ class Dropoff(Document):
         """
         Edge Case 13.4: When Drop-off is cancelled, recalculate fulfillment
         for all linked orders from source of truth (non-cancelled drop-offs).
+        Phase 8G: Also removes POS Order Weighed Items from this dropoff.
         """
         for order_row in self.orders:
             if order_row.pos_order:
+                # Remove weighed items from this dropoff
+                order_doc = frappe.get_doc("POS Order", order_row.pos_order)
+                order_doc.items = [
+                    item for item in order_doc.items
+                    if item.dropoff != self.name
+                ]
+                order_doc.flags.ignore_validate = True
+                order_doc.save()
+
+                # Recalculate fulfillment
                 _recalculate_order_fulfillment(order_row.pos_order)
 
 
 def _recalculate_order_fulfillment(pos_order_name):
     """
-    Recalculate fulfillment from source of truth (non-cancelled drop-offs).
-    Called when a Drop-off is cancelled.
+    Recalculate fulfillment from source of truth.
+    Phase 8G: Per-item fulfillment calculation.
     """
     order = frappe.get_doc("POS Order", pos_order_name)
 
-    # Sum allocated_weight from ALL non-cancelled Drop-offs for this order
-    dropoff_orders = frappe.db.get_all(
-        "Dropoff Order",
-        filters={"pos_order": pos_order_name},
-        fields=["parent", "allocated_weight"]
-    )
+    # Remove weighed items from cancelled dropoffs
+    valid_items = []
+    for item in order.items:
+        if item.dropoff:
+            dropoff_status = frappe.db.get_value("Dropoff", item.dropoff, "status")
+            if dropoff_status != "Cancelled":
+                valid_items.append(item)
+        else:
+            valid_items.append(item)  # Keep items without dropoff link
+    order.items = valid_items
 
-    # Filter to only non-cancelled drop-offs
+    # Calculate per-item received weights
+    item_received = {}  # {item_code: total_received}
+    for item in order.items:
+        if item.item_code:
+            if item.item_code not in item_received:
+                item_received[item.item_code] = 0
+            item_received[item.item_code] += flt(item.weight)
+
+    # Update received_weight on order_items and calculate per-item fulfillment
     total_received = 0
-    for do in dropoff_orders:
-        dropoff_status = frappe.db.get_value("Dropoff", do.parent, "status")
-        if dropoff_status != "Cancelled":
-            total_received += flt(do.allocated_weight)
+    for order_item in order.order_items:
+        received = flt(item_received.get(order_item.item_code, 0))
+        order_item.received_weight = received
+        total_received += received
+
+        # Calculate per-item fulfillment percentage
+        contracted = flt(order_item.weight)
+        if contracted > 0:
+            order_item.item_fulfillment_percent = (received / contracted) * 100
+        else:
+            order_item.item_fulfillment_percent = 0
 
     order.total_received = flt(total_received)
 
-    # Calculate fulfillment percentage
+    # Calculate overall fulfillment percentage
     contracted = flt(order.contracted_weight)
     if contracted > 0:
         order.fulfillment_percent = (order.total_received / contracted) * 100

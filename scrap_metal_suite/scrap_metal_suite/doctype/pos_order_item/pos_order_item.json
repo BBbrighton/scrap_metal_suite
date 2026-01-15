@@ -9,7 +9,9 @@
   "item_name",
   "column_break_1",
   "uom",
-  "weight"
+  "weight",
+  "received_weight",
+  "item_fulfillment_percent"
  ],
  "fields": [
   {
@@ -38,7 +40,6 @@
    "fetch_from": "item_code.stock_uom",
    "fieldname": "uom",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "UOM",
    "options": "UOM",
    "read_only": 1
@@ -47,14 +48,30 @@
    "fieldname": "weight",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Indicated Weight (kg)",
-   "description": "Weight indicated/promised by the supplier"
+   "label": "Ordered (kg)",
+   "description": "Weight ordered/contracted"
+  },
+  {
+   "fieldname": "received_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Received (kg)",
+   "read_only": 1,
+   "description": "Actual weight received from dropoffs"
+  },
+  {
+   "fieldname": "item_fulfillment_percent",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Fulfilled %",
+   "read_only": 1,
+   "description": "Per-item fulfillment percentage"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-12-11 10:00:00.000000",
+ "modified": "2026-01-15 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "POS Order Item",
