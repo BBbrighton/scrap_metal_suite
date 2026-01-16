@@ -74,6 +74,132 @@ class ScaleReader {
     }
 
     /**
+     * Connect with a known configuration (faster than autoDetect)
+     * Falls back to autoDetect if the preferred config fails
+     *
+     * @param {Object} preferredConfig - The preferred serial config to try first
+     * @param {Function} onProgress - Callback for progress updates
+     * @returns {Object} Configuration that worked
+     */
+    async connectWithConfig(preferredConfig, onProgress = null) {
+        // Check if WebSerial is supported
+        if (!('serial' in navigator)) {
+            throw new Error('WebSerial API not supported in this browser. Use Chrome/Edge.');
+        }
+
+        // Prompt user to select serial port
+        try {
+            this.port = await navigator.serial.requestPort();
+        } catch (err) {
+            throw new Error('No port selected: ' + err.message);
+        }
+
+        // Try the preferred config first
+        if (preferredConfig && preferredConfig.baudRate) {
+            const configDesc = `${preferredConfig.baudRate} baud, ${preferredConfig.dataBits}${(preferredConfig.parity || 'none')[0].toUpperCase()}${preferredConfig.stopBits}`;
+            if (onProgress) {
+                onProgress(`Trying saved config: ${configDesc}...`);
+            }
+
+            try {
+                await this.port.open(preferredConfig);
+
+                // Try to read data for 3 seconds
+                const result = await this.testRead(3000);
+
+                if (result.success) {
+                    this.config = preferredConfig;
+                    this._setupDisconnectListener();
+
+                    if (onProgress) {
+                        onProgress(`✓ Connected with saved config: ${configDesc}`);
+                    }
+                    return {
+                        config: preferredConfig,
+                        weight: result.weight,
+                        stable: result.stable,
+                        protocol: result.protocol,
+                        rawData: result.rawData
+                    };
+                }
+
+                // Didn't work, close and try autoDetect
+                await this.port.close();
+                if (onProgress) {
+                    onProgress(`✗ Saved config failed, trying auto-detect...`);
+                }
+            } catch (err) {
+                // Failed to open or read - try autoDetect
+                try {
+                    await this.port.close();
+                } catch (e) {}
+                if (onProgress) {
+                    onProgress(`✗ Saved config error: ${err.message}, trying auto-detect...`);
+                }
+            }
+        }
+
+        // Fall back to autoDetect (will reuse the already-selected port)
+        return await this._autoDetectWithPort(onProgress);
+    }
+
+    /**
+     * Internal: Auto-detect using already-selected port
+     */
+    async _autoDetectWithPort(onProgress = null) {
+        // Test configurations
+        const testConfigs = [
+            { baudRate: 1200, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 2400, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 4800, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 9600, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 1200, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 2400, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 9600, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+        ];
+
+        for (const config of testConfigs) {
+            const configDesc = `${config.baudRate} baud, ${config.dataBits}${config.parity[0].toUpperCase()}${config.stopBits}`;
+            if (onProgress) {
+                onProgress(`Testing ${configDesc}...`);
+            }
+
+            try {
+                await this.port.open(config);
+                const result = await this.testRead(3000);
+
+                if (result.success) {
+                    this.config = config;
+                    this._setupDisconnectListener();
+
+                    if (onProgress) {
+                        onProgress(`✓ DETECTED: ${configDesc}`);
+                    }
+                    return {
+                        config: config,
+                        weight: result.weight,
+                        stable: result.stable,
+                        protocol: result.protocol,
+                        rawData: result.rawData
+                    };
+                }
+
+                await this.port.close();
+            } catch (err) {
+                try {
+                    await this.port.close();
+                } catch (e) {}
+                if (onProgress) {
+                    onProgress(`✗ ${configDesc} error: ${err.message}`);
+                }
+            }
+        }
+
+        this.port = null;
+        throw new Error('Could not detect scale. Ensure scale is powered on and connected.');
+    }
+
+    /**
      * Auto-detect scale configuration by testing multiple baud rates
      *
      * @param {Function} onProgress - Callback for progress updates

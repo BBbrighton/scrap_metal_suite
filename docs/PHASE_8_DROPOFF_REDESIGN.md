@@ -827,32 +827,82 @@ Initial implementation incorrectly used `state.isScaleConnected` (connection sta
 
 ---
 
-### Phase 10: Scale Integration RE-work
+### Phase 10: Scale Integration RE-work ✅ COMPLETED (2026-01-17)
 
-**Goal:** Fix WebSocket reliability and scale connection stability.
+**Goal:** Fix WebSerial reliability and scale connection stability after page refresh.
 
-**Current Issues:**
+**Issues Fixed:**
 - ✅ Scale works initially
-- ❌ After terminal refresh, WebSocket connection is lost
-- ❌ Need to unplug/replug USB to reconnect
-- ❌ Not completely stable/reliable
+- ✅ After terminal refresh, can reconnect without USB unplug
+- ✅ Uses saved config from Scale DocType (faster connection)
+- ✅ Falls back to auto-detect if saved config fails
 
-**Planned Fixes:**
-- Implement WebSocket reconnection logic
-- Handle terminal refresh gracefully (persist connection or auto-reconnect)
-- Auto-reconnect on connection loss
-- Better error handling and recovery
-- Keep connection alive across page refreshes
-- Improve scale connection status indicators
+**Root Cause Analysis:**
+The issue was NOT about WebSocket or port cleanup. The problem was that terminal.html used manual `requestPort()` + `port.open()` calls, while scale-config.html used `scaleReader.autoDetect()`. The `autoDetect()` method has built-in retry logic that recovers from failed port opens - when one config fails, it closes and tries the next.
 
-**Benefits:**
-- More reliable scale operation
-- Better user experience (no manual USB replug)
-- Reduced downtime
-- Better error recovery
+**Solution:**
+1. Added `connectWithConfig()` method to ScaleReader class
+   - Tries saved config from Scale DocType first (fast)
+   - Falls back to auto-detect if saved config fails
+   - Reuses the same port selection (user only picks once)
 
-**Status:** Queued for future work.
+2. Simplified terminal.html scale connection code
+   - Removed complex cleanup handlers (beforeunload, visibilitychange)
+   - Removed unused tryAutoReconnect, storeScaleConnectionInfo functions
+   - Now uses same pattern as scale-config page
+
+**Files Modified:**
+- `scrap_metal_suite/public/js/scale_reader.js`:
+  - Added `connectWithConfig(preferredConfig, onProgress)` method
+  - Added `_autoDetectWithPort(onProgress)` internal method
+
+- `scrap_metal_suite/www/pos/terminal.html`:
+  - Rewrote `testScaleConnection()` to use `connectWithConfig()`
+  - Simplified `handleScaleReconnect()` and `handleScaleDisconnect()`
+  - Removed unused session storage and auto-reconnect code
+  - Added simple `disconnectScale()` helper
+
+**Key Insight:**
+The autoDetect loop's error recovery (catch → close → try next config) is what makes reconnection work. Simply calling `port.open()` once doesn't recover from stale port state.
+
+**Status:** COMPLETED
+
+**TODO:** Apply same fix to `truck.html` (truck terminal) - currently uses old manual connection approach.
 
 ---
 
-*Updated: 2026-01-15 - Phase 8 COMPLETED (8A-8E, 8G). Phase 8F skipped. Phase 9 COMPLETED (Print Forms). Phase 10 queued.*
+### Phase 11: Auto-Print for Truck Weight ✅ COMPLETED (2026-01-15)
+
+**Goal:** Auto-trigger thermal receipt printing when truck weight is recorded (same as Scrap Weight).
+
+**Background:**
+- Scrap Weight already had auto-print in `terminal.html` - after save, it opens print preview with `trigger_print=1`
+- Truck Weight in `truck.html` was missing this feature
+
+**Implementation:**
+- Added `printTruckWeight()` function in `truck.html`
+- Auto-triggers after each weight entry (Gross or Tare) via `saveWeightByType()` function
+- Opens print preview: `/printview?doctype=Truck%20Weight&name=...&format=Truck%20Weight%20Thermal&trigger_print=1`
+
+**Files Modified:**
+- `scrap_metal_suite/www/pos/truck.html`:
+  - Added `printTruckWeight()` function (line ~1732)
+  - Added auto-print call in `saveWeightByType()` after successful save (line ~2988)
+
+**Flow:**
+1. User enters weight in Gross/Tare tab
+2. Clicks "Save Weight" → Opens confirmation modal
+3. User confirms → `confirmAndSaveWeight()` → `saveWeightByType()`
+4. API saves weight, returns `truck_weight_record` name
+5. Auto-print triggers with Truck Weight Thermal format
+
+**Behavior:**
+- User records Gross weight → Print dialog opens with Truck Weight Thermal
+- User records Tare weight → Print dialog opens with Truck Weight Thermal
+- Each entry triggers its own print (user confirms the weight by printing the receipt)
+
+**Status:** COMPLETED
+
+---
+
+*Updated: 2026-01-17 - Phase 8 COMPLETED (8A-8E, 8G). Phase 8F skipped. Phase 9 COMPLETED (Print Forms). Phase 10 COMPLETED (Scale Integration). Phase 11 COMPLETED (Auto-Print Truck Weight).*

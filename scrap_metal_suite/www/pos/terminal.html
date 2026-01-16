@@ -635,183 +635,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('keydown', handleDropoffSearchKeydown);
 });
 
-// ===== Language Functions =====
-// ===== Page Unload Cleanup =====
-// Properly release the serial port when leaving the page
-window.addEventListener('beforeunload', async (event) => {
-    await cleanupScaleConnection();
-});
+// ===== Scale Connection Helpers =====
 
-// Also handle visibility change (e.g., tab switch, minimize)
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-        // Store connection info when tab becomes hidden
-        storeScaleConnectionInfo();
-    }
-});
-
-// Store scale connection info for potential reconnect
-function storeScaleConnectionInfo() {
-    if (!state.scaleReader || !state.scaleReader.port) return;
-
-    try {
-        const info = state.scaleReader.port.getInfo();
-        const portInfo = {
-            usbVendorId: info.usbVendorId,
-            usbProductId: info.usbProductId,
-            scaleName: state.scale?.name,
-            config: state.scaleReader.config
-        };
-        sessionStorage.setItem('lastScalePort', JSON.stringify(portInfo));
-        sessionStorage.setItem('lastScaleSession', state.session);
-    } catch (e) {
-        console.error('Error storing scale connection info:', e);
-    }
-}
-
-// Get stored port info for reconnection
-function getStoredPortInfo() {
-    try {
-        const portInfoStr = sessionStorage.getItem('lastScalePort');
-        const lastSession = sessionStorage.getItem('lastScaleSession');
-
-        // Only use stored info if it is for the same session
-        if (portInfoStr && lastSession === state.session) {
-            return JSON.parse(portInfoStr);
-        }
-    } catch (e) {
-        console.error('Error getting stored port info:', e);
-    }
-    return null;
-}
-
-// Cleanup scale connection
-// forgetPort=true releases port permission entirely (use when closing session)
-// forgetPort=false just disconnects but keeps permission for auto-reconnect
-async function cleanupScaleConnection(forgetPort = false) {
+// Disconnect scale cleanly (used by handleScaleDisconnect)
+async function disconnectScale() {
     if (state.scaleReader) {
-        // Store connection info before disconnect (only if not forgetting)
-        if (!forgetPort) {
-            storeScaleConnectionInfo();
-        }
-
         try {
-            // Use ScaleReader's disconnect method which handles cleanup properly
-            await state.scaleReader.disconnect(forgetPort);
+            await state.scaleReader.disconnect();
         } catch (e) {
-            console.error('Error during scale cleanup:', e);
+            console.error('Error during scale disconnect:', e);
         }
         state.scaleReader = null;
         state.isScaleConnected = false;
-    }
-}
-
-// Try to auto-reconnect to previously authorized port
-async function tryAutoReconnect() {
-    if (!('serial' in navigator)) return false;
-    if (!state.scale) return false;
-
-    const storedInfo = getStoredPortInfo();
-    if (!storedInfo || storedInfo.scaleName !== state.scale.name) return false;
-
-    try {
-        // Get previously authorized ports
-        const ports = await navigator.serial.getPorts();
-        if (ports.length === 0) return false;
-
-        // Find matching port by USB vendor/product ID
-        let matchedPort = null;
-        for (const port of ports) {
-            const info = port.getInfo();
-            if (info.usbVendorId === storedInfo.usbVendorId &&
-                info.usbProductId === storedInfo.usbProductId) {
-                matchedPort = port;
-                break;
-            }
-        }
-
-        if (!matchedPort) return false;
-
-        // CRITICAL: Clean up any existing ScaleReader before creating new one
-        if (state.scaleReader) {
-            try {
-                await state.scaleReader.disconnect();
-            } catch (e) {
-                console.log('Cleanup before tryAutoReconnect:', e.message);
-            }
-            state.scaleReader = null;
-        }
-
-        // Try to reconnect
-        state.scaleReader = new ScaleReader();
-        state.scaleReader.port = matchedPort;
-
-        const config = storedInfo.config || {
-            baudRate: parseInt(state.scale.baud_rate),
-            dataBits: parseInt(state.scale.data_bits),
-            parity: state.scale.parity || 'none',
-            stopBits: parseInt(state.scale.stop_bits),
-            flowControl: state.scale.flow_control || 'none',
-            bufferSize: 255
-        };
-
-        // Try to ensure port is in a clean state
-        // If port has a readable stream, try to close it first
-        if (matchedPort.readable) {
-            console.log('Port appears open, closing first...');
-            try {
-                // If there's a reader, we need to release it
-                const tempReader = matchedPort.readable.getReader();
-                await tempReader.cancel();
-                tempReader.releaseLock();
-            } catch (e) {
-                console.log('Could not release reader:', e.message);
-            }
-            try {
-                await matchedPort.close();
-            } catch (e) {
-                console.log('Could not close port:', e.message);
-            }
-            // Small delay after close
-            await new Promise(r => setTimeout(r, 100));
-        }
-        
-        // Now open the port fresh
-        await matchedPort.open(config);
-
-        // Test read
-        const result = await state.scaleReader.testRead(2000);
-
-        if (result.success) {
-            state.scaleReader.config = config;
-            state.scaleReader.isConnected = true;
-            state.isScaleConnected = true;
-
-            // Set up disconnect listener and callbacks
-            state.scaleReader._setupDisconnectListener();
-            state.scaleReader.onWeightUpdate = handleWeightUpdate;
-            state.scaleReader.onDisconnect = handleScaleUnplugged;
-            state.scaleReader.startReading();
-
-            console.log('Auto-reconnected to scale successfully');
-            updateScaleDisplay();
-            return true;
-        } else {
-            // Use disconnect() for proper cleanup (releases reader lock)
-            await state.scaleReader.disconnect();
-            state.scaleReader = null;
-            return false;
-        }
-    } catch (e) {
-        console.error('Auto-reconnect failed:', e);
-        // Use disconnect() for proper cleanup (releases reader lock)
-        if (state.scaleReader) {
-            try {
-                await state.scaleReader.disconnect();
-            } catch (e2) {}
-            state.scaleReader = null;
-        }
-        return false;
     }
 }
 
@@ -2016,11 +1851,8 @@ function closeCloseSessionModal() {
 
 async function closeSession() {
     try {
-        // Disconnect scale and FORGET the port permission so next session can connect fresh
-        await cleanupScaleConnection(true);
-        // Clear stored connection info since session is ending
-        sessionStorage.removeItem('lastScalePort');
-        sessionStorage.removeItem('lastScaleSession');
+        // Disconnect scale before closing session
+        await disconnectScale();
 
         const response = await callAPI('scrap_metal_suite.api.v1.pos.close_session', {
             session: state.session
@@ -2081,14 +1913,7 @@ async function checkSessionScale() {
             };
             updateScaleDisplay();
 
-            // Try to auto-reconnect to the scale if we have serial settings
-            if (state.scale.baud_rate && state.scale.data_bits) {
-                const reconnected = await tryAutoReconnect();
-                if (reconnected) {
-                    console.log('Scale auto-reconnected on page load');
-                    frappe.show_alert({ message: t('scaleReconnected') || 'Scale reconnected', indicator: 'green' }, 2);
-                }
-            }
+            // Scale is configured - user can connect via the badge menu
         } else {
             // No scale set - show selection modal
             await loadScales();
@@ -2396,95 +2221,49 @@ function showScaleConnectionResult(result, errorMsg = '', weight = 0, protocol =
 }
 
 // Test scale connection using WebSerial
+// Uses saved config from database first, falls back to autoDetect if needed
 async function testScaleConnection(scale) {
-    // CRITICAL: Clean up any existing ScaleReader before creating new one
-    if (state.scaleReader) {
-        try {
-            await state.scaleReader.disconnect();
-        } catch (e) {
-            console.log('Cleanup before testScaleConnection:', e.message);
-        }
-        state.scaleReader = null;
-    }
-    
     // Create a new ScaleReader instance
     state.scaleReader = new ScaleReader();
 
-    // Build serial config from scale settings
-    const config = {
+    // Build config from saved scale settings
+    const savedConfig = scale.baud_rate ? {
         baudRate: parseInt(scale.baud_rate),
-        dataBits: parseInt(scale.data_bits),
+        dataBits: parseInt(scale.data_bits) || 8,
         parity: scale.parity || 'none',
-        stopBits: parseInt(scale.stop_bits),
+        stopBits: parseInt(scale.stop_bits) || 1,
         flowControl: scale.flow_control || 'none',
         bufferSize: 255
-    };
+    } : null;
 
-    // Request port selection from user
     try {
-        state.scaleReader.port = await navigator.serial.requestPort();
+        // Use connectWithConfig - tries saved config first, falls back to autoDetect
+        const result = await state.scaleReader.connectWithConfig(savedConfig, (message) => {
+            console.log('Scale:', message);
+        });
+
+        // Success! Set up for continuous reading
+        state.scaleReader.isConnected = true;
+        state.isScaleConnected = true;
+
+        // Apply unit conversion factor
+        const conversionFactor = parseFloat(scale.unit_conversion_factor) || 1;
+        const weightKg = result.weight * conversionFactor;
+
+        // Start continuous reading with callbacks
+        state.scaleReader.onWeightUpdate = handleWeightUpdate;
+        state.scaleReader.onDisconnect = handleScaleUnplugged;
+        state.scaleReader.startReading();
+
+        showScaleConnectionResult('success', '', weightKg, result.protocol);
     } catch (err) {
-        throw new Error(t('noPortSelected') || 'No serial port selected');
-    }
-
-    // Try to open and read with the configured settings
-    try {
-        // Try to ensure port is in a clean state
-        if (state.scaleReader.port.readable) {
-            console.log('Port appears open, closing first...');
-            try {
-                const tempReader = state.scaleReader.port.readable.getReader();
-                await tempReader.cancel();
-                tempReader.releaseLock();
-            } catch (e) {
-                console.log('Could not release reader:', e.message);
-            }
-            try {
-                await state.scaleReader.port.close();
-            } catch (e) {
-                console.log('Could not close port:', e.message);
-            }
-            await new Promise(r => setTimeout(r, 100));
-        }
-        
-        // Now open the port fresh
-        await state.scaleReader.port.open(config);
-
-        // Test read for 3 seconds
-        const result = await state.scaleReader.testRead(3000);
-
-        if (result.success) {
-            // Success! Keep the connection open
-            state.scaleReader.config = config;
-            state.scaleReader.isConnected = true;
-            state.isScaleConnected = true;
-            // Set up disconnect listener for USB unplug events
-            state.scaleReader._setupDisconnectListener();
-
-            // Apply unit conversion factor
-            const conversionFactor = parseFloat(scale.unit_conversion_factor) || 1;
-            const weightKg = result.weight * conversionFactor;
-
-            // Start continuous reading with callbacks
-            state.scaleReader.onWeightUpdate = handleWeightUpdate;
-            state.scaleReader.onDisconnect = handleScaleUnplugged;
-            state.scaleReader.startReading();
-
-            showScaleConnectionResult('success', '', weightKg, result.protocol);
-        } else {
-            // Failed to read valid data - use disconnect() for proper cleanup
-            await state.scaleReader.disconnect();
-            state.scaleReader = null;
-            throw new Error(t('noDataFromScale') || 'No valid data received from scale');
-        }
-    } catch (err) {
-        // Use disconnect() for proper cleanup (releases reader lock)
+        // Clean up on failure
         if (state.scaleReader) {
             try {
                 await state.scaleReader.disconnect();
             } catch (e) {}
-            state.scaleReader = null;
         }
+        state.scaleReader = null;
         throw err;
     }
 }
@@ -2624,6 +2403,7 @@ function closeScaleMenuOnOutsideClick(e) {
 }
 
 // Handle scale reconnect from menu
+// Simplified to match scale-config page pattern (no pre-cleanup)
 async function handleScaleReconnect() {
     document.getElementById('scaleMenu').style.display = 'none';
 
@@ -2631,15 +2411,12 @@ async function handleScaleReconnect() {
     const indicator = document.getElementById('scaleStatusIndicator');
     indicator.className = 'scale-status-indicator connecting';
 
-    // CRITICAL: Always cleanup any existing connection first
-    await cleanupScaleConnection(false);
-
-    // Skip tryAutoReconnect - getPorts() returns stale port objects that can't be reopened
-    // Instead, directly use testScaleConnection which uses requestPort() for a fresh port
     if (state.scale) {
         try {
             frappe.show_alert({ message: t('selectPortToReconnect') || 'Please select the scale port to reconnect', indicator: 'blue' }, 3);
             await testScaleConnection(state.scale);
+            // Update indicator to show connected state
+            updateScaleDisplay();
             frappe.show_alert({ message: t('scaleReconnected') || 'Scale reconnected', indicator: 'green' }, 2);
         } catch (e) {
             console.error('Reconnection failed:', e);
@@ -2655,23 +2432,14 @@ async function handleScaleReconnect() {
 // Handle scale disconnect from menu
 async function handleScaleDisconnect() {
     document.getElementById('scaleMenu').style.display = 'none';
-
-    await cleanupScaleConnection(false);
-    state.isScaleConnected = false;
+    await disconnectScale();
     updateScaleDisplay();
-
     frappe.show_alert({ message: t('scaleDisconnected') || 'Scale disconnected', indicator: 'blue' }, 2);
 }
 
 async function disconnectAndReload() {
     document.getElementById('scaleMenu').style.display = 'none';
-
-    try {
-        await cleanupScaleConnection(false);
-    } catch (e) {
-        console.error('Error disconnecting before reload:', e);
-    }
-
+    await disconnectScale();
     window.location.reload();
 }
 
