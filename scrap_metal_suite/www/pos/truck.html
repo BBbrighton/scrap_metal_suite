@@ -55,10 +55,28 @@ body {
             <span class="session-badge">{{ session.name }}</span>
             <span class="profile-name">Truck Scale</span>
             <span class="operator-name">{{ operator_name }}</span>
-            <span class="scale-badge" id="scaleBadge" style="display:none;">
-                <span class="scale-icon">&#9878;</span>
-                <span id="scaleNameDisplay"></span>
-            </span>
+            <div class="scale-badge-container" id="scaleBadgeContainer" style="display:none; position: relative;">
+                <button class="scale-badge" id="scaleBadge" onclick="toggleScaleMenu()">
+                    <span class="scale-icon">&#9878;</span>
+                    <span id="scaleNameDisplay"></span>
+                    <span class="scale-status-indicator" id="scaleStatusIndicator">●</span>
+                </button>
+                <!-- Scale Connection Menu -->
+                <div class="scale-menu" id="scaleMenu" style="display:none;">
+                    <div class="scale-menu-header">
+                        <span id="scaleMenuStatus">Disconnected</span>
+                    </div>
+                    <button class="scale-menu-item" id="scaleMenuConnect" onclick="handleScaleReconnect()">
+                        <span>🔌</span> <span data-i18n="reconnect">Reconnect</span>
+                    </button>
+                    <button class="scale-menu-item" id="scaleMenuDisconnect" onclick="handleScaleDisconnect()" style="display:none;">
+                        <span>⏹️</span> <span data-i18n="disconnect">Disconnect</span>
+                    </button>
+                    <button class="scale-menu-item" onclick="openScaleTestPage()">
+                        <span>🔧</span> <span data-i18n="reconfigureScale">Reconfigure Scale</span>
+                    </button>
+                </div>
+            </div>
         </div>
         <div class="header-center">
             <span class="current-time" id="currentTime"></span>
@@ -112,13 +130,7 @@ body {
                                     <span class="weight-hint" data-i18n="weighTruckWithLoad">Weigh truck with full load</span>
                                 </div>
                                 <div class="weight-entry-body">
-                                    <!-- Scale Status -->
-                                    <div class="scale-status-inline" id="grossScaleStatus">
-                                        <span class="scale-icon">&#9878;</span>
-                                        <span class="scale-text" data-i18n="scaleNotConnected">Scale not connected</span>
-                                        <button class="btn-pos btn-small btn-secondary" onclick="connectTruckScale()" data-i18n="connect">Connect</button>
-                                    </div>
-                                    <!-- Live Weight Display -->
+                                    <!-- Live Weight Display (when scale connected) -->
                                     <div class="live-weight-inline" id="grossLiveWeight" style="display:none;">
                                         <span class="live-value" id="grossLiveValue">0.00</span>
                                         <span class="live-uom">Kg</span>
@@ -126,7 +138,7 @@ body {
                                     </div>
                                     <!-- Manual Input -->
                                     <div class="weight-input-group">
-                                        <input type="number" id="grossWeightInput" step="0.01" min="0" placeholder="0.00" class="weight-input-large">
+                                        <input type="number" id="grossWeightInput" step="0.01" min="0" placeholder="0.00" class="weight-input-large" oninput="state.weightCapturedFromScale = false">
                                         <span class="weight-uom">Kg</span>
                                     </div>
                                 </div>
@@ -145,6 +157,7 @@ body {
                                 <div class="confirmation-text">
                                     <strong id="grossConfirmValue">0.00 Kg</strong>
                                     <span class="confirmation-time" id="grossConfirmTime"></span>
+                                    <span class="entry-method-badge" id="grossEntryMethod"></span>
                                 </div>
                             </div>
                         </div>
@@ -156,13 +169,7 @@ body {
                                     <span class="weight-hint" data-i18n="weighEmptyTruck">Weigh empty truck after unloading</span>
                                 </div>
                                 <div class="weight-entry-body">
-                                    <!-- Scale Status -->
-                                    <div class="scale-status-inline" id="tareScaleStatus">
-                                        <span class="scale-icon">&#9878;</span>
-                                        <span class="scale-text" data-i18n="scaleNotConnected">Scale not connected</span>
-                                        <button class="btn-pos btn-small btn-secondary" onclick="connectTruckScale()" data-i18n="connect">Connect</button>
-                                    </div>
-                                    <!-- Live Weight Display -->
+                                    <!-- Live Weight Display (when scale connected) -->
                                     <div class="live-weight-inline" id="tareLiveWeight" style="display:none;">
                                         <span class="live-value" id="tareLiveValue">0.00</span>
                                         <span class="live-uom">Kg</span>
@@ -170,7 +177,7 @@ body {
                                     </div>
                                     <!-- Manual Input -->
                                     <div class="weight-input-group">
-                                        <input type="number" id="tareWeightInput" step="0.01" min="0" placeholder="0.00" class="weight-input-large">
+                                        <input type="number" id="tareWeightInput" step="0.01" min="0" placeholder="0.00" class="weight-input-large" oninput="state.weightCapturedFromScale = false">
                                         <span class="weight-uom">Kg</span>
                                     </div>
                                 </div>
@@ -189,6 +196,7 @@ body {
                                 <div class="confirmation-text">
                                     <strong id="tareConfirmValue">0.00 Kg</strong>
                                     <span class="confirmation-time" id="tareConfirmTime"></span>
+                                    <span class="entry-method-badge" id="tareEntryMethod"></span>
                                 </div>
                             </div>
                         </div>
@@ -197,15 +205,15 @@ body {
                     <!-- Net Weight Summary -->
                     <div class="net-weight-summary" id="netWeightSummary" style="display:none;">
                         <div class="net-weight-row">
-                            <span class="net-label" data-i18n="grossWeight">Gross</span>
+                            <span class="net-label" data-i18n="grossWeight">น้ำหนักรวม</span>
                             <span class="net-value" id="summaryGross">--</span>
                         </div>
                         <div class="net-weight-row">
-                            <span class="net-label" data-i18n="tareWeight">Tare</span>
+                            <span class="net-label" data-i18n="tareWeight">น้ำหนักเปล่า</span>
                             <span class="net-value" id="summaryTare">--</span>
                         </div>
                         <div class="net-weight-row net-total">
-                            <span class="net-label" data-i18n="netWeight">Net Weight</span>
+                            <span class="net-label" data-i18n="netWeight">น้ำหนักสุทธิ</span>
                             <span class="net-value" id="summaryNet">--</span>
                         </div>
                     </div>
@@ -707,6 +715,7 @@ const state = {
     scales: [],
     scaleReader: null,
     isScaleConnected: false,  // WebSerial connection status
+    weightCapturedFromScale: false,  // Track if weight was auto-captured from scale
     weights: {
         gross_weight: null,
         gross_weight_time: null,
@@ -2530,95 +2539,49 @@ function showScaleConnectionResult(result, errorMsg, weight, protocol) {
 }
 
 // Test scale connection using WebSerial
+// Uses saved config from database first, falls back to autoDetect if needed
 async function testScaleConnection(scale) {
-    // Clean up any existing ScaleReader before creating new one
-    if (state.scaleReader) {
-        try {
-            await state.scaleReader.disconnect();
-        } catch (e) {
-            console.log('Cleanup before testScaleConnection:', e.message);
-        }
-        state.scaleReader = null;
-    }
-
     // Create a new ScaleReader instance
     state.scaleReader = new ScaleReader();
 
-    // Build serial config from scale settings
-    const config = {
+    // Build config from saved scale settings
+    const savedConfig = scale.baud_rate ? {
         baudRate: parseInt(scale.baud_rate),
-        dataBits: parseInt(scale.data_bits),
+        dataBits: parseInt(scale.data_bits) || 8,
         parity: scale.parity || 'none',
-        stopBits: parseInt(scale.stop_bits),
+        stopBits: parseInt(scale.stop_bits) || 1,
         flowControl: scale.flow_control || 'none',
         bufferSize: 255
-    };
+    } : null;
 
-    // Request port selection from user
     try {
-        state.scaleReader.port = await navigator.serial.requestPort();
+        // Use connectWithConfig - tries saved config first, falls back to autoDetect
+        const result = await state.scaleReader.connectWithConfig(savedConfig, (message) => {
+            console.log('Scale:', message);
+        });
+
+        // Success! Set up for continuous reading
+        state.scaleReader.isConnected = true;
+        state.isScaleConnected = true;
+
+        // Apply unit conversion factor
+        const conversionFactor = parseFloat(scale.unit_conversion_factor) || 1;
+        const weightKg = result.weight * conversionFactor;
+
+        // Start continuous reading with callbacks
+        state.scaleReader.onWeightUpdate = handleTruckWeightUpdate;
+        state.scaleReader.onDisconnect = handleTruckScaleDisconnect;
+        state.scaleReader.startReading();
+
+        showScaleConnectionResult('success', '', weightKg, result.protocol);
     } catch (err) {
-        throw new Error(t('noPortSelected') || 'No serial port selected');
-    }
-
-    // Try to open and read with the configured settings
-    try {
-        // Try to ensure port is in a clean state
-        if (state.scaleReader.port.readable) {
-            console.log('Port appears open, closing first...');
-            try {
-                const tempReader = state.scaleReader.port.readable.getReader();
-                await tempReader.cancel();
-                tempReader.releaseLock();
-            } catch (e) {
-                console.log('Could not release reader:', e.message);
-            }
-            try {
-                await state.scaleReader.port.close();
-            } catch (e) {
-                console.log('Could not close port:', e.message);
-            }
-            await new Promise(r => setTimeout(r, 100));
-        }
-
-        // Now open the port fresh
-        await state.scaleReader.port.open(config);
-
-        // Test read for 3 seconds
-        const result = await state.scaleReader.testRead(3000);
-
-        if (result.success) {
-            // Success! Keep the connection open
-            state.scaleReader.config = config;
-            state.scaleReader.isConnected = true;
-            state.isScaleConnected = true;
-            // Set up disconnect listener for USB unplug events
-            state.scaleReader._setupDisconnectListener();
-
-            // Apply unit conversion factor
-            const conversionFactor = parseFloat(scale.unit_conversion_factor) || 1;
-            const weightKg = result.weight * conversionFactor;
-
-            // Start continuous reading with callbacks
-            state.scaleReader.onWeightUpdate = handleTruckWeightUpdate;
-            state.scaleReader.onDisconnect = handleTruckScaleDisconnect;
-            state.scaleReader.startReading();
-
-            showScaleConnectionResult('success', '', weightKg, result.protocol);
-        } else {
-            // Failed to read valid data
-            await state.scaleReader.disconnect();
-            state.scaleReader = null;
-            throw new Error(t('noDataFromScale') || 'No valid data received from scale');
-        }
-    } catch (err) {
-        // Use disconnect() for proper cleanup
+        // Clean up on failure
         if (state.scaleReader) {
             try {
                 await state.scaleReader.disconnect();
             } catch (e) {}
-            state.scaleReader = null;
         }
+        state.scaleReader = null;
         throw err;
     }
 }
@@ -2703,8 +2666,106 @@ async function useManualEntryMode() {
 function updateScaleDisplay() {
     if (state.scale) {
         document.getElementById('scaleNameDisplay').textContent = state.scale.scale_name;
-        document.getElementById('scaleBadge').style.display = 'inline-flex';
+        document.getElementById('scaleBadgeContainer').style.display = 'inline-block';
+
+        // Update connection status indicator
+        const indicator = document.getElementById('scaleStatusIndicator');
+        const menuHeader = document.getElementById('scaleMenuStatus');
+        const connectBtn = document.getElementById('scaleMenuConnect');
+        const disconnectBtn = document.getElementById('scaleMenuDisconnect');
+
+        if (state.isScaleConnected) {
+            indicator.className = 'scale-status-indicator connected';
+            indicator.title = t('connected') || 'Connected';
+            menuHeader.textContent = t('connected') || 'Connected';
+            menuHeader.className = 'scale-menu-header connected';
+            connectBtn.style.display = 'none';
+            disconnectBtn.style.display = 'flex';
+            // Show live weight displays in both tabs
+            document.getElementById('grossLiveWeight').style.display = 'flex';
+            document.getElementById('tareLiveWeight').style.display = 'flex';
+        } else {
+            indicator.className = 'scale-status-indicator disconnected';
+            indicator.title = t('disconnected') || 'Disconnected';
+            menuHeader.textContent = t('disconnected') || 'Disconnected';
+            menuHeader.className = 'scale-menu-header disconnected';
+            connectBtn.style.display = 'flex';
+            disconnectBtn.style.display = 'none';
+            // Hide live weight displays
+            document.getElementById('grossLiveWeight').style.display = 'none';
+            document.getElementById('tareLiveWeight').style.display = 'none';
+        }
     }
+}
+
+// Toggle scale connection menu
+function toggleScaleMenu() {
+    const menu = document.getElementById('scaleMenu');
+    if (menu.style.display === 'none') {
+        menu.style.display = 'block';
+        // Close menu when clicking outside
+        setTimeout(() => {
+            document.addEventListener('click', closeScaleMenuOnOutsideClick);
+        }, 0);
+    } else {
+        menu.style.display = 'none';
+        document.removeEventListener('click', closeScaleMenuOnOutsideClick);
+    }
+}
+
+function closeScaleMenuOnOutsideClick(e) {
+    const container = document.getElementById('scaleBadgeContainer');
+    if (!container.contains(e.target)) {
+        document.getElementById('scaleMenu').style.display = 'none';
+        document.removeEventListener('click', closeScaleMenuOnOutsideClick);
+    }
+}
+
+// Handle scale reconnect from menu
+async function handleScaleReconnect() {
+    document.getElementById('scaleMenu').style.display = 'none';
+
+    // Update indicator to show connecting
+    const indicator = document.getElementById('scaleStatusIndicator');
+    indicator.className = 'scale-status-indicator connecting';
+
+    if (state.scale) {
+        try {
+            frappe.show_alert({ message: t('selectPortToReconnect') || 'Please select the scale port to reconnect', indicator: 'blue' }, 3);
+            await connectTruckScale();
+            frappe.show_alert({ message: t('scaleReconnected') || 'Scale reconnected', indicator: 'green' }, 2);
+        } catch (e) {
+            console.error('Reconnection failed:', e);
+            state.isScaleConnected = false;
+            updateScaleDisplay();
+            frappe.show_alert({ message: e.message || 'Connection failed', indicator: 'red' }, 3);
+        }
+    } else {
+        state.isScaleConnected = false;
+        updateScaleDisplay();
+        frappe.show_alert({ message: 'No scale configured', indicator: 'red' }, 3);
+    }
+}
+
+// Handle scale disconnect from menu
+async function handleScaleDisconnect() {
+    document.getElementById('scaleMenu').style.display = 'none';
+    await disconnectScale();
+    updateScaleDisplay();
+    frappe.show_alert({ message: t('scaleDisconnected') || 'Scale disconnected', indicator: 'blue' }, 2);
+}
+
+// Disconnect scale helper
+async function disconnectScale() {
+    if (state.scaleReader) {
+        try {
+            await state.scaleReader.disconnect();
+        } catch (e) {
+            console.log('Disconnect error:', e.message);
+        }
+        state.scaleReader = null;
+    }
+    state.isScaleConnected = false;
 }
 
 // ===== WebSerial Scale Connection =====
@@ -2716,137 +2777,100 @@ async function connectTruckScale() {
             indicator: 'orange',
             message: t('webSerialNotSupported') || 'WebSerial not supported. Use Chrome/Edge browser. You can enter weight manually.'
         });
-        return;
+        throw new Error('WebSerial not supported');
     }
 
-    const statusText = document.getElementById('weightScaleText');
-    const statusIcon = document.getElementById('weightScaleIcon');
-    const connectBtn = document.getElementById('weightConnectBtn');
+    // Create a new ScaleReader instance
+    state.scaleReader = new ScaleReader();
 
-    statusText.textContent = t('connecting') || 'Connecting...';
-    connectBtn.disabled = true;
+    // Build config from saved scale settings
+    const scale = state.scale;
+    const savedConfig = scale?.baud_rate ? {
+        baudRate: parseInt(scale.baud_rate),
+        dataBits: parseInt(scale.data_bits) || 8,
+        parity: scale.parity || 'none',
+        stopBits: parseInt(scale.stop_bits) || 1,
+        flowControl: scale.flow_control || 'none',
+        bufferSize: 255
+    } : null;
 
     try {
-        // Clean up existing connection
+        // Use connectWithConfig - tries saved config first, falls back to autoDetect
+        const result = await state.scaleReader.connectWithConfig(savedConfig, (message) => {
+            console.log('Scale:', message);
+        });
+
+        // Success! Set up for continuous reading
+        state.scaleReader.isConnected = true;
+        state.isScaleConnected = true;
+
+        // Start continuous reading with callbacks
+        state.scaleReader.onWeightUpdate = handleTruckWeightUpdate;
+        state.scaleReader.onDisconnect = handleTruckScaleDisconnect;
+        state.scaleReader.startReading();
+
+        updateScaleDisplay();
+    } catch (err) {
+        // Clean up on failure
         if (state.scaleReader) {
             try {
                 await state.scaleReader.disconnect();
             } catch (e) {}
-            state.scaleReader = null;
         }
-
-        // Create new reader and auto-detect
-        state.scaleReader = new ScaleReader();
-        const config = await state.scaleReader.autoDetect((progress) => {
-            statusText.textContent = progress.message || t('detecting');
-        });
-
-        if (config) {
-            // Successfully connected
-            state.scaleReader.onWeightUpdate = handleTruckWeightUpdate;
-            state.scaleReader.onDisconnect = handleTruckScaleDisconnect;
-            state.scaleReader.startReading();
-
-            statusIcon.innerHTML = '&#10004;';
-            statusIcon.style.color = '#22c55e';
-            statusText.textContent = t('scaleConnected') || 'Scale connected';
-            connectBtn.textContent = t('disconnect') || 'Disconnect';
-            connectBtn.onclick = disconnectTruckScale;
-            connectBtn.disabled = false;
-
-            // Show live weight display
-            document.getElementById('liveWeightDisplay').style.display = 'flex';
-            document.getElementById('captureWeightBtn').style.display = 'inline-block';
-        } else {
-            throw new Error(t('scaleDetectionFailed') || 'Could not detect scale');
-        }
-    } catch (error) {
-        console.error('Scale connection error:', error);
-        statusIcon.innerHTML = '&#9878;';
-        statusIcon.style.color = '';
-        statusText.textContent = t('scaleNotConnected') || 'Scale not connected';
-        connectBtn.textContent = t('connectScale') || 'Connect Scale';
-        connectBtn.onclick = connectTruckScale;
-        connectBtn.disabled = false;
-
-        if (error.message && !error.message.includes('No port selected')) {
-            frappe.msgprint({
-                title: t('error'),
-                indicator: 'red',
-                message: error.message
-            });
-        }
-    }
-}
-
-async function disconnectTruckScale() {
-    if (state.scaleReader) {
-        try {
-            await state.scaleReader.disconnect();
-        } catch (e) {}
         state.scaleReader = null;
+        state.isScaleConnected = false;
+        throw err;
     }
-
-    // Reset UI
-    const statusIcon = document.getElementById('weightScaleIcon');
-    const statusText = document.getElementById('weightScaleText');
-    const connectBtn = document.getElementById('weightConnectBtn');
-
-    statusIcon.innerHTML = '&#9878;';
-    statusIcon.style.color = '';
-    statusText.textContent = t('scaleNotConnected') || 'Scale not connected';
-    connectBtn.textContent = t('connectScale') || 'Connect Scale';
-    connectBtn.onclick = connectTruckScale;
-    connectBtn.disabled = false;
-
-    document.getElementById('liveWeightDisplay').style.display = 'none';
-    document.getElementById('captureWeightBtn').style.display = 'none';
 }
 
 function handleTruckWeightUpdate(data) {
-    const liveValue = document.getElementById('liveWeightValue');
-    const stableIndicator = document.getElementById('liveWeightStable');
-    const weightInput = document.getElementById('weightInput');
-
     if (data && data.weight !== undefined) {
         const weight = parseFloat(data.weight);
-        liveValue.textContent = weight.toFixed(2);
 
-        // Show stable indicator
+        // Update both Gross and Tare live weight displays
+        const grossLiveValue = document.getElementById('grossLiveValue');
+        const tareLiveValue = document.getElementById('tareLiveValue');
+        const grossStable = document.getElementById('grossStable');
+        const tareStable = document.getElementById('tareStable');
+
+        if (grossLiveValue) grossLiveValue.textContent = weight.toFixed(2);
+        if (tareLiveValue) tareLiveValue.textContent = weight.toFixed(2);
+
+        // Show/hide stable indicators
         if (data.stable) {
-            stableIndicator.style.display = 'inline';
-            liveValue.classList.add('stable');
+            if (grossStable) grossStable.style.display = 'inline';
+            if (tareStable) tareStable.style.display = 'inline';
+            if (grossLiveValue) grossLiveValue.classList.add('stable');
+            if (tareLiveValue) tareLiveValue.classList.add('stable');
         } else {
-            stableIndicator.style.display = 'none';
-            liveValue.classList.remove('stable');
+            if (grossStable) grossStable.style.display = 'none';
+            if (tareStable) tareStable.style.display = 'none';
+            if (grossLiveValue) grossLiveValue.classList.remove('stable');
+            if (tareLiveValue) tareLiveValue.classList.remove('stable');
         }
 
-        // Auto-update input when stable (optional)
+        // Auto-update current tab's input when stable
         if (data.stable && weight > 0) {
-            weightInput.value = weight.toFixed(2);
+            const activeTab = document.querySelector('.weight-tab-btn.active');
+            if (activeTab) {
+                const tabType = activeTab.id === 'tabGross' ? 'gross' : 'tare';
+                const inputId = tabType === 'gross' ? 'grossWeightInput' : 'tareWeightInput';
+                document.getElementById(inputId).value = weight.toFixed(2);
+                // Mark as captured from scale (will be reset to false if user types manually)
+                state.weightCapturedFromScale = true;
+            }
         }
     }
 }
 
 function handleTruckScaleDisconnect() {
-    disconnectTruckScale();
+    state.isScaleConnected = false;
+    state.scaleReader = null;
+    updateScaleDisplay();
     frappe.show_alert({
         message: t('scaleDisconnected') || 'Scale disconnected',
         indicator: 'orange'
     }, 3);
-}
-
-function captureAndSaveWeight() {
-    const liveValue = document.getElementById('liveWeightValue');
-    const weight = parseFloat(liveValue.textContent);
-
-    if (weight && weight > 0) {
-        document.getElementById('weightInput').value = weight.toFixed(2);
-        state.weightCapturedFromScale = true;  // Phase 8D: Track scale capture
-        saveWeight();
-    } else {
-        frappe.msgprint(t('waitForStableWeight') || 'Please wait for a stable weight reading');
-    }
 }
 
 
@@ -2927,7 +2951,7 @@ async function saveWeightByType(weightType, weight, remarks, reweightReason) {
 
         if (remarks) params.remarks = remarks;
         if (reweightReason) params.reweight_reason = reweightReason;
-        
+
         console.log('Calling record_truck_weight with params:', params);
 
         const response = await callAPI('scrap_metal_suite.api.v1.dropoff.record_truck_weight', params);
@@ -2962,6 +2986,11 @@ async function saveWeightByType(weightType, weight, remarks, reweightReason) {
             } else {
                 document.getElementById('tareWeightInput').value = '';
             }
+
+            // Auto-print truck weight receipt
+            if (response.message.truck_weight_record) {
+                printTruckWeight(response.message.truck_weight_record);
+            }
         }
     } catch (error) {
         frappe.msgprint({
@@ -2972,14 +3001,34 @@ async function saveWeightByType(weightType, weight, remarks, reweightReason) {
     }
 }
 
+// ===== Print Thermal Receipt =====
+function printTruckWeight(truckWeightName) {
+    // Open print preview in new tab with auto-print trigger
+    const printUrl = '/printview?doctype=Truck%20Weight&name=' + encodeURIComponent(truckWeightName) + '&format=Truck%20Weight%20Thermal&trigger_print=1';
+    window.open(printUrl, '_blank');
+}
+
 function showWeightConfirmation(weightType, weight) {
     const confirmId = weightType === 'gross' ? 'grossConfirmation' : 'tareConfirmation';
     const valueId = weightType === 'gross' ? 'grossConfirmValue' : 'tareConfirmValue';
     const timeId = weightType === 'gross' ? 'grossConfirmTime' : 'tareConfirmTime';
+    const entryMethodId = weightType === 'gross' ? 'grossEntryMethod' : 'tareEntryMethod';
 
     const confirmEl = document.getElementById(confirmId);
     document.getElementById(valueId).textContent = weight.toFixed(2) + ' Kg';
     document.getElementById(timeId).textContent = new Date().toLocaleString();
+
+    // Show entry method badge
+    const entryMethodEl = document.getElementById(entryMethodId);
+    if (entryMethodEl) {
+        if (state.weightCapturedFromScale) {
+            entryMethodEl.textContent = '⚖️ ' + (t('scaleAuto') || 'Scale');
+            entryMethodEl.className = 'entry-method-badge scale';
+        } else {
+            entryMethodEl.textContent = '✏️ ' + (t('manualEntry') || 'Manual');
+            entryMethodEl.className = 'entry-method-badge manual';
+        }
+    }
 
     confirmEl.style.display = 'flex';
 
@@ -3034,6 +3083,8 @@ function updateTabCheckmarks() {
 
 function updateNetWeightSummary() {
     const summaryEl = document.getElementById('netWeightSummary');
+    if (!summaryEl) return;
+
     const gross = state.weights.gross_weight;
     const tare = state.weights.tare_weight;
 

@@ -6771,3 +6771,32 @@ button.category-tab.from-order-tab.active {
 .photo-thumbnail.new-photo img {
     border-color: #3b82f6;
 }
+
+/* Entry Method Badge */
+.entry-method-badge {
+    display: inline-block;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
+    font-weight: 500;
+}
+
+.entry-method-badge.scale {
+    background: #22c55e;
+    color: white;
+}
+
+.entry-method-badge.manual {
+    background: #f59e0b;
+    color: white;
+}
+
+/* Light theme */
+.pos-terminal.light-theme .entry-method-badge.scale {
+    background: #16a34a;
+}
+
+.pos-terminal.light-theme .entry-method-badge.manual {
+    background: #d97706;
+}

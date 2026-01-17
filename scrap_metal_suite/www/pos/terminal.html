@@ -1722,8 +1722,10 @@ async function recordWeight() {
             }
 
             const reweightMsg = data.message.is_reweight ? ` (${t('reweight')})` : '';
+            const entryMethodIcon = allFromScale ? '⚖️' : '✏️';
+            const entryMethodText = allFromScale ? (t('scaleAuto') || 'Scale') : (t('manualEntry') || 'Manual');
             frappe.show_alert({
-                message: `${t('weightRecorded')} ${data.message.scrap_weight}${reweightMsg}! ${t('total')}: ${data.message.total_weight.toFixed(2)} Kg`,
+                message: `${entryMethodIcon} ${t('weightRecorded')} ${data.message.scrap_weight}${reweightMsg}! ${t('total')}: ${data.message.total_weight.toFixed(2)} Kg [${entryMethodText}]`,
                 indicator: 'green'
             }, 5);
 
@@ -2546,19 +2548,11 @@ function updateWeightModalDisplay() {
     const inputDisplay = document.getElementById('weightInputDisplay');
 
     if (state.isScaleConnected) {
-        // Scale is connected - show live weight section
+        // Scale is connected - show live weight only, no manual entry option
+        // User must disconnect scale if they want to enter manually
         liveSection.style.display = 'block';
-        modeToggle.style.display = 'block';
-
-        if (state.autoWeightMode) {
-            // Auto mode - hide manual input, show toggle to switch
-            inputDisplay.style.display = 'none';
-            modeBtn.textContent = t('enterManually') || 'Enter Manually';
-        } else {
-            // Manual mode - show manual input
-            inputDisplay.style.display = 'flex';
-            modeBtn.textContent = t('useScaleReading') || 'Use Scale Reading';
-        }
+        modeToggle.style.display = 'none';  // Hide manual toggle when scale connected
+        inputDisplay.style.display = 'none';  // Hide manual input when scale connected
     } else {
         // No scale connected - manual only
         liveSection.style.display = 'none';

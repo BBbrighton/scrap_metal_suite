@@ -94,9 +94,11 @@ class ScaleReader {
             throw new Error('No port selected: ' + err.message);
         }
 
-        // Try the preferred config first
+        // Try the preferred config first (single attempt)
         if (preferredConfig && preferredConfig.baudRate) {
             const configDesc = `${preferredConfig.baudRate} baud, ${preferredConfig.dataBits}${(preferredConfig.parity || 'none')[0].toUpperCase()}${preferredConfig.stopBits}`;
+
+            console.log('ScaleReader: Trying saved config:', configDesc);
             if (onProgress) {
                 onProgress(`Trying saved config: ${configDesc}...`);
             }
@@ -111,6 +113,7 @@ class ScaleReader {
                     this.config = preferredConfig;
                     this._setupDisconnectListener();
 
+                    console.log('ScaleReader: ✓ Connected with saved config:', configDesc);
                     if (onProgress) {
                         onProgress(`✓ Connected with saved config: ${configDesc}`);
                     }
@@ -123,18 +126,21 @@ class ScaleReader {
                     };
                 }
 
-                // Didn't work, close and try autoDetect
+                // Didn't work, close and fall back
                 await this.port.close();
+                console.log('ScaleReader: ✗ Saved config failed, trying auto-detect...');
                 if (onProgress) {
                     onProgress(`✗ Saved config failed, trying auto-detect...`);
                 }
             } catch (err) {
-                // Failed to open or read - try autoDetect
+                // Failed to open or read
                 try {
                     await this.port.close();
                 } catch (e) {}
+
+                console.log('ScaleReader: ✗ Saved config error:', err.message, '- trying auto-detect...');
                 if (onProgress) {
-                    onProgress(`✗ Saved config error: ${err.message}, trying auto-detect...`);
+                    onProgress(`✗ Saved config error: ${err.message} - trying auto-detect...`);
                 }
             }
         }
