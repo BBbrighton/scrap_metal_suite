@@ -642,7 +642,7 @@ function closeScanner() { POS_SCANNER.close(); }
 function submitManualDropoff() { POS_SCANNER.submitManual(searchAndSelectDropoff); }
 
 async function searchAndSelectDropoff(query) {
-    const parsedQuery = POS_SCANNER.parseQRValue(query, ['/app/pos-order/']);
+    const parsedQuery = POS_SCANNER.parseQRValue(query, ['/app/dropoff/']);
 
     try {
         const data = await callAPI('scrap_metal_suite.api.v1.dropoff.lookup_dropoff', { query: parsedQuery });
@@ -757,15 +757,16 @@ function handleDropoffSearchKeydown(event) {
 async function searchDropoff(query) {
     clearTimeout(searchTimeout);
     const resultsDiv = document.getElementById('dropoffResults');
+    const parsedQuery = POS_SCANNER.parseQRValue(query, ['/app/dropoff/']);
 
-    if (query.length < 2) {
+    if (parsedQuery.length < 2) {
         clearDropoffSearchResults();
         return;
     }
 
     searchTimeout = setTimeout(async () => {
         try {
-            const data = await callAPI('scrap_metal_suite.api.v1.dropoff.lookup_dropoff', { query: query });
+            const data = await callAPI('scrap_metal_suite.api.v1.dropoff.lookup_dropoff', { query: parsedQuery });
 
             if (data.message && data.message.length > 0) {
                 dropoffSearchResults = data.message;

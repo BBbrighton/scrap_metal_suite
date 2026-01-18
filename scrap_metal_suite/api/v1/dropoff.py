@@ -730,9 +730,9 @@ def record_scrap_weight(session, dropoff, items, remarks=None,
         "is_reweight": is_reweight,
         "dropoff_status": dropoff_doc.status,
         "dropoff_total_scrap": dropoff_doc.total_scrap_weight,
-        "truck_variance": dropoff_doc.truck_variance,
-        "truck_variance_percent": dropoff_doc.truck_variance_percent,
-        "variance_ok": dropoff_doc.variance_ok
+        "indicated_variance": dropoff_doc.indicated_variance,
+        "indicated_variance_percent": dropoff_doc.indicated_variance_percent,
+        "variance_ok": dropoff_doc.indicated_variance_ok
     }
 
 
