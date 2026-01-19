@@ -813,10 +813,9 @@ async function startContinuousReading() {
         currentRawWeight = data.weight;
 
         // Update weight display (show raw value, not converted)
+        // STX protocol returns kg, show as-is
+        // STX-M protocol returns kg with decimals, show as-is
         let displayValue = data.weight;
-        if (detectedProtocol === 'STX') {
-            displayValue = data.weight * 1000;
-        }
 
         document.getElementById('weightValue').textContent = displayValue.toFixed(1);
 

@@ -1,10 +1,24 @@
 /**
- * Scale Reader - WebSerial API integration for HP-05 and compatible scales
+ * Scale Reader - WebSerial API integration for industrial scales
  *
- * Protocol: HP-05
- * - Frame length: 17 bytes
- * - Header: 0x82 0x28
- * - Data format: See decodeHP05Frame() for details
+ * Supported Protocols:
+ * 1. STX-M Protocol (2400 baud, 7E1) - MOST COMMON
+ *    - Frame: STX M status weight.dec weight.dec CR LF
+ *    - Header: 0x02 0x4D
+ *    - Example: "STX M 0    0.0   0.0 CR LF"
+ *
+ * 2. STX Protocol (1200 baud, 7E1)
+ *    - Frame: STX ( status weight... CR LF
+ *    - Header: 0x02 0x28
+ *
+ * 3. HP-05 Protocol (fixed 17 bytes)
+ *    - Header: 0x82 0x28
+ *    - Checksum validated
+ *
+ * 4. HP-05 Variant (high-bit ASCII, CR/LF terminated)
+ *    - Header: 0x82 0x28
+ *    - Data has 0x80 offset (e.g., 0xB0 = '0')
+ *    - Terminated with 0x0D 0x0A
  *
  * Usage:
  *   const reader = new ScaleReader();
@@ -153,13 +167,17 @@ class ScaleReader {
      * Internal: Auto-detect using already-selected port
      */
     async _autoDetectWithPort(onProgress = null) {
-        // Test configurations
+        // Test configurations - ordered by likelihood
         const testConfigs = [
+            // Most common: 4800/8N1 for HP-05 variant
+            { baudRate: 4800, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // STX protocol
+            { baudRate: 1200, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // Other 8N1 rates
             { baudRate: 1200, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
             { baudRate: 2400, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            { baudRate: 4800, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
             { baudRate: 9600, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            { baudRate: 1200, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // Other 7E1 rates
             { baudRate: 2400, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
             { baudRate: 9600, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
         ];
@@ -171,6 +189,10 @@ class ScaleReader {
             }
 
             try {
+                // Ensure port is fully closed before opening with new config
+                await this._ensurePortClosed();
+                await this._delay(50); // Small delay for port to settle
+
                 await this.port.open(config);
                 const result = await this.testRead(3000);
 
@@ -190,11 +212,9 @@ class ScaleReader {
                     };
                 }
 
-                await this.port.close();
+                await this._ensurePortClosed();
             } catch (err) {
-                try {
-                    await this.port.close();
-                } catch (e) {}
+                await this._ensurePortClosed();
                 if (onProgress) {
                     onProgress(`✗ ${configDesc} error: ${err.message}`);
                 }
@@ -203,6 +223,29 @@ class ScaleReader {
 
         this.port = null;
         throw new Error('Could not detect scale. Ensure scale is powered on and connected.');
+    }
+
+    /**
+     * Helper: Ensure port is fully closed
+     */
+    async _ensurePortClosed() {
+        if (!this.port) return;
+
+        try {
+            // Check if port is open by checking readable/writable
+            if (this.port.readable || this.port.writable) {
+                await this.port.close();
+            }
+        } catch (e) {
+            // Port may already be closed, that's fine
+        }
+    }
+
+    /**
+     * Helper: Promise-based delay
+     */
+    _delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     /**
@@ -224,16 +267,17 @@ class ScaleReader {
             throw new Error('No port selected: ' + err.message);
         }
 
-        // Test configurations - comprehensive set matching working HTML
+        // Test configurations - ordered by likelihood for faster detection
         const testConfigs = [
-            // 8N1 configurations
+            // Most common: 4800/8N1 for HP-05 variant
+            { baudRate: 4800, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // STX protocol (common for Thai scales)
+            { baudRate: 1200, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // Other 8N1 rates
             { baudRate: 1200, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
             { baudRate: 2400, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            { baudRate: 4800, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
             { baudRate: 9600, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-
-            // 7E1 configurations (7 data bits, even parity)
-            { baudRate: 1200, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // Other 7E1 rates
             { baudRate: 2400, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
             { baudRate: 9600, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
         ];
@@ -245,6 +289,10 @@ class ScaleReader {
             }
 
             try {
+                // Ensure port is fully closed before opening with new config
+                await this._ensurePortClosed();
+                await this._delay(50); // Small delay for port to settle
+
                 await this.port.open(config);
 
                 // Try to read data for 3 seconds
@@ -273,7 +321,7 @@ class ScaleReader {
                 }
 
                 // Close and try next config
-                await this.port.close();
+                await this._ensurePortClosed();
 
                 // Show debug data even on failure
                 if (result.debugData && onProgress) {
@@ -294,11 +342,7 @@ class ScaleReader {
 
             } catch (err) {
                 // Failed to open or read - try next config
-                try {
-                    await this.port.close();
-                } catch (e) {
-                    // Ignore close errors
-                }
+                await this._ensurePortClosed();
                 if (onProgress) {
                     onProgress(`✗ ${configDesc} error: ${err.message}`);
                 }
@@ -397,15 +441,85 @@ class ScaleReader {
      * @returns {Object|null}
      */
     tryDecodeAny(buffer) {
-        // Try STX protocol first (most common)
+        // Try STX-M protocol first (most common for this scale)
+        const stxMResult = this.decodeSTXMProtocol(buffer);
+        if (stxMResult) return stxMResult;
+
+        // Try original STX protocol
         const stxResult = this.decodeSTXProtocol(buffer);
         if (stxResult) return stxResult;
 
-        // Try HP-05 protocol
+        // Try HP-05 variant (high-bit ASCII) - common at 4800 baud
+        const hp05VarResult = this.decodeHP05VariantProtocol(buffer);
+        if (hp05VarResult) return hp05VarResult;
+
+        // Try standard HP-05 protocol
         const hp05Result = this.decodeHP05Protocol(buffer);
         if (hp05Result) return hp05Result;
 
         return null;
+    }
+
+    /**
+     * Decode STX-M protocol (2400 baud, 7E1)
+     * Frame: STX M status spaces weight.decimal spaces weight.decimal CR LF
+     * Example: 0x02 0x4d 0x30 0x20 0x20 0x20 0x20 0x30 0x2e 0x30 0x20 0x20 0x20 0x30 0x2e 0x30 0x0d 0x0a
+     *          STX  'M'  '0'  ' '  ' '  ' '  ' '  '0'  '.'  '0'  ' '  ' '  ' '  '0'  '.'  '0'  CR   LF
+     */
+    decodeSTXMProtocol(buffer) {
+        if (buffer.length < 10) return null;
+
+        // Look for STX (0x02) followed by 'M' (0x4D) and ending with CR LF
+        for (let i = 0; i <= buffer.length - 10; i++) {
+            if (buffer[i] === 0x02 && buffer[i + 1] === 0x4D) {
+                // Found potential frame start, look for CR LF
+                for (let j = i + 8; j < Math.min(buffer.length - 1, i + 25); j++) {
+                    if (buffer[j] === 0x0D && buffer[j + 1] === 0x0A) {
+                        // Found complete frame!
+                        const frame = buffer.slice(i, j + 2);
+                        const result = this.parseSTXMFrame(frame);
+                        if (result) return result;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parse STX-M frame
+     * Format: STX M status [spaces] weight.decimals [spaces] weight.decimals CR LF
+     */
+    parseSTXMFrame(frame) {
+        if (frame.length < 10) return null;
+        if (frame[0] !== 0x02 || frame[1] !== 0x4D) return null;
+
+        // Status: '0' = stable, other = unstable
+        const statusChar = String.fromCharCode(frame[2]);
+        const stable = (statusChar === '0');
+
+        // Convert frame to string (skip STX and M)
+        let dataStr = '';
+        for (let i = 3; i < frame.length - 2; i++) {
+            dataStr += String.fromCharCode(frame[i]);
+        }
+
+        // Extract weight - find the first number with decimal point
+        // Format is typically: "    0.0   0.0" (spaces + weight + spaces + weight)
+        const weightMatch = dataStr.match(/(\d+\.?\d*)/);
+        if (!weightMatch) return null;
+
+        const weight = parseFloat(weightMatch[1]);
+        if (isNaN(weight)) return null;
+
+        return {
+            valid: true,
+            weight: weight,
+            stable: stable,
+            unit: 'kg',
+            protocol: 'STX-M',
+            status: statusChar
+        };
     }
 
     /**
@@ -481,6 +595,102 @@ class ScaleReader {
             }
         }
         return null;
+    }
+
+    /**
+     * Decode HP-05 Variant protocol (high-bit ASCII, CR/LF terminated)
+     * Common at 4800 baud, 8N1
+     *
+     * Frame format (variable length, ~18 bytes):
+     * [0-1]: Header 0x82 0x28
+     * [2]: Status byte (0x30 = stable)
+     * [3-8]: Weight digits with 0x80 offset (e.g., 0xA0 = space, 0xB4 = '4')
+     * [...]: More data
+     * [n-1, n]: CR LF (0x0D 0x0A)
+     *
+     * Example: 0x82 0x28 0x30 0xa0 0xa0 0xa0 0xa0 0xb4 0xb2 0x30 ... 0x0d 0x0a
+     *          Header   Stat Space Space Space Space '4'  '2'  ...  CR   LF
+     */
+    decodeHP05VariantProtocol(buffer) {
+        if (buffer.length < 12) return null;
+
+        // Look for header 0x82 0x28
+        for (let i = 0; i <= buffer.length - 12; i++) {
+            if (buffer[i] === 0x82 && buffer[i + 1] === 0x28) {
+                // Found header, look for CR LF terminator
+                for (let j = i + 10; j < Math.min(buffer.length - 1, i + 25); j++) {
+                    if (buffer[j] === 0x0D && buffer[j + 1] === 0x0A) {
+                        // Found complete frame
+                        const frame = buffer.slice(i, j + 2);
+                        const result = this.parseHP05VariantFrame(frame);
+                        if (result && result.valid) {
+                            return result;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parse HP-05 Variant frame
+     */
+    parseHP05VariantFrame(frame) {
+        if (frame.length < 12) return null;
+        if (frame[0] !== 0x82 || frame[1] !== 0x28) return null;
+
+        // Status byte - 0x30 typically means stable
+        const statusByte = frame[2];
+        const stable = (statusByte === 0x30);
+
+        // Extract weight digits (bytes 3-8, high-bit ASCII)
+        // 0xA0 = space (0x20 + 0x80)
+        // 0xB0-0xB9 = '0'-'9' (0x30-0x39 + 0x80)
+        let weightStr = '';
+        for (let i = 3; i <= 8 && i < frame.length - 2; i++) {
+            const byte = frame[i];
+            // Remove high bit to get ASCII
+            const ascii = byte & 0x7F;
+            const char = String.fromCharCode(ascii);
+
+            if (char >= '0' && char <= '9') {
+                weightStr += char;
+            } else if (char === ' ' || byte === 0xA0) {
+                // Skip spaces (leading padding)
+            }
+        }
+
+        if (weightStr.length === 0) return null;
+
+        // Parse weight - check for decimal point indicator
+        let weight = parseInt(weightStr, 10);
+
+        // Byte 9 might be decimal position (0x30 = 0 decimals, 0x31 = 1, etc.)
+        if (frame.length > 9) {
+            const decimalByte = frame[9] & 0x7F;
+            if (decimalByte >= 0x30 && decimalByte <= 0x33) {
+                const decimals = decimalByte - 0x30;
+                if (decimals > 0) {
+                    weight = weight / Math.pow(10, decimals);
+                }
+            }
+        }
+
+        // Default: assume weight is in grams if > 1000, convert to kg
+        // This handles scales that send raw gram values
+        if (weight > 1000 && weightStr.length >= 4) {
+            weight = weight / 1000;
+        }
+
+        return {
+            valid: true,
+            weight: weight,
+            stable: stable,
+            unit: 'kg',
+            protocol: 'HP-05-VAR',
+            status: statusByte
+        };
     }
 
     /**
