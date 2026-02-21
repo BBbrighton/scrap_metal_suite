@@ -1,0 +1,584 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Sorting Terminal{% endblock %}
+
+{% block head_include %}
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/production.css">
+<script src="/assets/scrap_metal_suite/js/pos-translations.js"></script>
+<script src="/assets/scrap_metal_suite/js/production-translations.js"></script>
+<script src="/assets/scrap_metal_suite/js/pos-core.js"></script>
+{% endblock %}
+
+{% block style %}
+<style>
+.navbar, .web-footer, .footer, footer,
+.page-header, .page-head, header.navbar { display: none !important; }
+html, body { margin: 0 !important; padding: 0 !important; overflow: hidden; }
+body { padding-top: 0 !important; background: #0f172a; }
+.main-section, .container, .web-content, .page-content, main, .page-container {
+    padding: 0 !important; margin: 0 !important; max-width: 100% !important;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+{% if error %}
+<div class="production-container">
+    <div class="production-error">
+        <div class="error-icon">&#9888;</div>
+        <h2>Error</h2>
+        <p>{{ error }}</p>
+        <a href="/production" class="btn-production-start">Back</a>
+    </div>
+</div>
+{% else %}
+<div id="productionTerminal" class="production-terminal">
+    <!-- Header (matches POS .terminal-header layout) -->
+    <header class="prod-header">
+        <div class="prod-header-left">
+            <a href="/production" class="btn-prod-back">&#8592;</a>
+            <span class="prod-brand">X-DESK</span>
+            <span class="prod-session-badge">{{ session.name }}</span>
+            <span class="prod-operator-name">{{ operator_name }}</span>
+            <span id="scaleBadge" class="prod-scale-badge disconnected"
+                  onclick="showScaleModal()" data-i18n="noScaleSet">No scale</span>
+        </div>
+        <div class="prod-header-center">
+            <span id="currentTime" class="prod-clock"></span>
+        </div>
+        <div class="prod-header-right">
+            <button class="btn-prod-header" onclick="POS_CORE.toggleLanguage(state); applyLanguageUI();">
+                <span id="langIcon">TH</span>
+            </button>
+            <button class="btn-prod-header" onclick="POS_CORE.toggleTheme(state);">
+                <span id="themeIcon">&#9728;</span>
+            </button>
+            <button class="btn-prod-header" onclick="showSessionSummary()" data-i18n="sessionSummary">Session Summary</button>
+            <button class="btn-prod-header btn-danger" onclick="confirmCloseSession()" data-i18n="closeSession">Close Session</button>
+        </div>
+    </header>
+
+    <!-- Body: 2-panel (left=flex:1, right=460px fixed — matches POS) -->
+    <div class="prod-body">
+        <!-- Left Panel: Category Tabs + Item Grid -->
+        <div class="prod-panel-left">
+            <div class="prod-category-tabs" id="categoryTabs">
+                <button class="prod-category-tab active" onclick="filterCategory(this, 'all')" data-i18n="allGroups">All</button>
+                {% for group in item_groups %}
+                <button class="prod-category-tab" onclick="filterCategory(this, '{{ group }}')">{{ group }}</button>
+                {% endfor %}
+            </div>
+            <div class="prod-item-grid" id="itemGrid">
+                {% for item in allowed_items %}
+                <button class="prod-item-btn" data-group="{{ item.item_group }}"
+                        onclick="selectItem('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.item_group }}', '{{ item.stock_uom or 'Kg' }}')">
+                    <span class="item-name">{{ item.item_name }}</span>
+                    <span class="item-group">{{ item.item_group }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Right Panel: Dropoff + Cart + Variance + Actions (fixed 460px) -->
+        <div class="prod-panel-right">
+            <!-- Dropoff Search -->
+            <div class="prod-dropoff-section">
+                <label class="prod-dropoff-label" data-i18n="dropoffLabel">Drop-off ID</label>
+                <div style="position: relative;">
+                    <input type="text" id="dropoffSearch" class="prod-search-input"
+                           placeholder="Search completed drop-off..."
+                           data-i18n-placeholder="searchDropoff"
+                           onkeyup="debounceSearch(this.value)"
+                           autocomplete="off">
+                    <div id="dropoffResults" class="prod-dropoff-results"></div>
+                </div>
+                <div id="dropoffCard" class="prod-dropoff-card" style="display:none;"></div>
+            </div>
+
+            <!-- Cart -->
+            <div class="prod-cart-section">
+                <div class="prod-cart-header">
+                    <span data-i18n="sortedItems">Sorted Items</span>
+                    <span id="cartCount" class="prod-cart-count">0</span>
+                </div>
+                <div class="prod-cart-items" id="cartItems">
+                    <div class="prod-cart-empty" data-i18n="noDropoffSelected">Search or scan a dropoff first</div>
+                </div>
+            </div>
+
+            <!-- Variance -->
+            <div class="prod-variance-section" id="varianceSection" style="display:none;">
+                <div class="prod-variance-row">
+                    <span data-i18n="dropoffWeight">Dropoff Weight</span>
+                    <span id="vDropoffWeight">0.00 kg</span>
+                </div>
+                <div class="prod-variance-row">
+                    <span data-i18n="totalSorted">Total Sorted</span>
+                    <span id="vSortedWeight">0.00 kg</span>
+                </div>
+                <div class="prod-variance-row total">
+                    <span data-i18n="varianceAmount">Variance</span>
+                    <span id="vVariance">0.00 kg (0.00%)</span>
+                </div>
+                <div style="text-align:center;">
+                    <span id="vBadge" class="prod-verification-badge pending" data-i18n="pendingVerification">Pending</span>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="prod-actions" id="actionButtons" style="display:none;">
+                <button class="btn-prod btn-prod-secondary" onclick="saveSorting()" data-i18n="saveSorting">Save</button>
+                <button class="btn-prod btn-prod-success btn-large" onclick="completeSorting()" data-i18n="completeSorting">Complete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Weight Input Modal -->
+<div class="prod-modal-overlay" id="weightModal">
+    <div class="prod-modal">
+        <h3 id="weightModalTitle">Enter Weight</h3>
+        <div class="prod-weight-display">
+            <span id="weightLiveValue" class="prod-weight-value">0.00</span>
+            <span class="prod-weight-unit">kg</span>
+        </div>
+        <input type="number" id="weightInput" class="prod-weight-input"
+               step="0.01" min="0" placeholder="0.00" onkeyup="if(event.key==='Enter')confirmWeight();">
+        <div class="prod-modal-actions">
+            <button class="btn-prod btn-prod-secondary" onclick="closeWeightModal()">Cancel</button>
+            <button class="btn-prod btn-prod-primary" onclick="confirmWeight()">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Scale Selection Modal -->
+<div class="prod-modal-overlay" id="scaleModal">
+    <div class="prod-modal">
+        <h3 data-i18n="selectScale">Select Scale</h3>
+        <div class="prod-scale-list" id="scaleList"></div>
+        <div class="prod-modal-actions">
+            <button class="btn-prod btn-prod-secondary" onclick="closeModal('scaleModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Session Summary Modal -->
+<div class="prod-modal-overlay" id="summaryModal">
+    <div class="prod-modal">
+        <h3 data-i18n="sessionSummary">Session Summary</h3>
+        <div class="prod-summary-grid" id="summaryGrid"></div>
+        <div class="prod-modal-actions">
+            <button class="btn-prod btn-prod-secondary" onclick="closeModal('summaryModal')">OK</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== State =====
+const state = {
+    session: '{{ session.name }}',
+    language: POS_I18N ? POS_I18N.getLanguage() : 'en',
+    theme: localStorage.getItem('posTheme') || 'dark',
+    dropoff: null,
+    sourceItems: [],
+    sortingName: null,
+    cart: [],
+    currentItem: null,
+    scale: '{{ session.scale or "" }}',
+    isScaleConnected: false,
+    varianceThreshold: {{ variance_threshold }},
+    dropoffTotalWeight: 0,
+};
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded', () => {
+    POS_CORE.init({
+        terminalId: 'productionTerminal',
+        langDisplayMode: 'toggle',
+        langIconId: 'langIcon',
+        themeIconId: 'themeIcon',
+        clockId: 'currentTime',
+    });
+    POS_CORE.startClock();
+    POS_CORE.applyTheme(state.theme);
+    POS_CORE.applyLanguage(state.language);
+
+    // Heartbeat every 60s
+    setInterval(() => {
+        frappe.call({ method: 'scrap_metal_suite.api.v1.production.update_session_activity', args: { session: state.session } });
+    }, 60000);
+});
+
+function applyLanguageUI() {
+    POS_CORE.applyLanguage(state.language);
+}
+
+// ===== Category Filter =====
+function filterCategory(btn, group) {
+    document.querySelectorAll('.prod-category-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.prod-item-btn').forEach(item => {
+        item.style.display = (group === 'all' || item.dataset.group === group) ? '' : 'none';
+    });
+}
+
+// ===== Dropoff Search =====
+let searchTimer;
+function debounceSearch(val) {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => searchDropoff(val), 400);
+}
+
+async function searchDropoff(query) {
+    const resultsEl = document.getElementById('dropoffResults');
+    if (!query || query.length < 2) {
+        resultsEl.innerHTML = '';
+        resultsEl.style.display = 'none';
+        return;
+    }
+    try {
+        const r = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.production.lookup_dropoff',
+            args: { query }
+        });
+        const results = r.message || [];
+        if (!results.length) {
+            resultsEl.innerHTML = `<div class="no-results">${POS_I18N.t('noCompletedDropoffs')}</div>`;
+            resultsEl.style.display = 'block';
+            return;
+        }
+
+        resultsEl.innerHTML = results.map(d => `
+            <div class="dropoff-result ${d.has_sorting ? 'has-sorting' : ''}"
+                 onclick="selectDropoffResult('${d.name}')">
+                <span class="dropoff-id">${d.name}</span>
+                <span class="dropoff-details">
+                    ${d.supplier_name || ''} · ${d.license_plate || ''} · ${(d.total_actual_weight || 0).toFixed(2)} kg
+                    ${d.has_sorting ? ' · <span style="color:#f59e0b">Already sorted</span>' : ''}
+                </span>
+            </div>
+        `).join('');
+        resultsEl.style.display = 'block';
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function selectDropoffResult(name) {
+    document.getElementById('dropoffResults').style.display = 'none';
+    document.getElementById('dropoffSearch').value = name;
+    loadDropoff(name);
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const resultsEl = document.getElementById('dropoffResults');
+    if (resultsEl && !e.target.closest('.prod-dropoff-section')) {
+        resultsEl.style.display = 'none';
+    }
+});
+
+async function loadDropoff(name) {
+    try {
+        const r = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.production.get_dropoff_for_sorting',
+            args: { dropoff: name }
+        });
+        const d = r.message;
+        state.dropoff = d.name;
+        state.sourceItems = d.source_items || [];
+        state.dropoffTotalWeight = d.total_actual_weight || 0;
+
+        // Render dropoff card
+        const card = document.getElementById('dropoffCard');
+        card.style.display = 'block';
+        card.innerHTML = `
+            <h4>${d.name}
+                <button class="btn-prod-cart-remove" onclick="clearDropoff();" style="float:right;">✕</button>
+            </h4>
+            <div class="prod-dropoff-info">
+                <div class="dropoff-detail-row">
+                    <span class="detail-label">${POS_I18N.t('supplierLabel')}</span>
+                    <span class="detail-value">${d.supplier_name || d.supplier || '-'}</span>
+                </div>
+                <div class="dropoff-detail-row">
+                    <span class="detail-label">${POS_I18N.t('plateLabel')}</span>
+                    <span class="detail-value">${d.license_plate || '-'}</span>
+                </div>
+                <div class="dropoff-detail-row">
+                    <span class="detail-label">${POS_I18N.t('dropoffWeight')}</span>
+                    <span class="detail-value">${(d.total_actual_weight || 0).toFixed(2)} kg</span>
+                </div>
+                <div class="dropoff-detail-row">
+                    <span class="detail-label">Status</span>
+                    <span class="detail-value">${d.status}</span>
+                </div>
+            </div>
+            ${state.sourceItems.length ? `
+            <div class="prod-source-items">
+                ${state.sourceItems.map(i => `
+                    <div class="prod-source-item">
+                        <span>${i.item_name || i.item}</span>
+                        <span>${(i.total_weight || 0).toFixed(2)} kg</span>
+                    </div>
+                `).join('')}
+            </div>` : ''}
+        `;
+
+        // If existing sorting, load it
+        if (d.existing_sorting) {
+            state.sortingName = d.existing_sorting.name;
+        }
+
+        // Show variance and actions
+        document.getElementById('varianceSection').style.display = '';
+        document.getElementById('actionButtons').style.display = '';
+        updateVariance();
+        POS_CORE.playBeep();
+
+    } catch (e) {
+        frappe.msgprint({ title: 'Error', indicator: 'red', message: e.message });
+    }
+}
+
+function clearDropoff() {
+    resetState();
+}
+
+// ===== Item Selection =====
+function selectItem(code, name, group, uom) {
+    if (!state.dropoff) {
+        frappe.msgprint({ message: POS_I18N.t('noDropoffSelected'), indicator: 'orange' });
+        return;
+    }
+    state.currentItem = { item: code, item_name: name, item_group: group, uom: uom };
+    document.getElementById('weightModalTitle').textContent = name;
+    document.getElementById('weightInput').value = '';
+    document.getElementById('weightLiveValue').textContent = '0.00';
+    openModal('weightModal');
+    document.getElementById('weightInput').focus();
+}
+
+function confirmWeight() {
+    const w = parseFloat(document.getElementById('weightInput').value);
+    if (!w || w <= 0) {
+        frappe.msgprint({ message: 'Please enter a valid weight', indicator: 'red' });
+        return;
+    }
+    state.cart.push({
+        ...state.currentItem,
+        weight: w
+    });
+    closeWeightModal();
+    renderCart();
+    updateVariance();
+}
+
+function closeWeightModal() { closeModal('weightModal'); }
+
+// ===== Cart =====
+function renderCart() {
+    const container = document.getElementById('cartItems');
+    document.getElementById('cartCount').textContent = state.cart.length;
+
+    if (!state.cart.length) {
+        container.innerHTML = `<div class="prod-cart-empty"
+            data-i18n="selectItem">Select an item from the grid</div>`;
+        return;
+    }
+
+    container.innerHTML = state.cart.map((item, idx) => `
+        <div class="prod-cart-item">
+            <div class="prod-cart-item-info">
+                <span class="prod-cart-item-name">${item.item_name}</span>
+                <div class="prod-cart-item-group">${item.item_group}</div>
+            </div>
+            <span class="prod-cart-item-weight">${item.weight.toFixed(2)} kg</span>
+            <button class="btn-prod-cart-remove" onclick="removeCartItem(${idx})">&#10005;</button>
+        </div>
+    `).join('');
+}
+
+function removeCartItem(idx) {
+    state.cart.splice(idx, 1);
+    renderCart();
+    updateVariance();
+}
+
+// ===== Variance =====
+function updateVariance() {
+    const sorted = state.cart.reduce((s, i) => s + i.weight, 0);
+    const variance = sorted - state.dropoffTotalWeight;
+    const pct = state.dropoffTotalWeight ? (variance / state.dropoffTotalWeight) * 100 : 0;
+    const ok = Math.abs(pct) <= state.varianceThreshold;
+
+    document.getElementById('vDropoffWeight').textContent = state.dropoffTotalWeight.toFixed(2) + ' kg';
+    document.getElementById('vSortedWeight').textContent = sorted.toFixed(2) + ' kg';
+    document.getElementById('vVariance').textContent = `${variance.toFixed(2)} kg (${pct.toFixed(2)}%)`;
+    document.getElementById('vVariance').style.color = ok ? '#4ade80' : '#fca5a5';
+
+    const badge = document.getElementById('vBadge');
+    if (!state.cart.length) {
+        badge.className = 'prod-verification-badge pending';
+        badge.textContent = POS_I18N.t('pendingVerification');
+    } else if (ok) {
+        badge.className = 'prod-verification-badge verified';
+        badge.textContent = POS_I18N.t('withinThreshold');
+    } else {
+        badge.className = 'prod-verification-badge needs-review';
+        badge.textContent = POS_I18N.t('exceedsThreshold');
+    }
+}
+
+// ===== Save / Complete =====
+async function saveSorting() {
+    if (!state.cart.length) return;
+
+    const items = state.cart.map(i => ({
+        item: i.item, uom: i.uom, weight: i.weight, remarks: i.remarks || ''
+    }));
+
+    try {
+        let r;
+        if (state.sortingName) {
+            r = await frappe.call({
+                method: 'scrap_metal_suite.api.v1.production.update_sorting',
+                args: { sorting_name: state.sortingName, items: JSON.stringify(items) }
+            });
+        } else {
+            r = await frappe.call({
+                method: 'scrap_metal_suite.api.v1.production.create_sorting',
+                args: { session: state.session, dropoff: state.dropoff, items: JSON.stringify(items) }
+            });
+        }
+        state.sortingName = r.message.name;
+        frappe.show_alert({ message: POS_I18N.t('sortingSaved'), indicator: 'green' });
+    } catch (e) {
+        frappe.msgprint({ title: 'Error', indicator: 'red', message: e.message });
+    }
+}
+
+async function completeSorting() {
+    if (!state.sortingName) {
+        await saveSorting();
+    }
+    if (!state.sortingName) return;
+
+    try {
+        const r = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.production.complete_sorting',
+            args: { sorting_name: state.sortingName }
+        });
+        const d = r.message;
+        frappe.show_alert({
+            message: POS_I18N.t('sortingCompleted') + ' — ' + d.verification_status,
+            indicator: d.variance_ok ? 'green' : 'orange'
+        });
+
+        // Reset for next dropoff
+        resetState();
+    } catch (e) {
+        frappe.msgprint({ title: 'Error', indicator: 'red', message: e.message });
+    }
+}
+
+function resetState() {
+    state.dropoff = null;
+    state.sourceItems = [];
+    state.sortingName = null;
+    state.cart = [];
+    state.dropoffTotalWeight = 0;
+    document.getElementById('dropoffSearch').value = '';
+    document.getElementById('dropoffCard').style.display = 'none';
+    document.getElementById('varianceSection').style.display = 'none';
+    document.getElementById('actionButtons').style.display = 'none';
+    renderCart();
+}
+
+// ===== Scale =====
+async function showScaleModal() {
+    if (state.scale) return; // Already set
+
+    try {
+        const r = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.production.get_scales',
+            args: { usage_type: 'Production' }
+        });
+        const scales = r.message || [];
+        const list = document.getElementById('scaleList');
+        list.innerHTML = scales.map(s => `
+            <div class="prod-scale-option ${s.in_use ? 'in-use' : ''}"
+                 onclick="${s.in_use ? '' : `selectScale('${s.name}', '${s.scale_name}')`}">
+                <div>
+                    <strong>${s.scale_name}</strong>
+                    <div style="font-size:0.85rem;color:#94a3b8;">${s.location || ''} · ${s.scale_type}</div>
+                </div>
+                <span style="color:${s.in_use ? '#ef4444' : '#4ade80'}">${s.in_use ? 'In Use' : 'Available'}</span>
+            </div>
+        `).join('') || '<p style="color:#64748b;text-align:center;padding:20px;">No production scales found</p>';
+        openModal('scaleModal');
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function selectScale(name, scaleName) {
+    try {
+        await frappe.call({
+            method: 'scrap_metal_suite.api.v1.production.set_session_scale',
+            args: { session: state.session, scale: name }
+        });
+        state.scale = name;
+        const badge = document.getElementById('scaleBadge');
+        badge.textContent = scaleName;
+        badge.className = 'prod-scale-badge connected';
+        closeModal('scaleModal');
+    } catch (e) {
+        frappe.msgprint({ title: 'Error', indicator: 'red', message: e.message });
+    }
+}
+
+// ===== Session Summary / Close =====
+async function showSessionSummary() {
+    try {
+        const r = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.production.get_session_summary',
+            args: { session: state.session }
+        });
+        const t = r.message.totals;
+        document.getElementById('summaryGrid').innerHTML = `
+            <div class="prod-summary-card">
+                <div class="prod-summary-value">${t.sorting_count}</div>
+                <div class="prod-summary-label" data-i18n="totalSortings">Sortings</div>
+            </div>
+            <div class="prod-summary-card">
+                <div class="prod-summary-value">${parseFloat(t.total_weight).toFixed(2)}</div>
+                <div class="prod-summary-label" data-i18n="totalWeightSorted">Weight Sorted (kg)</div>
+            </div>
+        `;
+        openModal('summaryModal');
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function confirmCloseSession() {
+    if (confirm(POS_I18N.t('confirmCloseSession'))) {
+        frappe.call({
+            method: 'scrap_metal_suite.api.v1.production.close_session',
+            args: { session: state.session }
+        }).then(() => {
+            window.location.href = '/production';
+        }).catch(e => {
+            frappe.msgprint({ title: 'Error', indicator: 'red', message: e.message });
+        });
+    }
+}
+
+// ===== Modal helpers =====
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+</script>
+{% endif %}
+{% endblock %}

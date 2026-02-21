@@ -51,11 +51,53 @@ Frappe/ERPNext application for scrap metal buying operations. Includes supplier 
 - **Design Doc**: See `POS_DESIGN.md` for full specification
 - **Status**: Phase 1 complete, Phase 2 (APIs) pending
 
+#### 5. Dropoff Module - COMPLETE
+- **DocTypes**: 21 custom doctypes for dropoff management
+- **APIs**: 34 endpoints (15 dropoff + 19 POS)
+- **Features**:
+  - Truck weighing (gross/tare/net)
+  - Scrap weight recording per item
+  - Dual variance tracking (truck vs scrap, indicated vs actual)
+  - Status auto-transitions (Draft → Scheduled → In Progress → Completed)
+  - Per-item fulfillment with FIFO allocation
+- **Design Doc**: See `docs/DROPOFF_ARCHITECTURE.md`, `docs/PHASE_8_DROPOFF_REDESIGN.md`
+
+#### 6. Production Sorting Module - PLANNED
+- **Purpose**: QA/QC operations after Dropoff - sort, grade, and verify materials
+- **Status**: Planning complete, implementation pending
+- **Design Doc**: See `docs/PRODUCTION_SORTING_PLAN.md`
+
+**DocTypes to Create**:
+| DocType | Type | Purpose |
+|---------|------|---------|
+| `Production Sorting Settings` | Single | Global config (threshold, allowed Item Groups) |
+| `Production Sorting Item Group` | Child | Allowed Item Groups for sorting |
+| `Production Sorting` | Main | Links to Dropoff, contains sorted items |
+| `Production Sorting Source Item` | Child | Read-only reference from Dropoff |
+| `Production Sorting Item` | Child | Editable sorted items with weights |
+
+**Workflow**:
+```
+Dropoff (Completed) → Production Sorting → Verified/Needs Review
+```
+
+**Key Features**:
+- Links 1:1 with completed Dropoff
+- Shows source items from Dropoff as reference
+- Workers add sorted items (filtered by allowed Item Groups)
+- Variance validation: total sorted must match Dropoff total (within threshold)
+- Verification status: Pending → Verified / Needs Review
+
+**Implementation Phases**:
+- [ ] Phase 1: Settings & child tables
+- [ ] Phase 2: Main DocType structure
+- [ ] Phase 3: Controller logic (validations, calculations)
+- [ ] Phase 4: Client-side JS (filters, real-time variance)
+- [ ] Phase 5: Testing & fixtures
+
 ### Pending Implementation
 
-- [ ] POS API endpoints (Phase 2)
-- [ ] POS web interface `/pos` (Phase 3)
-- [ ] Manager POS settings page (Phase 4)
+- [ ] Production Sorting module (Phase 1-5)
 - [ ] Price management via ERPNext Price Lists (Standard/VIP/Premium)
 - [ ] Live world price API integration (LME, Kitco)
 - [ ] Supplier tier assignment

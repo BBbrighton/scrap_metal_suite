@@ -34,6 +34,7 @@ web_include_css = [
     "/assets/scrap_metal_suite/css/supplier_portal.css",
     "/assets/scrap_metal_suite/css/manager_portal.css",
     "/assets/scrap_metal_suite/css/pos.css",
+    "/assets/scrap_metal_suite/css/production.css",
 ]
 # web_include_js = "/assets/scrap_metal_suite/js/scrap_metal_suite.js"
 

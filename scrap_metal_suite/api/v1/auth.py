@@ -16,3 +16,17 @@ def check_pos_operator():
     user_roles = frappe.get_roles(frappe.session.user)
     if "POS Operator" not in user_roles and "System Manager" not in user_roles:
         frappe.throw(_("Access denied. POS Operator role required."), frappe.PermissionError)
+
+
+def check_production_operator():
+    """
+    Check if current user has Production Worker or Production Manager role.
+    Raises PermissionError if not authorized.
+    System Manager is also allowed for admin access.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Please login to access Production"), frappe.AuthenticationError)
+
+    user_roles = frappe.get_roles(frappe.session.user)
+    if "Production Worker" not in user_roles and "Production Manager" not in user_roles and "System Manager" not in user_roles:
+        frappe.throw(_("Access denied. Production Worker role required."), frappe.PermissionError)
