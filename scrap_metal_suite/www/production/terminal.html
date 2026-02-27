@@ -367,6 +367,7 @@ function confirmWeight() {
         return;
     }
     state.cart.push({
+        _uid: Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         ...state.currentItem,
         weight: w
     });
@@ -388,20 +389,28 @@ function renderCart() {
         return;
     }
 
-    container.innerHTML = state.cart.map((item, idx) => `
+    container.innerHTML = state.cart.map((item) => `
         <div class="prod-cart-item">
             <div class="prod-cart-item-info">
                 <span class="prod-cart-item-name">${item.item_name}</span>
                 <div class="prod-cart-item-group">${item.item_group}</div>
             </div>
             <span class="prod-cart-item-weight">${item.weight.toFixed(2)} kg</span>
-            <button class="btn-prod-cart-remove" onclick="removeCartItem(${idx})">&#10005;</button>
+            <button class="btn-prod-cart-remove" data-uid="${item._uid}" type="button">&#10005;</button>
         </div>
     `).join('');
+
+    container.querySelectorAll('.btn-prod-cart-remove').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            removeCartItem(this.dataset.uid);
+        });
+    });
 }
 
-function removeCartItem(idx) {
-    state.cart.splice(idx, 1);
+function removeCartItem(uid) {
+    state.cart = state.cart.filter(item => item._uid !== uid);
     renderCart();
     updateVariance();
 }
