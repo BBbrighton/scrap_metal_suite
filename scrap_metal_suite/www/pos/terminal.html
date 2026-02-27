@@ -914,7 +914,8 @@ async function loadExistingScrapWeight(scrapWeightId) {
             const data = response.message;
 
             // Load items into cart
-            state.cart = data.items.map(item => ({
+            state.cart = data.items.map((item, i) => ({
+                _uid: Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2, 5),
                 item_code: item.item_code,
                 item_name: item.item_name,
                 weight: parseFloat(item.weight),
@@ -1177,6 +1178,7 @@ function addToCart() {
     }
 
     state.cart.push({
+        _uid: Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         item_code: state.currentItem.code,
         item_name: state.currentItem.name,
         weight: weight,
@@ -1197,13 +1199,13 @@ function renderCart() {
         return;
     }
 
-    container.innerHTML = state.cart.map((item, index) => `
+    container.innerHTML = state.cart.map((item) => `
         <div class="cart-item">
             <div class="item-info">
                 <span class="item-name">${item.item_name}</span>
                 <span class="item-details">${item.weight.toFixed(2)} ${item.uom}</span>
             </div>
-            <button class="remove-btn" data-index="${index}" type="button">&#10005;</button>
+            <button class="remove-btn" data-uid="${item._uid}" type="button">&#10005;</button>
         </div>
     `).join('');
 
@@ -1211,7 +1213,7 @@ function renderCart() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            removeFromCart(parseInt(this.dataset.index));
+            removeFromCart(this.dataset.uid);
         });
     });
 
@@ -1222,8 +1224,8 @@ function renderCart() {
     updateCartCount();
 }
 
-function removeFromCart(index) {
-    state.cart.splice(index, 1);
+function removeFromCart(uid) {
+    state.cart = state.cart.filter(item => item._uid !== uid);
     renderCart();
     updateCartCount();
     updateButtonStates();
