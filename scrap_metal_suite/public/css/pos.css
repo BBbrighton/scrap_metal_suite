@@ -1799,6 +1799,114 @@
     margin-bottom: 16px;
 }
 
+/* Camera Zoom & Tilt Controls */
+.camera-controls {
+    padding: 12px 0;
+}
+
+.camera-control-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.camera-control-row label {
+    min-width: 50px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--t-text, #e2e8f0);
+}
+
+.camera-slider-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.camera-slider-group input[type="range"] {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--t-border, #334155);
+    border-radius: 3px;
+    outline: none;
+}
+
+.camera-slider-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--t-accent, #3b82f6);
+    cursor: pointer;
+    border: 2px solid #fff;
+}
+
+.btn-cam {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--t-border, #334155);
+    background: var(--t-card, #1e293b);
+    color: var(--t-text, #e2e8f0);
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-cam:active {
+    background: var(--t-accent, #3b82f6);
+    color: #fff;
+}
+
+.camera-control-value {
+    min-width: 45px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--t-text, #e2e8f0);
+}
+
+.camera-control-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--t-accent, #3b82f6);
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Light theme overrides */
+.pos-terminal.light-theme .camera-control-row label,
+.pos-terminal.light-theme .camera-control-value {
+    color: var(--t-text, #1e293b);
+}
+
+.pos-terminal.light-theme .btn-cam {
+    background: var(--t-card, #fff);
+    border-color: var(--t-border, #e2e8f0);
+    color: var(--t-text, #1e293b);
+}
+
+/* Camera container - handle digital zoom overflow */
+.camera-container {
+    overflow: hidden;
+}
+
+.camera-container video {
+    transform-origin: center center;
+    transition: transform 0.2s ease;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
     .terminal-body {

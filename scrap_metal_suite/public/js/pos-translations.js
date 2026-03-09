@@ -227,6 +227,10 @@ const POS_I18N = (function() {
             startingCamera: 'Starting camera...',
             cameraError: 'Camera error',
             cameraPermissionDenied: 'Camera permission denied',
+            zoom: 'Zoom',
+            tilt: 'Tilt',
+            optical: 'Optical',
+            digital: 'Digital',
 
             // ===== Truck Terminal =====
             truckWeights: 'Truck Weights',
@@ -511,6 +515,10 @@ const POS_I18N = (function() {
             startingCamera: 'กำลังเปิดกล้อง...',
             cameraError: 'กล้องมีปัญหา',
             cameraPermissionDenied: 'ไม่ได้รับอนุญาตใช้กล้อง',
+            zoom: 'ซูม',
+            tilt: 'เอียง',
+            optical: 'ออปติคัล',
+            digital: 'ดิจิทัล',
 
             // ===== Truck Terminal =====
             truckWeights: 'น้ำหนักรถบรรทุก',

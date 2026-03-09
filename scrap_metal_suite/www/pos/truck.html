@@ -443,6 +443,28 @@
                     <canvas id="photoCanvas" style="display:none;"></canvas>
                     <img id="capturedPhoto" style="display:none;">
                 </div>
+                <!-- Zoom & Tilt Controls -->
+                <div id="cameraControls" class="camera-controls" style="display:none;">
+                    <div class="camera-control-row">
+                        <label data-i18n="zoom">Zoom</label>
+                        <div class="camera-slider-group">
+                            <button class="btn-cam" onclick="adjustCamera('zoom', -1)">&#8722;</button>
+                            <input type="range" id="zoomSlider" min="1" max="5" step="0.1" value="1" oninput="setCameraZoom(this.value)">
+                            <button class="btn-cam" onclick="adjustCamera('zoom', 1)">&#43;</button>
+                            <span id="zoomValue" class="camera-control-value">1.0x</span>
+                            <span id="zoomType" class="camera-control-badge" style="display:none;"></span>
+                        </div>
+                    </div>
+                    <div id="tiltControlRow" class="camera-control-row" style="display:none;">
+                        <label data-i18n="tilt">Tilt</label>
+                        <div class="camera-slider-group">
+                            <button class="btn-cam" onclick="adjustCamera('tilt', -5)">&#8722;</button>
+                            <input type="range" id="tiltSlider" min="-90" max="90" step="1" value="0" oninput="setCameraTilt(this.value)">
+                            <button class="btn-cam" onclick="adjustCamera('tilt', 5)">&#43;</button>
+                            <span id="tiltValue" class="camera-control-value">0&deg;</span>
+                        </div>
+                    </div>
+                </div>
                 <div class="photo-controls">
                     <button class="btn-pos btn-primary btn-large" onclick="capturePhoto()" id="captureBtn">
                         &#128247; <span data-i18n="capture">Capture</span>
@@ -680,6 +702,11 @@ const state = {
     existingPhotos: [],  // Photos already saved on server
     truckWeights: [],  // Truck weight records from API
     cameraStream: null,
+    cameraCapabilities: null,
+    cameraTrack: null,
+    digitalZoom: 1,
+    useOpticalZoom: false,
+    useOpticalTilt: false,
     scale: null,
     selectedScale: null,
     scales: [],
@@ -1692,18 +1719,30 @@ async function openPhotoCapture(weightType) {
     document.getElementById('savePhotoBtn').disabled = true;
     document.getElementById('addPhotoBtn').disabled = true;
 
+    // Reset camera controls
+    state.digitalZoom = 1;
+    state.useOpticalZoom = false;
+    state.useOpticalTilt = false;
+    state.cameraCapabilities = null;
+    state.cameraTrack = null;
+
     // Update thumbnails display
     updatePhotoThumbnails();
 
     modal.style.display = 'flex';
 
-    // Start camera
+    // Start camera — request max resolution for better digital zoom crops
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+            video: { facingMode: 'environment', width: { ideal: 3840 }, height: { ideal: 2160 } }
         });
         state.cameraStream = stream;
         video.srcObject = stream;
+
+        // Detect camera capabilities
+        const track = stream.getVideoTracks()[0];
+        state.cameraTrack = track;
+        initCameraControls(track);
     } catch (err) {
         console.error('Camera error:', err);
         frappe.msgprint('Unable to access camera. Please ensure camera permissions are granted.');
@@ -1711,12 +1750,20 @@ async function openPhotoCapture(weightType) {
 }
 
 function closePhotoCapture() {
+    const video = document.getElementById('cameraVideo');
+
     // Stop camera stream
     if (state.cameraStream) {
         state.cameraStream.getTracks().forEach(track => track.stop());
         state.cameraStream = null;
     }
+    video.srcObject = null;
+    video.style.transform = '';
     state.currentPhotoData = null;
+    state.cameraTrack = null;
+    state.cameraCapabilities = null;
+    state.digitalZoom = 1;
+    document.getElementById('cameraControls').style.display = 'none';
     document.getElementById('photoModal').style.display = 'none';
 }
 
@@ -1724,14 +1771,26 @@ function capturePhoto() {
     const video = document.getElementById('cameraVideo');
     const canvas = document.getElementById('photoCanvas');
     const capturedImg = document.getElementById('capturedPhoto');
-
-    // Set canvas size to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // Draw video frame to canvas
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
+
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+
+    // If using digital zoom, crop the center of the frame
+    if (!state.useOpticalZoom && state.digitalZoom > 1) {
+        const z = state.digitalZoom;
+        const cropW = vw / z;
+        const cropH = vh / z;
+        const sx = (vw - cropW) / 2;
+        const sy = (vh - cropH) / 2;
+        canvas.width = cropW;
+        canvas.height = cropH;
+        ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, cropW, cropH);
+    } else {
+        canvas.width = vw;
+        canvas.height = vh;
+        ctx.drawImage(video, 0, 0);
+    }
 
     // Convert to data URL
     state.currentPhotoData = canvas.toDataURL('image/jpeg', 0.8);
@@ -1756,6 +1815,7 @@ function retakePhoto() {
     state.currentPhotoData = null;
     video.style.display = 'block';
     capturedImg.style.display = 'none';
+
     document.getElementById('captureBtn').style.display = 'inline-block';
     document.getElementById('retakeBtn').style.display = 'none';
     document.getElementById('savePhotoBtn').disabled = true;
@@ -1769,10 +1829,10 @@ function addPhotoAndContinue() {
         updatePhotoThumbnails();
 
         // Reset camera view for next photo
-        const video = document.getElementById('cameraVideo');
         const capturedImg = document.getElementById('capturedPhoto');
-        video.style.display = 'block';
         capturedImg.style.display = 'none';
+        document.getElementById('cameraVideo').style.display = 'block';
+
         document.getElementById('captureBtn').style.display = 'inline-block';
         document.getElementById('retakeBtn').style.display = 'none';
         document.getElementById('savePhotoBtn').disabled = true;
@@ -1923,6 +1983,101 @@ function updatePhotoThumbnails() {
 function removePhoto(index) {
     state.capturedPhotos.splice(index, 1);
     updatePhotoThumbnails();
+}
+
+// ===== Camera Zoom & Tilt Controls =====
+function initCameraControls(track) {
+    const controlsEl = document.getElementById('cameraControls');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const zoomValue = document.getElementById('zoomValue');
+    const zoomType = document.getElementById('zoomType');
+    const tiltRow = document.getElementById('tiltControlRow');
+    const tiltSlider = document.getElementById('tiltSlider');
+
+    let capabilities = {};
+    if (typeof track.getCapabilities === 'function') {
+        capabilities = track.getCapabilities();
+    }
+    state.cameraCapabilities = capabilities;
+
+    if (capabilities.zoom) {
+        state.useOpticalZoom = true;
+        zoomSlider.min = capabilities.zoom.min;
+        zoomSlider.max = capabilities.zoom.max;
+        zoomSlider.step = capabilities.zoom.step || 0.1;
+        zoomSlider.value = capabilities.zoom.min;
+        zoomValue.textContent = Number(capabilities.zoom.min).toFixed(1) + 'x';
+        zoomType.textContent = t('optical');
+        zoomType.style.display = 'inline-block';
+    } else {
+        state.useOpticalZoom = false;
+        zoomSlider.min = 1;
+        zoomSlider.max = 5;
+        zoomSlider.step = 0.1;
+        zoomSlider.value = 1;
+        zoomValue.textContent = '1.0x';
+        zoomType.textContent = t('digital');
+        zoomType.style.display = 'inline-block';
+    }
+
+    if (capabilities.tilt) {
+        state.useOpticalTilt = true;
+        tiltSlider.min = capabilities.tilt.min;
+        tiltSlider.max = capabilities.tilt.max;
+        tiltSlider.step = capabilities.tilt.step || 1;
+        tiltSlider.value = 0;
+        tiltRow.style.display = 'flex';
+    } else {
+        state.useOpticalTilt = false;
+        tiltRow.style.display = 'none';
+    }
+
+    controlsEl.style.display = 'block';
+}
+
+function setCameraZoom(value) {
+    const val = parseFloat(value);
+    document.getElementById('zoomValue').textContent = val.toFixed(1) + 'x';
+
+    if (state.useOpticalZoom && state.cameraTrack) {
+        state.cameraTrack.applyConstraints({ advanced: [{ zoom: val }] }).catch(err => {
+            console.warn('Optical zoom failed, falling back to digital:', err);
+            state.useOpticalZoom = false;
+            applyDigitalZoom(val);
+        });
+    } else {
+        applyDigitalZoom(val);
+    }
+}
+
+function applyDigitalZoom(val) {
+    state.digitalZoom = val;
+    const video = document.getElementById('cameraVideo');
+    video.style.transform = val > 1 ? 'scale(' + val + ')' : '';
+}
+
+function setCameraTilt(value) {
+    const val = parseInt(value);
+    document.getElementById('tiltValue').innerHTML = val + '&deg;';
+
+    if (state.useOpticalTilt && state.cameraTrack) {
+        state.cameraTrack.applyConstraints({ advanced: [{ tilt: val }] }).catch(err => {
+            console.warn('Tilt control failed:', err);
+        });
+    }
+}
+
+function adjustCamera(type, delta) {
+    const slider = document.getElementById(type === 'zoom' ? 'zoomSlider' : 'tiltSlider');
+    const newVal = parseFloat(slider.value) + delta;
+    const clamped = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), newVal));
+    slider.value = clamped;
+
+    if (type === 'zoom') {
+        setCameraZoom(clamped);
+    } else {
+        setCameraTilt(clamped);
+    }
 }
 
 function updatePhotoButtonForType(weightType, count) {
