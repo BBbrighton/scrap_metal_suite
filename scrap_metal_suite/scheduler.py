@@ -22,13 +22,12 @@ def close_idle_sessions():
     """
     idle_threshold = add_to_date(now_datetime(), minutes=-90)
 
-    # Find idle sessions
+    # Find idle sessions (check last_activity, fall back to opening_time)
     idle_sessions = frappe.db.sql("""
-        SELECT name, operator, scale, last_activity
+        SELECT name, operator, scale, last_activity, opening_time
         FROM `tabPOS Session`
         WHERE status = 'Open'
-          AND last_activity IS NOT NULL
-          AND last_activity < %(threshold)s
+          AND COALESCE(last_activity, opening_time) < %(threshold)s
     """, {"threshold": idle_threshold}, as_dict=True)
 
     closed_count = 0
