@@ -8,29 +8,25 @@
   "naming_series",
   "status",
   "sorting_date",
-  "posting_time",
+  "sorted_by",
+  "session",
   "column_break_header",
   "dropoff",
-  "session",
-  "operator",
-  "scale",
-  "section_dropoff_info",
   "dropoff_total_weight",
   "license_plate",
-  "column_break_dropoff",
   "supplier",
   "supplier_name",
   "section_source_items",
   "source_items",
-  "section_good_items",
-  "good_items",
-  "section_unwanted_items",
-  "unwanted_items",
-  "section_totals",
-  "total_good_weight",
-  "total_unwanted_weight",
-  "column_break_totals",
-  "total_weight",
+  "section_sorted_items",
+  "sorted_items",
+  "section_verification",
+  "total_sorted_weight",
+  "weight_variance",
+  "column_break_verification",
+  "variance_percent",
+  "variance_ok",
+  "verification_status",
   "section_manager_override",
   "manager_override",
   "manager_override_by",
@@ -55,7 +51,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nIn Progress\nCompleted\nCancelled",
+   "options": "Draft\nIn Progress\nCompleted\nVerified\nNeeds Review\nCancelled",
    "reqd": 1
   },
   {
@@ -67,10 +63,19 @@
    "reqd": 1
   },
   {
-   "fieldname": "posting_time",
-   "fieldtype": "Time",
-   "label": "Posting Time",
-   "reqd": 1
+   "fieldname": "sorted_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sorted By",
+   "options": "User"
+  },
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "label": "Production Session",
+   "options": "Production Session",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_header",
@@ -83,43 +88,14 @@
    "in_standard_filter": 1,
    "label": "Dropoff",
    "options": "Dropoff",
-   "reqd": 1
-  },
-  {
-   "fieldname": "session",
-   "fieldtype": "Link",
-   "label": "Production Session",
-   "options": "Production Session",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "session.operator",
-   "fieldname": "operator",
-   "fieldtype": "Link",
-   "label": "Operator",
-   "options": "User",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "session.scale",
-   "fieldname": "scale",
-   "fieldtype": "Link",
-   "label": "Scale",
-   "options": "Scale",
-   "read_only": 1
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "section_dropoff_info",
-   "fieldtype": "Section Break",
-   "label": "Dropoff Information"
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fetch_from": "dropoff.total_actual_weight",
    "fieldname": "dropoff_total_weight",
    "fieldtype": "Float",
    "label": "Dropoff Total Weight (kg)",
-   "precision": "3",
    "read_only": 1
   },
   {
@@ -128,10 +104,6 @@
    "fieldtype": "Data",
    "label": "License Plate",
    "read_only": 1
-  },
-  {
-   "fieldname": "column_break_dropoff",
-   "fieldtype": "Column Break"
   },
   {
    "fetch_from": "dropoff.supplier",
@@ -150,7 +122,6 @@
    "read_only": 1
   },
   {
-   "collapsible": 1,
    "fieldname": "section_source_items",
    "fieldtype": "Section Break",
    "label": "Source Items (from Dropoff)"
@@ -163,60 +134,62 @@
    "read_only": 1
   },
   {
-   "fieldname": "section_good_items",
+   "fieldname": "section_sorted_items",
    "fieldtype": "Section Break",
-   "label": "Good Items (Keep & Pay)"
+   "label": "Sorted Items"
   },
   {
-   "fieldname": "good_items",
+   "fieldname": "sorted_items",
    "fieldtype": "Table",
-   "label": "Good Items",
-   "options": "Production Sorting Good Item"
+   "label": "Sorted Items",
+   "options": "Production Sorting Item"
   },
   {
-   "fieldname": "section_unwanted_items",
+   "fieldname": "section_verification",
    "fieldtype": "Section Break",
-   "label": "Unwanted Items (Return to Supplier)"
-  },
-  {
-   "fieldname": "unwanted_items",
-   "fieldtype": "Table",
-   "label": "Unwanted Items",
-   "options": "Production Sorting Unwanted Item"
-  },
-  {
-   "fieldname": "section_totals",
-   "fieldtype": "Section Break",
-   "label": "Totals"
+   "label": "Weight Verification"
   },
   {
    "default": "0",
-   "fieldname": "total_good_weight",
+   "fieldname": "total_sorted_weight",
    "fieldtype": "Float",
-   "label": "Total Good Weight (kg)",
-   "precision": "3",
+   "label": "Total Sorted Weight (kg)",
    "read_only": 1
   },
   {
    "default": "0",
-   "fieldname": "total_unwanted_weight",
+   "fieldname": "weight_variance",
    "fieldtype": "Float",
-   "label": "Total Unwanted Weight (kg)",
-   "precision": "3",
+   "label": "Weight Variance (kg)",
    "read_only": 1
   },
   {
-   "fieldname": "column_break_totals",
+   "fieldname": "column_break_verification",
    "fieldtype": "Column Break"
   },
   {
    "default": "0",
-   "fieldname": "total_weight",
-   "fieldtype": "Float",
-   "label": "Total Weight (kg)",
-   "precision": "3",
-   "read_only": 1,
-   "description": "Good + Unwanted"
+   "fieldname": "variance_percent",
+   "fieldtype": "Percent",
+   "label": "Variance %",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "variance_ok",
+   "fieldtype": "Check",
+   "label": "Variance Within Threshold",
+   "read_only": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "verification_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Verification Status",
+   "options": "Pending\nVerified\nNeeds Review",
+   "read_only": 1
   },
   {
    "collapsible": 1,
@@ -267,9 +240,8 @@
   }
  ],
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
  "links": [],
- "modified": "2026-03-03 00:00:00.000000",
+ "modified": "2026-02-21 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "Production Sorting",
@@ -286,7 +258,6 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   }
  ],

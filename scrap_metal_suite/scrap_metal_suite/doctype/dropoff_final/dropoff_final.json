@@ -1,27 +1,21 @@
 {
  "actions": [],
  "autoname": "naming_series:",
- "creation": "2026-02-21 12:00:00.000000",
+ "creation": "2026-03-03 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
   "status",
-  "sorting_date",
-  "posting_time",
-  "column_break_header",
   "dropoff",
-  "session",
-  "operator",
-  "scale",
-  "section_dropoff_info",
-  "dropoff_total_weight",
-  "license_plate",
-  "column_break_dropoff",
+  "column_break_header",
   "supplier",
   "supplier_name",
-  "section_source_items",
-  "source_items",
+  "section_dropoff_info",
+  "license_plate",
+  "dropoff_total_weight",
+  "column_break_dropoff",
+  "sorting_sessions",
   "section_good_items",
   "good_items",
   "section_unwanted_items",
@@ -30,14 +24,17 @@
   "total_good_weight",
   "total_unwanted_weight",
   "column_break_totals",
-  "total_weight",
-  "section_manager_override",
-  "manager_override",
-  "manager_override_by",
-  "section_cancellation",
-  "cancellation_reason",
-  "cancelled_by",
-  "cancelled_at"
+  "total_verified_weight",
+  "section_verification",
+  "weight_variance",
+  "variance_percent",
+  "variance_threshold_percent",
+  "column_break_verification",
+  "variance_ok",
+  "verification_status",
+  "section_workflow",
+  "completed_by",
+  "completed_at"
  ],
  "fields": [
   {
@@ -45,7 +42,7 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Naming Series",
-   "options": "SORT-.YY.MM.DD.-",
+   "options": "DFL-.YY.MM.DD.-",
    "reqd": 1
   },
   {
@@ -59,78 +56,17 @@
    "reqd": 1
   },
   {
-   "default": "Today",
-   "fieldname": "sorting_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Sorting Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "posting_time",
-   "fieldtype": "Time",
-   "label": "Posting Time",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_header",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "dropoff",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Dropoff",
    "options": "Dropoff",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
-   "fieldname": "session",
-   "fieldtype": "Link",
-   "label": "Production Session",
-   "options": "Production Session",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "session.operator",
-   "fieldname": "operator",
-   "fieldtype": "Link",
-   "label": "Operator",
-   "options": "User",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "session.scale",
-   "fieldname": "scale",
-   "fieldtype": "Link",
-   "label": "Scale",
-   "options": "Scale",
-   "read_only": 1
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "section_dropoff_info",
-   "fieldtype": "Section Break",
-   "label": "Dropoff Information"
-  },
-  {
-   "fetch_from": "dropoff.total_actual_weight",
-   "fieldname": "dropoff_total_weight",
-   "fieldtype": "Float",
-   "label": "Dropoff Total Weight (kg)",
-   "precision": "3",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "dropoff.license_plate",
-   "fieldname": "license_plate",
-   "fieldtype": "Data",
-   "label": "License Plate",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_dropoff",
+   "fieldname": "column_break_header",
    "fieldtype": "Column Break"
   },
   {
@@ -143,7 +79,7 @@
    "read_only": 1
   },
   {
-   "fetch_from": "dropoff.supplier_name",
+   "fetch_from": "supplier.supplier_name",
    "fieldname": "supplier_name",
    "fieldtype": "Data",
    "label": "Supplier Name",
@@ -151,38 +87,59 @@
   },
   {
    "collapsible": 1,
-   "fieldname": "section_source_items",
+   "fieldname": "section_dropoff_info",
    "fieldtype": "Section Break",
-   "label": "Source Items (from Dropoff)"
+   "label": "Dropoff Information"
   },
   {
-   "fieldname": "source_items",
-   "fieldtype": "Table",
-   "label": "Source Items",
-   "options": "Production Sorting Source Item",
+   "fetch_from": "dropoff.license_plate",
+   "fieldname": "license_plate",
+   "fieldtype": "Data",
+   "label": "License Plate",
    "read_only": 1
+  },
+  {
+   "fetch_from": "dropoff.total_actual_weight",
+   "fieldname": "dropoff_total_weight",
+   "fieldtype": "Float",
+   "label": "Dropoff Total Weight (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_dropoff",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sorting_sessions",
+   "fieldtype": "Small Text",
+   "label": "Sorting Sessions",
+   "read_only": 1,
+   "description": "Comma-separated list of Production Sorting documents"
   },
   {
    "fieldname": "section_good_items",
    "fieldtype": "Section Break",
-   "label": "Good Items (Keep & Pay)"
+   "label": "Good Items (Payable)"
   },
   {
    "fieldname": "good_items",
    "fieldtype": "Table",
    "label": "Good Items",
-   "options": "Production Sorting Good Item"
+   "options": "Dropoff Final Good Item",
+   "read_only": 1
   },
   {
    "fieldname": "section_unwanted_items",
    "fieldtype": "Section Break",
-   "label": "Unwanted Items (Return to Supplier)"
+   "label": "Unwanted Items (Returned to Supplier)"
   },
   {
    "fieldname": "unwanted_items",
    "fieldtype": "Table",
    "label": "Unwanted Items",
-   "options": "Production Sorting Unwanted Item"
+   "options": "Dropoff Final Unwanted Item",
+   "read_only": 1
   },
   {
    "fieldname": "section_totals",
@@ -211,68 +168,88 @@
   },
   {
    "default": "0",
-   "fieldname": "total_weight",
+   "fieldname": "total_verified_weight",
    "fieldtype": "Float",
-   "label": "Total Weight (kg)",
+   "label": "Total Verified Weight (kg)",
    "precision": "3",
    "read_only": 1,
    "description": "Good + Unwanted"
   },
   {
-   "collapsible": 1,
-   "collapsible_depends_on": "manager_override",
-   "fieldname": "section_manager_override",
+   "fieldname": "section_verification",
    "fieldtype": "Section Break",
-   "label": "Manager Override"
+   "label": "Weight Verification"
   },
   {
    "default": "0",
-   "fieldname": "manager_override",
-   "fieldtype": "Check",
-   "label": "Manager Override",
+   "fieldname": "weight_variance",
+   "fieldtype": "Float",
+   "label": "Weight Variance (kg)",
+   "precision": "3",
    "read_only": 1
   },
   {
-   "depends_on": "manager_override",
-   "fieldname": "manager_override_by",
-   "fieldtype": "Link",
-   "label": "Override By",
-   "options": "User",
+   "default": "0",
+   "fieldname": "variance_percent",
+   "fieldtype": "Percent",
+   "label": "Variance %",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "default": "0.1",
+   "fieldname": "variance_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Variance Threshold %",
+   "precision": "3"
+  },
+  {
+   "fieldname": "column_break_verification",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "variance_ok",
+   "fieldtype": "Check",
+   "label": "Variance Within Threshold",
+   "read_only": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "verification_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Verification Status",
+   "options": "Pending\nVerified\nNeeds Review",
    "read_only": 1
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "cancellation_reason",
-   "fieldname": "section_cancellation",
+   "fieldname": "section_workflow",
    "fieldtype": "Section Break",
-   "label": "Cancellation"
+   "label": "Workflow"
   },
   {
-   "fieldname": "cancellation_reason",
-   "fieldtype": "Small Text",
-   "label": "Cancellation Reason"
-  },
-  {
-   "fieldname": "cancelled_by",
+   "fieldname": "completed_by",
    "fieldtype": "Link",
-   "label": "Cancelled By",
+   "label": "Completed By",
    "options": "User",
    "read_only": 1
   },
   {
-   "fieldname": "cancelled_at",
+   "fieldname": "completed_at",
    "fieldtype": "Datetime",
-   "label": "Cancelled At",
+   "label": "Completed At",
    "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
  "links": [],
  "modified": "2026-03-03 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
- "name": "Production Sorting",
+ "name": "Dropoff Final",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
@@ -286,7 +263,6 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   }
  ],

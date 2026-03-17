@@ -10,7 +10,7 @@ from scrap_metal_suite.api.v1.auth import check_production_operator
 
 
 @frappe.whitelist()
-def open_session(scale=None):
+def open_session():
     """Open a new Production Session for the current user."""
     check_production_operator()
 
@@ -25,10 +25,9 @@ def open_session(scale=None):
 
     session = frappe.get_doc({
         "doctype": "Production Session",
-        "status": "Open",
-        "scale": scale
+        "status": "Open"
     })
-    session.insert(ignore_permissions=True)
+    session.insert()
 
     return {
         "session": session.name,
@@ -127,7 +126,7 @@ def get_session_summary(session):
     totals = frappe.db.sql("""
         SELECT
             COUNT(*) as sorting_count,
-            COALESCE(SUM(total_weight), 0) as total_weight
+            COALESCE(SUM(total_sorted_weight), 0) as total_weight
         FROM `tabProduction Sorting`
         WHERE session = %s
     """, session, as_dict=True)[0]
@@ -228,11 +227,6 @@ def lookup_dropoff(query):
 
     return results
 
-@frappe.whitelist()
-def search_dropoff(query):
-    """Alias for lookup_dropoff for compatibility."""
-    return lookup_dropoff(query)
-
 
 @frappe.whitelist()
 def get_dropoff_for_sorting(dropoff):
@@ -304,20 +298,15 @@ def get_allowed_items():
 
 
 @frappe.whitelist()
-def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
-    """Create a new Production Sorting record with good and unwanted items."""
+def create_sorting(session, dropoff, items):
+    """Create a new Production Sorting record."""
     check_production_operator()
 
-    if isinstance(good_items, str):
-        good_items = json.loads(good_items)
-    if isinstance(unwanted_items, str):
-        unwanted_items = json.loads(unwanted_items)
+    if isinstance(items, str):
+        items = json.loads(items)
 
-    good_items = good_items or []
-    unwanted_items = unwanted_items or []
-
-    if not good_items and not unwanted_items:
-        frappe.throw(_("At least one good or unwanted item is required"))
+    if not items:
+        frappe.throw(_("At least one sorted item is required"))
 
     # Validate session
     session_data = frappe.db.get_value(
@@ -329,34 +318,25 @@ def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
     if session_data.operator != frappe.session.user:
         frappe.throw(_("This session does not belong to you"))
 
-    # Build good items
-    good_items_list = []
-    for item in good_items:
+    # Check for existing sorting for this dropoff
+    existing = frappe.db.exists("Production Sorting", {"dropoff": dropoff})
+    if existing:
+        frappe.throw(
+            _("A sorting record already exists for this dropoff: {0}").format(existing)
+        )
+
+    # Build sorted items
+    sorted_items = []
+    for item in items:
         weight = flt(item.get("weight", 0))
         if weight <= 0:
             frappe.throw(_("Weight must be greater than zero for item {0}").format(
-                item.get("item_code")))
+                item.get("item")))
 
-        good_items_list.append({
-            "item_code": item.get("item_code"),
+        sorted_items.append({
+            "item": item.get("item"),
             "uom": item.get("uom", "Kg"),
             "weight": weight,
-            "remarks": item.get("remarks", "")
-        })
-
-    # Build unwanted items
-    unwanted_items_list = []
-    for item in unwanted_items:
-        weight = flt(item.get("weight", 0))
-        if weight <= 0:
-            frappe.throw(_("Weight must be greater than zero for item {0}").format(
-                item.get("item_code")))
-
-        unwanted_items_list.append({
-            "item_code": item.get("item_code"),
-            "uom": item.get("uom", "Kg"),
-            "weight": weight,
-            "return_reason": item.get("return_reason", "Other"),
             "remarks": item.get("remarks", "")
         })
 
@@ -364,74 +344,51 @@ def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
         "doctype": "Production Sorting",
         "dropoff": dropoff,
         "session": session,
-        "status": "Draft",
-        "good_items": good_items_list,
-        "unwanted_items": unwanted_items_list
+        "status": "In Progress",
+        "sorted_items": sorted_items
     })
     sorting.insert()
-    sorting.submit()  # Submit to trigger Dropoff Final update
 
     return {
         "name": sorting.name,
         "status": sorting.status,
-        "total_good_weight": sorting.total_good_weight,
-        "total_unwanted_weight": sorting.total_unwanted_weight,
-        "total_weight": sorting.total_weight
+        "total_sorted_weight": sorting.total_sorted_weight,
+        "variance_percent": sorting.variance_percent,
+        "variance_ok": sorting.variance_ok,
+        "verification_status": sorting.verification_status
     }
+
+
 @frappe.whitelist()
-def update_sorting(sorting_name, good_items=None, unwanted_items=None):
-    """Update good and unwanted items on an existing Production Sorting record."""
+def update_sorting(sorting_name, items):
+    """Update sorted items on an existing Production Sorting record."""
     check_production_operator()
 
-    if isinstance(good_items, str):
-        good_items = json.loads(good_items)
-    if isinstance(unwanted_items, str):
-        unwanted_items = json.loads(unwanted_items)
-
-    good_items = good_items or []
-    unwanted_items = unwanted_items or []
+    if isinstance(items, str):
+        items = json.loads(items)
 
     sorting = frappe.get_doc("Production Sorting", sorting_name)
 
-    if sorting.docstatus == 1:
-        frappe.throw(_("Cannot edit a submitted sorting record"))
-    if sorting.docstatus == 2:
-        frappe.throw(_("Cannot edit a cancelled sorting record"))
+    if sorting.status in ("Verified", "Cancelled"):
+        frappe.throw(_("Cannot edit a {0} sorting record").format(sorting.status))
 
     # Verify ownership
-    if sorting.operator != frappe.session.user:
+    if sorting.sorted_by != frappe.session.user:
         user_roles = frappe.get_roles(frappe.session.user)
         if "Production Manager" not in user_roles and "System Manager" not in user_roles:
             frappe.throw(_("You can only edit your own sorting records"))
 
-    # Update good items
-    sorting.good_items = []
-    for item in good_items:
+    sorting.sorted_items = []
+    for item in items:
         weight = flt(item.get("weight", 0))
         if weight <= 0:
             frappe.throw(_("Weight must be greater than zero for item {0}").format(
-                item.get("item_code")))
+                item.get("item")))
 
-        sorting.append("good_items", {
-            "item_code": item.get("item_code"),
+        sorting.append("sorted_items", {
+            "item": item.get("item"),
             "uom": item.get("uom", "Kg"),
             "weight": weight,
-            "remarks": item.get("remarks", "")
-        })
-
-    # Update unwanted items
-    sorting.unwanted_items = []
-    for item in unwanted_items:
-        weight = flt(item.get("weight", 0))
-        if weight <= 0:
-            frappe.throw(_("Weight must be greater than zero for item {0}").format(
-                item.get("item_code")))
-
-        sorting.append("unwanted_items", {
-            "item_code": item.get("item_code"),
-            "uom": item.get("uom", "Kg"),
-            "weight": weight,
-            "return_reason": item.get("return_reason", "Other"),
             "remarks": item.get("remarks", "")
         })
 
@@ -440,40 +397,54 @@ def update_sorting(sorting_name, good_items=None, unwanted_items=None):
     return {
         "name": sorting.name,
         "status": sorting.status,
-        "total_good_weight": sorting.total_good_weight,
-        "total_unwanted_weight": sorting.total_unwanted_weight,
-        "total_weight": sorting.total_weight
+        "total_sorted_weight": sorting.total_sorted_weight,
+        "variance_percent": sorting.variance_percent,
+        "variance_ok": sorting.variance_ok,
+        "verification_status": sorting.verification_status
     }
+
+
 @frappe.whitelist()
 def complete_sorting(sorting_name):
-    """Submit a Production Sorting record (triggers Dropoff Final update)."""
+    """Mark a sorting as Completed — triggers variance check."""
     check_production_operator()
 
     sorting = frappe.get_doc("Production Sorting", sorting_name)
 
-    if not sorting.good_items and not sorting.unwanted_items:
-        frappe.throw(_("Cannot submit sorting with no items"))
+    if not sorting.sorted_items:
+        frappe.throw(_("Cannot complete sorting with no items"))
 
-    if sorting.docstatus == 1:
-        frappe.throw(_("Sorting is already submitted"))
-    if sorting.docstatus == 2:
-        frappe.throw(_("Cannot submit a cancelled sorting record"))
+    if sorting.status in ("Verified", "Cancelled"):
+        frappe.throw(_("Cannot complete a {0} sorting record").format(sorting.status))
 
-    # Verify ownership
-    if sorting.operator != frappe.session.user:
+    sorting.status = "Completed"
+    sorting.save()
+
+    # After save, check_variance will have set verification_status
+    if not sorting.variance_ok:
+        # Check if user is a manager who can override
         user_roles = frappe.get_roles(frappe.session.user)
-        if "Production Manager" not in user_roles and "System Manager" not in user_roles:
-            frappe.throw(_("You can only submit your own sorting records"))
-
-    sorting.submit()
+        if "Production Manager" in user_roles or "System Manager" in user_roles:
+            sorting.manager_override = 1
+            sorting.manager_override_by = frappe.session.user
+            sorting.verification_status = "Verified"
+            sorting.status = "Verified"
+            sorting.save()
+        # Workers get "Needs Review" status — left as-is
+    else:
+        sorting.status = "Verified"
+        sorting.save()
 
     return {
         "name": sorting.name,
         "status": sorting.status,
-        "total_good_weight": sorting.total_good_weight,
-        "total_unwanted_weight": sorting.total_unwanted_weight,
-        "total_weight": sorting.total_weight
+        "verification_status": sorting.verification_status,
+        "variance_ok": sorting.variance_ok,
+        "variance_percent": sorting.variance_percent,
+        "manager_override": sorting.manager_override
     }
+
+
 @frappe.whitelist()
 def get_sorting_for_dropoff(dropoff):
     """Check if a sorting record exists for a dropoff."""
@@ -482,7 +453,7 @@ def get_sorting_for_dropoff(dropoff):
     sorting = frappe.db.get_value(
         "Production Sorting",
         {"dropoff": dropoff},
-        ["name", "status", "verification_status", "total_weight"],
+        ["name", "status", "verification_status", "total_sorted_weight"],
         as_dict=True
     )
     return sorting
