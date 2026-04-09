@@ -316,6 +316,13 @@ async function selectDropoff(dropoffId) {
 
         enableSortingInterface();
         updateSubmitButton();
+
+        // Show "From Dropoff" tab and auto-select it
+        var fromTab = document.getElementById('fromDropoffTab');
+        if (fromTab) {
+            fromTab.style.display = '';
+            filterCategory(fromTab, 'fromDropoff');
+        }
     } catch (error) {
         frappe.msgprint({
             title: POS_I18N.t('error') || 'Error',
@@ -327,6 +334,11 @@ async function selectDropoff(dropoffId) {
 
 function clearDropoff() {
     currentDropoff = null;
+    // Hide "From Dropoff" tab and reset to All
+    var fromTab = document.getElementById('fromDropoffTab');
+    if (fromTab) fromTab.style.display = 'none';
+    var allTab = document.querySelector('.category-tab[data-category=""]');
+    if (allTab) filterCategory(allTab, '');
     document.getElementById('dropoffDetails').style.display = 'none';
     document.getElementById('dropoffSearch').value = '';
     disableSortingInterface();
@@ -359,8 +371,20 @@ function filterCategory(btn, category) {
     document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
 
-    document.querySelectorAll('.item-btn').forEach(item => {
-        const itemCategory = item.getAttribute('data-category') || '';
+    if (category === 'fromDropoff') {
+        var dropoffItemCodes = [];
+        if (currentDropoff && currentDropoff.source_items) {
+            dropoffItemCodes = currentDropoff.source_items.map(function(i) { return i.item || i.item_code; });
+        }
+        document.querySelectorAll('.item-btn').forEach(function(item) {
+            var code = item.getAttribute('data-item-code') || '';
+            item.style.display = dropoffItemCodes.indexOf(code) >= 0 ? '' : 'none';
+        });
+        return;
+    }
+
+    document.querySelectorAll('.item-btn').forEach(function(item) {
+        var itemCategory = item.getAttribute('data-category') || '';
         if (category === '' || itemCategory === category) {
             item.style.display = '';
         } else {

@@ -193,7 +193,11 @@ body {
 
                 <!-- Category Filter Tabs -->
                 <div class="category-tabs" id="categoryTabs">
-                    <button class="category-tab active" data-category="" onclick="filterCategory(this, '')">
+                    <button class="category-tab from-dropoff-tab active" data-category="fromDropoff"
+                            onclick="filterCategory(this, 'fromDropoff')" id="fromDropoffTab" style="display:none;">
+                        From Dropoff
+                    </button>
+                    <button class="category-tab" data-category="" onclick="filterCategory(this, '')">
                         All
                     </button>
                     {% for cat in categories %}

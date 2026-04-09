@@ -22,17 +22,12 @@ def get_context(context):
     operator_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
     context.operator_name = operator_name
 
-    # Get settings first (needed for item filtering)
+    # Get settings
     settings = get_production_settings()
     context.settings = settings
 
-    # Get items filtered by allowed item groups
-    context.production_items = get_production_items(settings.get("allowed_item_groups", []))
-
-    # Get unique categories for filter tabs
-    context.categories = sorted(set(
-        item.get("category") for item in context.production_items if item.get("category")
-    ))
+    # Get items with categories from POS Profile
+    context.production_items, context.categories = get_production_items()
 
     context.scales = get_production_scales()
 
@@ -54,25 +49,43 @@ def get_active_production_session():
     return session
 
 
-def get_production_items(allowed_item_groups=None):
-    """Get items filtered by allowed item groups from Production Sorting Settings."""
-    filters = {"disabled": 0}
+def get_production_items():
+    """Get items with categories from the first available POS Profile Scrap.
+    Uses the same item list and categories as the scrap weighing terminal."""
+    items = []
+    categories = []
 
-    if allowed_item_groups:
-        filters["item_group"] = ["in", allowed_item_groups]
+    profiles = frappe.get_all("POS Profile Scrap", limit=1)
+    if not profiles:
+        return items, categories
 
-    items = frappe.get_all(
-        "Item",
-        filters=filters,
-        fields=["item_code", "item_name", "stock_uom", "item_group"],
-        order_by="item_group, item_name"
-    )
+    profile = frappe.get_doc("POS Profile Scrap", profiles[0].name)
+    cat_set = set()
 
-    for item in items:
-        item["uom"] = item.get("stock_uom") or "Kg"
-        item["category"] = item.get("item_group") or "Other"
+    for profile_item in profile.items:
+        item_doc = frappe.db.get_value(
+            "Item", profile_item.item_code,
+            ["item_code", "item_name", "stock_uom"], as_dict=True
+        )
+        if not item_doc:
+            continue
 
-    return items
+        category = getattr(profile_item, "category", "") or ""
+        if category:
+            cat_set.add(category)
+
+        items.append({
+            "item_code": item_doc.item_code,
+            "item_name": item_doc.item_name,
+            "uom": item_doc.stock_uom or "Kg",
+            "category": category,
+            "display_order": getattr(profile_item, "display_order", 9999) or 9999
+        })
+
+    items.sort(key=lambda x: (x["category"] or "zzz", x["display_order"]))
+    categories = sorted(list(cat_set))
+
+    return items, categories
 
 
 def get_production_scales():
