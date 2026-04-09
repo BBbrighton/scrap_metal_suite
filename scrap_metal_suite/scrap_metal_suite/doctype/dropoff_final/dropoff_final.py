@@ -103,19 +103,14 @@ class DropoffFinal(Document):
 			self.verification_status = "Needs Review"
 
 	def auto_complete_if_done(self):
-		"""Auto-complete if all items sorted and variance OK"""
-		if self.status == "Completed":
-			return  # Already completed
+		"""Auto-set to Unsettled if sorting is done and variance is within threshold"""
+		if self.status in ("Unsettled", "Settled"):
+			return
 
-		# Check if we have items and variance is OK
 		if (self.good_items or self.unwanted_items) and self.variance_ok:
-			# Check if sorted weight is close to dropoff weight (within 0.1%)
-			if flt(self.total_verified_weight) >= flt(self.dropoff_total_weight) * 0.999:
-				self.status = "Completed"
-				self.verification_status = "Verified"
-				self.completed_at = now_datetime()
-				self.completed_by = frappe.session.user
-			else:
-				self.status = "In Progress"
+			self.status = "Unsettled"
+			self.verification_status = "Verified"
+			self.completed_at = now_datetime()
+			self.completed_by = frappe.session.user
 		elif self.good_items or self.unwanted_items:
 			self.status = "In Progress"

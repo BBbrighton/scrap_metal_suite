@@ -159,6 +159,10 @@ scheduler_events = {
         # Close idle POS sessions every 15 minutes (sessions idle > 90 mins)
         "*/15 * * * *": [
             "scrap_metal_suite.scheduler.close_idle_sessions"
+        ],
+        # Close idle Production sessions every 5 minutes (sessions idle > 10 mins)
+        "*/5 * * * *": [
+            "scrap_metal_suite.scheduler.close_idle_production_sessions"
         ]
     }
 }

@@ -11,7 +11,6 @@
 
 {% block style %}
 <style>
-/* Hide Frappe navigation for fullscreen */
 .navbar, .web-footer, .footer, footer, .page-header, .page-head, header.navbar {
     display: none !important;
 }
@@ -36,7 +35,7 @@ body {
 <div class="production-container" id="productionContainer">
     {% if error %}
     <div class="pos-error">
-        <div class="error-icon">⚠️</div>
+        <div class="error-icon">&#9888;</div>
         <h2>Access Denied</h2>
         <p>{{ error }}</p>
         <a href="/pos" class="btn-pos">Back to POS</a>
@@ -53,6 +52,26 @@ body {
             <span class="session-badge">No Session</span>
             {% endif %}
             <span class="operator-name">{{ operator_name }}</span>
+            <!-- Scale Badge -->
+            <div class="scale-badge-container" id="scaleBadgeContainer" style="display:none; position: relative;">
+                <button class="scale-badge" id="scaleBadge" onclick="toggleScaleMenu()">
+                    <span class="scale-icon">&#9878;</span>
+                    <span id="scaleNameDisplay"></span>
+                    <span class="scale-status-indicator disconnected" id="scaleStatusIndicator">&#9679;</span>
+                </button>
+                <div class="scale-menu" id="scaleMenu" style="display:none;">
+                    <div class="scale-menu-header disconnected" id="scaleMenuStatus">Disconnected</div>
+                    <button class="scale-menu-item" id="scaleMenuConnect" onclick="handleScaleConnect()">
+                        <span>&#128268;</span> <span data-i18n="connect">Connect</span>
+                    </button>
+                    <button class="scale-menu-item" id="scaleMenuDisconnect" onclick="handleScaleDisconnect()" style="display:none;">
+                        <span>&#9209;</span> <span data-i18n="disconnect">Disconnect</span>
+                    </button>
+                    <button class="scale-menu-item" onclick="handleScaleReconnect()">
+                        <span>&#128260;</span> <span data-i18n="reconnect">Reconnect</span>
+                    </button>
+                </div>
+            </div>
         </div>
         <div class="header-center">
             <h1>&#128295; Production Sorting</h1>
@@ -71,7 +90,7 @@ body {
 
     <!-- Main Content -->
     <div class="production-body">
-        <!-- Session Setup (shown when no session) -->
+        <!-- Session Setup -->
         <div id="sessionSetup" class="session-setup" {% if active_session %}style="display:none;"{% endif %}>
             <div class="setup-card">
                 <h2>Start Production Session</h2>
@@ -90,7 +109,7 @@ body {
             </div>
         </div>
 
-        <!-- Sorting Interface (shown when session active) -->
+        <!-- Sorting Interface -->
         <div id="sortingInterface" class="sorting-interface" {% if not active_session %}style="display:none;"{% endif %}>
             <!-- Left Panel - Dropoff Selection -->
             <div class="panel panel-dropoff">
@@ -115,11 +134,13 @@ body {
                         <span class="label">Total Weight:</span>
                         <span class="value" id="currentDropoffWeight"></span>
                     </div>
+                    <div class="dropoff-items-list" id="dropoffItemsList">
+                    </div>
                     <button class="btn-clear" onclick="clearDropoff()">Clear</button>
                 </div>
             </div>
 
-            <!-- Middle Panel - Item Weighing -->
+            <!-- Middle Panel - Item Selection & Weighing -->
             <div class="panel panel-weighing">
                 <div class="panel-header">
                     <h3>Weigh Items</h3>
@@ -131,7 +152,36 @@ body {
                     <div class="weight-unit">kg</div>
                 </div>
 
-                <!-- Item Type Tabs -->
+                <!-- Live Scale Status -->
+                <div id="liveWeightSection" class="live-weight-section" style="display:none;">
+                    <div class="live-weight-status">
+                        <span class="scale-status-dot" id="scaleStatusDot"></span>
+                        <span id="scaleStatusText">Reading from scale</span>
+                    </div>
+                </div>
+
+                <!-- Manual Weight Input + Scale Button -->
+                <div id="manualWeightSection" class="manual-weight-section">
+                    <div class="weight-input-row">
+                        <input type="number" id="manualWeightInput" step="0.001" min="0" placeholder="0.000"
+                               oninput="onManualWeightInput(this.value)"
+                               onkeyup="if(event.key==='Enter')addItem()">
+                        <span class="weight-input-uom">kg</span>
+                        {% if active_session %}
+                        <button class="btn-scale-toggle" id="weightModeBtn" onclick="toggleManualWeight()">
+                            &#9878; Scale
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Selected Item Display -->
+                <div class="selected-item-display">
+                    <span class="selected-label">Selected:</span>
+                    <span class="selected-name" id="selectedItemName">No item selected</span>
+                </div>
+
+                <!-- Item Type Tabs (Good / Unwanted) -->
                 <div class="item-tabs">
                     <button class="item-tab active" data-type="good" onclick="switchItemType('good')">
                         Good Items (Keep & Pay)
@@ -141,29 +191,29 @@ body {
                     </button>
                 </div>
 
-                <!-- Item Selection -->
-                <div class="item-selection">
-                    <label>Select Item:</label>
-                    <select id="itemSelect" onchange="selectItem()">
-                        <option value="">-- Choose Item --</option>
-                        {% for item in production_items %}
-                        <option value="{{ item.item_code }}" data-uom="{{ item.uom }}">
-                            {{ item.item_name }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                <!-- Category Filter Tabs -->
+                <div class="category-tabs" id="categoryTabs">
+                    <button class="category-tab active" data-category="" onclick="filterCategory(this, '')">
+                        All
+                    </button>
+                    {% for cat in categories %}
+                    <button class="category-tab" data-category="{{ cat }}" onclick="filterCategory(this, '{{ cat }}')">
+                        {{ cat }}
+                    </button>
+                    {% endfor %}
                 </div>
 
-                <!-- Return Reason (for unwanted items) -->
-                <div id="returnReasonSection" class="return-reason-section" style="display:none;">
-                    <label>Return Reason:</label>
-                    <select id="returnReason">
-                        <option value="Contamination">Contamination</option>
-                        <option value="Wrong Material">Wrong Material</option>
-                        <option value="Packaging">Packaging</option>
-                        <option value="Dirt/Debris">Dirt/Debris</option>
-                        <option value="Other">Other</option>
-                    </select>
+                <!-- Item Card Grid -->
+                <div class="item-grid" id="itemGrid" style="opacity: 0.5; pointer-events: none;">
+                    {% for item in production_items %}
+                    <button class="item-btn"
+                            data-category="{{ item.category }}"
+                            data-item-code="{{ item.item_code }}"
+                            onclick="selectItemCard('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.uom }}')">
+                        <span class="item-name">{{ item.item_name }}</span>
+                        <span class="item-group-label">{{ item.category }}</span>
+                    </button>
+                    {% endfor %}
                 </div>
 
                 <!-- Remarks -->
@@ -174,9 +224,6 @@ body {
 
                 <!-- Action Buttons -->
                 <div class="action-buttons">
-                    <button class="btn-action btn-weight" onclick="captureWeight()">
-                        &#9878; Capture Weight
-                    </button>
                     <button class="btn-action btn-add" onclick="addItem()" id="addItemBtn" disabled>
                         &#10010; Add Item
                     </button>
@@ -211,7 +258,6 @@ body {
 
                 <!-- Items List -->
                 <div class="items-list" id="itemsList">
-                    <!-- Dynamically populated -->
                 </div>
 
                 <!-- Submit Button -->
@@ -227,12 +273,9 @@ body {
 </div>
 
 <script>
-// Simple language toggle for Production Terminal
+// Language toggle for Production Terminal
 function prodToggleLanguage() {
-    if (typeof POS_I18N === "undefined") {
-        console.error("POS_I18N not loaded");
-        return;
-    }
+    if (typeof POS_I18N === "undefined") return;
     POS_I18N.toggleLanguage();
     document.getElementById("langLabel").textContent = POS_I18N.getLanguage().toUpperCase();
     updateProdText();
@@ -240,129 +283,81 @@ function prodToggleLanguage() {
 
 function updateProdText() {
     if (typeof POS_I18N === "undefined") return;
-    
-    // Header
+
     document.querySelector("h1").innerHTML = "&#128295; " + POS_I18N.t("productionSorting");
-    
-    // Session badges
-    const sessionBadge = document.querySelector(".session-badge");
-    if (sessionBadge && sessionBadge.textContent.trim() === "No Session") {
-        sessionBadge.textContent = POS_I18N.t("noSession");
-    }
-    
-    // Session setup screen
-    const setupH2 = document.querySelector(".setup-card h2");
-    if (setupH2) setupH2.textContent = POS_I18N.t("startProductionSession");
-    
-    const setupP = document.querySelector(".setup-card p");
-    if (setupP) setupP.textContent = POS_I18N.t("scanScaleOrSelect");
-    
-    // Panel headers
-    const headers = {
+
+    var headers = {
         ".panel-dropoff .panel-header h3": "selectDropoff",
         ".panel-weighing .panel-header h3": "weighItems",
         ".panel-sorting .panel-header h3": "currentSorting"
     };
-    
-    for (const [selector, key] of Object.entries(headers)) {
-        const el = document.querySelector(selector);
-        if (el) el.textContent = POS_I18N.t(key);
+    for (var sel in headers) {
+        var el = document.querySelector(sel);
+        if (el) el.textContent = POS_I18N.t(headers[sel]);
     }
-    
-    // Dropoff search placeholder
-    const dropoffSearch = document.getElementById("dropoffSearch");
+
+    var setupH2 = document.querySelector(".setup-card h2");
+    if (setupH2) setupH2.textContent = POS_I18N.t("startProductionSession");
+    var setupP = document.querySelector(".setup-card p");
+    if (setupP) setupP.textContent = POS_I18N.t("scanScaleOrSelect");
+
+    var dropoffSearch = document.getElementById("dropoffSearch");
     if (dropoffSearch) dropoffSearch.placeholder = POS_I18N.t("enterDropoffId");
-    
-    // Dropoff detail labels
-    const detailLabels = document.querySelectorAll(".detail-row .label");
+
+    var detailLabels = document.querySelectorAll(".detail-row .label");
     if (detailLabels.length >= 3) {
         detailLabels[0].textContent = POS_I18N.t("dropoffId");
         detailLabels[1].textContent = POS_I18N.t("supplier");
         detailLabels[2].textContent = POS_I18N.t("totalWeight");
     }
-    
-    // Clear button
-    const clearBtn = document.querySelector(".btn-clear");
+
+    var clearBtn = document.querySelector(".btn-clear");
     if (clearBtn) clearBtn.textContent = POS_I18N.t("clearDropoff");
-    
-    // Weight unit
-    const weightUnit = document.querySelector(".weight-unit");
-    if (weightUnit) weightUnit.textContent = POS_I18N.t("kg");
-    
-    // Item type tabs
-    const goodTab = document.querySelector(".item-tab[data-type='good']");
+
+    var goodTab = document.querySelector(".item-tab[data-type='good']");
     if (goodTab) goodTab.textContent = POS_I18N.t("goodItems");
-    
-    const unwantedTab = document.querySelector(".item-tab[data-type='unwanted']");
+    var unwantedTab = document.querySelector(".item-tab[data-type='unwanted']");
     if (unwantedTab) unwantedTab.textContent = POS_I18N.t("unwantedItems");
-    
-    // Labels
-    const selectItemLabel = document.querySelector(".item-selection label");
-    if (selectItemLabel) selectItemLabel.textContent = POS_I18N.t("selectItem");
-    
-    const returnReasonLabel = document.querySelector(".return-reason-section label");
+
+    var returnReasonLabel = document.querySelector(".return-reason-section label");
     if (returnReasonLabel) returnReasonLabel.textContent = POS_I18N.t("returnReason");
-    
-    const remarksLabel = document.querySelector(".remarks-section label");
+    var remarksLabel = document.querySelector(".remarks-section label");
     if (remarksLabel) remarksLabel.textContent = POS_I18N.t("remarksOptional");
-    
-    // Select options
-    const itemSelect = document.getElementById("itemSelect");
-    if (itemSelect && itemSelect.options.length > 0) {
-        itemSelect.options[0].text = POS_I18N.t("chooseItem");
-    }
-    
-    // Return reason options
-    const returnReason = document.getElementById("returnReason");
-    if (returnReason) {
-        returnReason.options[0].text = POS_I18N.t("contamination");
-        returnReason.options[1].text = POS_I18N.t("wrongMaterial");
-        returnReason.options[2].text = POS_I18N.t("packaging");
-        returnReason.options[3].text = POS_I18N.t("dirtDebris");
-        returnReason.options[4].text = POS_I18N.t("other");
-    }
-    
-    // Remarks placeholder
-    const remarks = document.getElementById("remarks");
+    var remarks = document.getElementById("remarks");
     if (remarks) remarks.placeholder = POS_I18N.t("notes");
-    
-    // Action buttons
-    const weightBtn = document.querySelector(".btn-weight");
-    if (weightBtn) weightBtn.innerHTML = "&#9878; " + POS_I18N.t("captureWeight");
-    
-    const addBtn = document.querySelector(".btn-add");
+
+    var addBtn = document.querySelector(".btn-add");
     if (addBtn) addBtn.innerHTML = "&#10010; " + POS_I18N.t("addItem");
-    
-    // Summary labels
-    const summaryLabels = {
+
+    var summaryLabels = {
         ".summary-row.good .summary-label": "goodTotal",
         ".summary-row.unwanted .summary-label": "unwantedTotal",
         ".summary-row.total .summary-label": "totalSorted",
         ".summary-row.variance .summary-label": "variance"
     };
-    
-    for (const [selector, key] of Object.entries(summaryLabels)) {
-        const el = document.querySelector(selector);
-        if (el) el.textContent = POS_I18N.t(key);
+    for (var s in summaryLabels) {
+        var e = document.querySelector(s);
+        if (e) e.textContent = POS_I18N.t(summaryLabels[s]);
     }
-    
-    // Submit button
-    const submitBtn = document.getElementById("submitBtn");
+
+    var submitBtn = document.getElementById("submitBtn");
     if (submitBtn) submitBtn.textContent = POS_I18N.t("submitSorting");
-    
-    // Header buttons
-    const closeBtn = document.querySelector(".btn-danger");
+    var closeBtn = document.querySelector(".btn-danger");
     if (closeBtn) closeBtn.textContent = POS_I18N.t("closeSession");
-    
-    const startBtn = document.querySelector(".btn-primary");
+    var startBtn = document.querySelector(".btn-primary");
     if (startBtn) startBtn.textContent = POS_I18N.t("startSession");
+
+    var sessionBadge = document.querySelector(".session-badge");
+    if (sessionBadge && sessionBadge.textContent.trim() === "No Session") {
+        sessionBadge.textContent = POS_I18N.t("noSession");
+    }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", function() {
     if (typeof POS_I18N !== "undefined") {
         POS_I18N.init();
         document.getElementById("langLabel").textContent = POS_I18N.getLanguage().toUpperCase();
-        updateProdText();  // Apply translations on page load
+        updateProdText();
     }
 });
 </script>
