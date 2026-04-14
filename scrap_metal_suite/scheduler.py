@@ -9,20 +9,10 @@ def close_idle_sessions():
     """
     Close POS sessions that have been idle for more than 90 minutes.
     Runs every 15 minutes via scheduler.
-
-    Sessions are identified as idle if:
-    - status = "Open"
-    - last_activity < now() - 90 minutes
-
-    When closed:
-    - status set to "Closed"
-    - closing_time set to now()
-    - closed_by set to "Administrator" (system close)
-    - Scale marked as not in use
+    Uses document API (get_doc + save) to preserve audit trail.
     """
     idle_threshold = add_to_date(now_datetime(), minutes=-90)
 
-    # Find idle sessions (check last_activity, fall back to opening_time)
     idle_sessions = frappe.db.sql("""
         SELECT name, operator, scale, last_activity, opening_time
         FROM `tabPOS Session`
@@ -34,32 +24,75 @@ def close_idle_sessions():
 
     for session in idle_sessions:
         try:
-            # Close the session
-            frappe.db.set_value("POS Session", session.name, {
-                "status": "Closed",
-                "closing_time": now_datetime(),
-                "closed_by": "Administrator"
-            })
+            doc = frappe.get_doc("POS Session", session.name)
+            doc.status = "Closed"
+            doc.closing_time = now_datetime()
+            doc.closed_by = "Administrator"
+            doc.save(ignore_permissions=True)
 
-            # Release the scale if any
             if session.scale:
-                frappe.db.set_value("Scale", session.scale, {
-                    "in_use": 0,
-                    "in_use_by_session": None
-                })
+                scale_doc = frappe.get_doc("Scale", session.scale)
+                scale_doc.in_use = 0
+                scale_doc.in_use_by_session = None
+                scale_doc.save(ignore_permissions=True)
 
             closed_count += 1
-
             frappe.logger().info(
                 f"Auto-closed idle session {session.name} "
                 f"(operator: {session.operator}, last activity: {session.last_activity})"
             )
-
         except Exception as e:
             frappe.logger().error(f"Error closing idle session {session.name}: {str(e)}")
 
     if closed_count > 0:
         frappe.db.commit()
         frappe.logger().info(f"Auto-closed {closed_count} idle POS session(s)")
+
+    return closed_count
+
+
+def close_idle_production_sessions():
+    """
+    Close Production Sessions idle for more than 10 minutes.
+    Runs every 5 minutes via scheduler.
+    Uses document API (get_doc + save) to preserve audit trail.
+    """
+    idle_threshold = add_to_date(now_datetime(), minutes=-10)
+
+    idle_sessions = frappe.db.sql("""
+        SELECT name, operator, scale, last_activity
+        FROM `tabProduction Session`
+        WHERE status = 'Open'
+          AND last_activity IS NOT NULL
+          AND last_activity < %(threshold)s
+    """, {"threshold": idle_threshold}, as_dict=True)
+
+    closed_count = 0
+
+    for session in idle_sessions:
+        try:
+            doc = frappe.get_doc("Production Session", session.name)
+            doc.status = "Closed"
+            doc.closing_time = now_datetime()
+            doc.closed_by = "Administrator"
+            doc.save(ignore_permissions=True)
+
+            if session.scale:
+                scale_doc = frappe.get_doc("Scale", session.scale)
+                scale_doc.in_use = 0
+                scale_doc.in_use_by_session = None
+                scale_doc.save(ignore_permissions=True)
+
+            closed_count += 1
+            frappe.logger().info(
+                f"Auto-closed idle production session {session.name} "
+                f"(operator: {session.operator}, last activity: {session.last_activity})"
+            )
+        except Exception as e:
+            frappe.logger().error(f"Error closing idle production session {session.name}: {str(e)}")
+
+    if closed_count > 0:
+        frappe.db.commit()
+        frappe.logger().info(f"Auto-closed {closed_count} idle production session(s)")
 
     return closed_count

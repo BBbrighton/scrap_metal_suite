@@ -1,0 +1,326 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-02-21 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "status",
+  "sorting_date",
+  "posting_time",
+  "column_break_header",
+  "dropoff",
+  "session",
+  "operator",
+  "scale",
+  "section_dropoff_info",
+  "dropoff_total_weight",
+  "license_plate",
+  "column_break_dropoff",
+  "supplier",
+  "supplier_name",
+  "section_source_items",
+  "source_items",
+  "section_good_items",
+  "good_items",
+  "section_unwanted_items",
+  "unwanted_items",
+  "section_totals",
+  "total_good_weight",
+  "total_unwanted_weight",
+  "column_break_totals",
+  "total_weight",
+  "section_manager_override",
+  "manager_override",
+  "manager_override_by",
+  "section_cancellation",
+  "cancellation_reason",
+  "cancelled_by",
+  "cancelled_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "SORT-.YY.MM.DD.-",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nIn Progress\nCompleted\nCancelled",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "sorting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Sorting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "posting_time",
+   "fieldtype": "Time",
+   "label": "Posting Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dropoff",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Dropoff",
+   "options": "Dropoff",
+   "reqd": 1
+  },
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "label": "Production Session",
+   "options": "Production Session",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "session.operator",
+   "fieldname": "operator",
+   "fieldtype": "Link",
+   "label": "Operator",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "session.scale",
+   "fieldname": "scale",
+   "fieldtype": "Link",
+   "label": "Scale",
+   "options": "Scale",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_dropoff_info",
+   "fieldtype": "Section Break",
+   "label": "Dropoff Information"
+  },
+  {
+   "fetch_from": "dropoff.total_actual_weight",
+   "fieldname": "dropoff_total_weight",
+   "fieldtype": "Float",
+   "label": "Dropoff Total Weight (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "dropoff.license_plate",
+   "fieldname": "license_plate",
+   "fieldtype": "Data",
+   "label": "License Plate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_dropoff",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "dropoff.supplier",
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "dropoff.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_source_items",
+   "fieldtype": "Section Break",
+   "label": "Source Items (from Dropoff)"
+  },
+  {
+   "fieldname": "source_items",
+   "fieldtype": "Table",
+   "label": "Source Items",
+   "options": "Production Sorting Source Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_good_items",
+   "fieldtype": "Section Break",
+   "label": "Good Items (Keep & Pay)"
+  },
+  {
+   "fieldname": "good_items",
+   "fieldtype": "Table",
+   "label": "Good Items",
+   "options": "Production Sorting Good Item"
+  },
+  {
+   "fieldname": "section_unwanted_items",
+   "fieldtype": "Section Break",
+   "label": "Unwanted Items (Return to Supplier)"
+  },
+  {
+   "fieldname": "unwanted_items",
+   "fieldtype": "Table",
+   "label": "Unwanted Items",
+   "options": "Production Sorting Unwanted Item"
+  },
+  {
+   "fieldname": "section_totals",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "default": "0",
+   "fieldname": "total_good_weight",
+   "fieldtype": "Float",
+   "label": "Total Good Weight (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "total_unwanted_weight",
+   "fieldtype": "Float",
+   "label": "Total Unwanted Weight (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_totals",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "total_weight",
+   "fieldtype": "Float",
+   "label": "Total Weight (kg)",
+   "precision": "3",
+   "read_only": 1,
+   "description": "Good + Unwanted"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "manager_override",
+   "fieldname": "section_manager_override",
+   "fieldtype": "Section Break",
+   "label": "Manager Override"
+  },
+  {
+   "default": "0",
+   "fieldname": "manager_override",
+   "fieldtype": "Check",
+   "label": "Manager Override",
+   "read_only": 1
+  },
+  {
+   "depends_on": "manager_override",
+   "fieldname": "manager_override_by",
+   "fieldtype": "Link",
+   "label": "Override By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "cancellation_reason",
+   "fieldname": "section_cancellation",
+   "fieldtype": "Section Break",
+   "label": "Cancellation"
+  },
+  {
+   "fieldname": "cancellation_reason",
+   "fieldtype": "Small Text",
+   "label": "Cancellation Reason"
+  },
+  {
+   "fieldname": "cancelled_by",
+   "fieldtype": "Link",
+   "label": "Cancelled By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_at",
+   "fieldtype": "Datetime",
+   "label": "Cancelled At",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-03-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "Production Sorting",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1,
+   "cancel": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Worker",
+   "share": 1,
+   "write": 1,
+   "submit": 1,
+   "cancel": 0
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Manager",
+   "share": 1,
+   "write": 1,
+   "submit": 1,
+   "cancel": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

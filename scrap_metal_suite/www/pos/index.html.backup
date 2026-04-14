@@ -85,11 +85,6 @@ body {
                 <h3>Truck Scale</h3>
                 <p>Record gross/tare truck weights</p>
             </a>
-            <a href="/pos/production" class="terminal-card production-terminal">
-                <div class="terminal-icon">&#128295;</div>
-                <h3>Production Sorting</h3>
-                <p>QA/QC sorting and verification</p>
-            </a>
             {% else %}
             <div class="terminal-card scrap-terminal" onclick="startSession('scrap')">
                 <div class="terminal-icon">&#9878;</div>
@@ -100,11 +95,6 @@ body {
                 <div class="terminal-icon">&#128666;</div>
                 <h3>Truck Scale</h3>
                 <p>Record gross/tare truck weights</p>
-            </div>
-            <div class="terminal-card production-terminal" onclick="window.location.href='/pos/production'">
-                <div class="terminal-icon">&#128295;</div>
-                <h3>Production Sorting</h3>
-                <p>QA/QC sorting and verification</p>
             </div>
             {% endif %}
         </div>
@@ -201,15 +191,11 @@ function updateTranslations() {
     const scrapDesc = document.querySelector('.scrap-terminal p');
     const truckTitle = document.querySelector('.truck-terminal h3');
     const truckDesc = document.querySelector('.truck-terminal p');
-    const prodTitle = document.querySelector('.production-terminal h3');
-    const prodDesc = document.querySelector('.production-terminal p');
 
     if (scrapTitle) scrapTitle.textContent = POS_I18N.t('scrapWeighing');
     if (scrapDesc) scrapDesc.textContent = POS_I18N.t('scrapWeighingDesc');
     if (truckTitle) truckTitle.textContent = POS_I18N.t('truckScale');
     if (truckDesc) truckDesc.textContent = POS_I18N.t('truckScaleDesc');
-    if (prodTitle) prodTitle.textContent = POS_I18N.t('productionSorting');
-    if (prodDesc) prodDesc.textContent = POS_I18N.t('productionSortingDesc');
 
     // Update subtitle if no active session
     const subtitle = document.querySelector('.pos-logo p:not(.session-active-label)');

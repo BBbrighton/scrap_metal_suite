@@ -1,0 +1,369 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Production Sorting{% endblock %}
+
+{% block head_include %}
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css">
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/production-theme.css">
+<script src="/assets/scrap_metal_suite/js/pos-translations.js"></script>
+<script src="/assets/scrap_metal_suite/js/scale_reader.js"></script>
+{% endblock %}
+
+{% block style %}
+<style>
+.navbar, .web-footer, .footer, footer, .page-header, .page-head, header.navbar {
+    display: none !important;
+}
+html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden;
+}
+body {
+    padding-top: 0 !important;
+    background: #1a1a2e;
+}
+.main-section, .container, .web-content, .page-content, main, .page-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="production-container" id="productionContainer">
+    {% if error %}
+    <div class="pos-error">
+        <div class="error-icon">&#9888;</div>
+        <h2>Access Denied</h2>
+        <p>{{ error }}</p>
+        <a href="/pos" class="btn-pos">Back to POS</a>
+    </div>
+    {% else %}
+    <!-- Header -->
+    <header class="production-header">
+        <div class="header-left">
+            <a href="/pos" class="btn-back-small">&#8592;</a>
+            <span class="brand-badge">X-DESK</span>
+            {% if active_session %}
+            <span class="session-badge">{{ active_session.name }}</span>
+            {% else %}
+            <span class="session-badge">No Session</span>
+            {% endif %}
+            <span class="operator-name">{{ operator_name }}</span>
+            <!-- Scale Badge -->
+            <div class="scale-badge-container" id="scaleBadgeContainer" style="display:none; position: relative;">
+                <button class="scale-badge" id="scaleBadge" onclick="toggleScaleMenu()">
+                    <span class="scale-icon">&#9878;</span>
+                    <span id="scaleNameDisplay"></span>
+                    <span class="scale-status-indicator disconnected" id="scaleStatusIndicator">&#9679;</span>
+                </button>
+                <div class="scale-menu" id="scaleMenu" style="display:none;">
+                    <div class="scale-menu-header disconnected" id="scaleMenuStatus">Disconnected</div>
+                    <button class="scale-menu-item" id="scaleMenuConnect" onclick="handleScaleConnect()">
+                        <span>&#128268;</span> <span data-i18n="connect">Connect</span>
+                    </button>
+                    <button class="scale-menu-item" id="scaleMenuDisconnect" onclick="handleScaleDisconnect()" style="display:none;">
+                        <span>&#9209;</span> <span data-i18n="disconnect">Disconnect</span>
+                    </button>
+                    <button class="scale-menu-item" onclick="handleScaleReconnect()">
+                        <span>&#128260;</span> <span data-i18n="reconnect">Reconnect</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="header-center">
+            <h1>&#128295; Production Sorting</h1>
+        </div>
+        <div class="header-right">
+            <button class="btn-header btn-lang" onclick="prodToggleLanguage()" title="Toggle Language">
+                <span id="langLabel">EN</span>
+            </button>
+            {% if active_session %}
+            <button class="btn-header btn-danger" onclick="confirmCloseSession()">Close Session</button>
+            {% else %}
+            <button class="btn-header btn-primary" onclick="startSession()">Start Session</button>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="production-body">
+        <!-- Session Setup -->
+        <div id="sessionSetup" class="session-setup" {% if active_session %}style="display:none;"{% endif %}>
+            <div class="setup-card">
+                <h2>Start Production Session</h2>
+                <p>Scan a scale QR code or select from list</p>
+                <div class="scale-list">
+                    {% for scale in scales %}
+                    <button class="scale-option" onclick="selectScale('{{ scale.name }}', '{{ scale.scale_name }}')">
+                        <span class="scale-icon">&#9878;</span>
+                        <div class="scale-info">
+                            <span class="scale-name">{{ scale.scale_name }}</span>
+                            <span class="scale-location">{{ scale.location or '' }}</span>
+                        </div>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sorting Interface -->
+        <div id="sortingInterface" class="sorting-interface" {% if not active_session %}style="display:none;"{% endif %}>
+            <!-- Left Panel - Dropoff Selection -->
+            <div class="panel panel-dropoff">
+                <div class="panel-header">
+                    <h3>Select Dropoff</h3>
+                </div>
+                <div class="dropoff-search">
+                    <input type="text" id="dropoffSearch" placeholder="Enter Dropoff ID..."
+                           oninput="searchDropoff(this.value)" autocomplete="off">
+                    <div id="dropoffResults" class="search-results"></div>
+                </div>
+                <div id="dropoffDetails" class="dropoff-details" style="display:none;">
+                    <div class="detail-row">
+                        <span class="label">Dropoff ID:</span>
+                        <span class="value" id="currentDropoffId"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Supplier:</span>
+                        <span class="value" id="currentDropoffSupplier"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Total Weight:</span>
+                        <span class="value" id="currentDropoffWeight"></span>
+                    </div>
+                    <div class="dropoff-items-list" id="dropoffItemsList">
+                    </div>
+                    <button class="btn-clear" onclick="clearDropoff()">Clear</button>
+                </div>
+            </div>
+
+            <!-- Middle Panel - Item Selection & Weighing -->
+            <div class="panel panel-weighing">
+                <div class="panel-header">
+                    <h3>Weigh Items</h3>
+                </div>
+
+                <!-- Weight Display -->
+                <div class="weight-display">
+                    <div class="weight-value" id="weightValue">0.000</div>
+                    <div class="weight-unit">kg</div>
+                </div>
+
+                <!-- Live Scale Status -->
+                <div id="liveWeightSection" class="live-weight-section" style="display:none;">
+                    <div class="live-weight-status">
+                        <span class="scale-status-dot" id="scaleStatusDot"></span>
+                        <span id="scaleStatusText">Reading from scale</span>
+                    </div>
+                </div>
+
+                <!-- Manual Weight Input + Scale Button -->
+                <div id="manualWeightSection" class="manual-weight-section">
+                    <div class="weight-input-row">
+                        <input type="number" id="manualWeightInput" step="0.001" min="0" placeholder="0.000"
+                               oninput="onManualWeightInput(this.value)"
+                               onkeyup="if(event.key==='Enter')addItem()">
+                        <span class="weight-input-uom">kg</span>
+                        {% if active_session %}
+                        <button class="btn-scale-toggle" id="weightModeBtn" onclick="toggleManualWeight()">
+                            &#9878; Scale
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Selected Item Display -->
+                <div class="selected-item-display">
+                    <span class="selected-label">Selected:</span>
+                    <span class="selected-name" id="selectedItemName">No item selected</span>
+                </div>
+
+                <!-- Item Type Tabs (Good / Unwanted) -->
+                <div class="item-tabs">
+                    <button class="item-tab active" data-type="good" onclick="switchItemType('good')">
+                        Good Items (Keep & Pay)
+                    </button>
+                    <button class="item-tab" data-type="unwanted" onclick="switchItemType('unwanted')">
+                        Unwanted Items (Return)
+                    </button>
+                </div>
+
+                <!-- Category Filter Tabs -->
+                <div class="category-tabs" id="categoryTabs">
+                    <button class="category-tab from-dropoff-tab active" data-category="fromDropoff"
+                            onclick="filterCategory(this, 'fromDropoff')" id="fromDropoffTab" style="display:none;">
+                        From Dropoff
+                    </button>
+                    <button class="category-tab" data-category="" onclick="filterCategory(this, '')">
+                        All
+                    </button>
+                    {% for cat in categories %}
+                    <button class="category-tab" data-category="{{ cat }}" onclick="filterCategory(this, '{{ cat }}')">
+                        {{ cat }}
+                    </button>
+                    {% endfor %}
+                </div>
+
+                <!-- Item Card Grid -->
+                <div class="item-grid" id="itemGrid" style="opacity: 0.5; pointer-events: none;">
+                    {% for item in production_items %}
+                    <button class="item-btn"
+                            data-category="{{ item.category }}"
+                            data-item-code="{{ item.item_code }}"
+                            onclick="selectItemCard('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.uom }}')">
+                        <span class="item-name">{{ item.item_name }}</span>
+                        <span class="item-group-label">{{ item.category }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+
+                <!-- Remarks -->
+                <div class="remarks-section">
+                    <label>Remarks (Optional):</label>
+                    <input type="text" id="remarks" placeholder="Notes...">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="btn-action btn-add" onclick="addItem()" id="addItemBtn" disabled>
+                        &#10010; Add Item
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel - Current Sorting -->
+            <div class="panel panel-sorting">
+                <div class="panel-header">
+                    <h3>Current Sorting</h3>
+                </div>
+
+                <!-- Sorting Summary -->
+                <div class="sorting-summary">
+                    <div class="summary-row good">
+                        <span class="summary-label">Good Items:</span>
+                        <span class="summary-value" id="goodTotal">0.000 kg</span>
+                    </div>
+                    <div class="summary-row unwanted">
+                        <span class="summary-label">Unwanted:</span>
+                        <span class="summary-value" id="unwantedTotal">0.000 kg</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span class="summary-label">Total Sorted:</span>
+                        <span class="summary-value" id="totalSorted">0.000 kg</span>
+                    </div>
+                    <div class="summary-row variance" id="varianceRow" style="display:none;">
+                        <span class="summary-label">Variance:</span>
+                        <span class="summary-value" id="varianceValue"></span>
+                    </div>
+                </div>
+
+                <!-- Items List -->
+                <div class="items-list" id="itemsList">
+                </div>
+
+                <!-- Submit Button -->
+                <div class="submit-section">
+                    <button class="btn-submit" onclick="submitSorting()" id="submitBtn" disabled>
+                        Submit Sorting
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Language toggle for Production Terminal
+function prodToggleLanguage() {
+    if (typeof POS_I18N === "undefined") return;
+    POS_I18N.toggleLanguage();
+    document.getElementById("langLabel").textContent = POS_I18N.getLanguage().toUpperCase();
+    updateProdText();
+}
+
+function updateProdText() {
+    if (typeof POS_I18N === "undefined") return;
+
+    document.querySelector("h1").innerHTML = "&#128295; " + POS_I18N.t("productionSorting");
+
+    var headers = {
+        ".panel-dropoff .panel-header h3": "selectDropoff",
+        ".panel-weighing .panel-header h3": "weighItems",
+        ".panel-sorting .panel-header h3": "currentSorting"
+    };
+    for (var sel in headers) {
+        var el = document.querySelector(sel);
+        if (el) el.textContent = POS_I18N.t(headers[sel]);
+    }
+
+    var setupH2 = document.querySelector(".setup-card h2");
+    if (setupH2) setupH2.textContent = POS_I18N.t("startProductionSession");
+    var setupP = document.querySelector(".setup-card p");
+    if (setupP) setupP.textContent = POS_I18N.t("scanScaleOrSelect");
+
+    var dropoffSearch = document.getElementById("dropoffSearch");
+    if (dropoffSearch) dropoffSearch.placeholder = POS_I18N.t("enterDropoffId");
+
+    var detailLabels = document.querySelectorAll(".detail-row .label");
+    if (detailLabels.length >= 3) {
+        detailLabels[0].textContent = POS_I18N.t("dropoffId");
+        detailLabels[1].textContent = POS_I18N.t("supplier");
+        detailLabels[2].textContent = POS_I18N.t("totalWeight");
+    }
+
+    var clearBtn = document.querySelector(".btn-clear");
+    if (clearBtn) clearBtn.textContent = POS_I18N.t("clearDropoff");
+
+    var goodTab = document.querySelector(".item-tab[data-type='good']");
+    if (goodTab) goodTab.textContent = POS_I18N.t("goodItems");
+    var unwantedTab = document.querySelector(".item-tab[data-type='unwanted']");
+    if (unwantedTab) unwantedTab.textContent = POS_I18N.t("unwantedItems");
+
+    var returnReasonLabel = document.querySelector(".return-reason-section label");
+    if (returnReasonLabel) returnReasonLabel.textContent = POS_I18N.t("returnReason");
+    var remarksLabel = document.querySelector(".remarks-section label");
+    if (remarksLabel) remarksLabel.textContent = POS_I18N.t("remarksOptional");
+    var remarks = document.getElementById("remarks");
+    if (remarks) remarks.placeholder = POS_I18N.t("notes");
+
+    var addBtn = document.querySelector(".btn-add");
+    if (addBtn) addBtn.innerHTML = "&#10010; " + POS_I18N.t("addItem");
+
+    var summaryLabels = {
+        ".summary-row.good .summary-label": "goodTotal",
+        ".summary-row.unwanted .summary-label": "unwantedTotal",
+        ".summary-row.total .summary-label": "totalSorted",
+        ".summary-row.variance .summary-label": "variance"
+    };
+    for (var s in summaryLabels) {
+        var e = document.querySelector(s);
+        if (e) e.textContent = POS_I18N.t(summaryLabels[s]);
+    }
+
+    var submitBtn = document.getElementById("submitBtn");
+    if (submitBtn) submitBtn.textContent = POS_I18N.t("submitSorting");
+    var closeBtn = document.querySelector(".btn-danger");
+    if (closeBtn) closeBtn.textContent = POS_I18N.t("closeSession");
+    var startBtn = document.querySelector(".btn-primary");
+    if (startBtn) startBtn.textContent = POS_I18N.t("startSession");
+
+    var sessionBadge = document.querySelector(".session-badge");
+    if (sessionBadge && sessionBadge.textContent.trim() === "No Session") {
+        sessionBadge.textContent = POS_I18N.t("noSession");
+    }
+}
+
+window.addEventListener("DOMContentLoaded", function() {
+    if (typeof POS_I18N !== "undefined") {
+        POS_I18N.init();
+        document.getElementById("langLabel").textContent = POS_I18N.getLanguage().toUpperCase();
+        updateProdText();
+    }
+});
+</script>
+<script src="/assets/scrap_metal_suite/js/production-terminal.js"></script>
+{% endblock %}

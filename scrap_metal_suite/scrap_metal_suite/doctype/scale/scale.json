@@ -64,7 +64,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Usage Type",
-   "options": "Scrap\nTruck",
+   "options": "Scrap\nTruck\nProduction",
    "reqd": 1,
    "description": "Scrap = for weighing scrap items, Truck = for weighing trucks (weighbridge)"
   },

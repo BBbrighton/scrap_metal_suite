@@ -1,0 +1,54 @@
+/* CRITICAL FIX: Make submit button always visible */
+
+/* Grid must not allow panels to overflow viewport */
+.sorting-interface {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    gap: 20px;
+    padding: 20px;
+    height: calc(100vh - 80px);
+    max-height: calc(100vh - 80px);
+    overflow: hidden;
+}
+
+/* Right panel MUST NOT overflow */
+.panel-sorting {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+}
+
+/* Header stays at top */
+.panel-sorting .panel-header {
+    flex-shrink: 0 !important;
+}
+
+/* Summary stays at top */
+.panel-sorting .sorting-summary {
+    flex-shrink: 0 !important;
+}
+
+/* Items list can scroll */
+.panel-sorting .items-list {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+}
+
+/* Submit ALWAYS at bottom - NEVER scrolls away */
+.panel-sorting .submit-section {
+    flex-shrink: 0 !important;
+    margin-top: 15px !important;
+    padding-top: 15px !important;
+    border-top: 2px solid var(--production-primary) !important;
+}
+
+/* Submit button MUST be visible */
+#submitBtn {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    min-height: 50px !important;
+}

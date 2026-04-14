@@ -1,0 +1,323 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-03-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "status",
+  "dropoff",
+  "column_break_header",
+  "supplier",
+  "supplier_name",
+  "section_dropoff_info",
+  "license_plate",
+  "dropoff_total_weight",
+  "column_break_dropoff",
+  "sorting_sessions",
+  "section_good_items",
+  "good_items",
+  "section_unwanted_items",
+  "unwanted_items",
+  "section_totals",
+  "total_good_weight",
+  "total_unwanted_weight",
+  "column_break_totals",
+  "total_verified_weight",
+  "section_verification",
+  "weight_variance",
+  "variance_percent",
+  "variance_threshold_percent",
+  "column_break_verification",
+  "variance_ok",
+  "verification_status",
+  "section_workflow",
+  "completed_by",
+  "completed_at",
+  "column_break_workflow",
+  "po_final",
+  "settled_by",
+  "settled_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "DFL-.YY.MM.DD.-",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nIn Progress\nUnsettled\nSettled\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dropoff",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Dropoff",
+   "options": "Dropoff",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "dropoff.supplier",
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "supplier.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_dropoff_info",
+   "fieldtype": "Section Break",
+   "label": "Dropoff Information"
+  },
+  {
+   "fetch_from": "dropoff.license_plate",
+   "fieldname": "license_plate",
+   "fieldtype": "Data",
+   "label": "License Plate",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "dropoff.total_actual_weight",
+   "fieldname": "dropoff_total_weight",
+   "fieldtype": "Float",
+   "label": "Dropoff Total Weight (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_dropoff",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sorting_sessions",
+   "fieldtype": "Small Text",
+   "label": "Sorting Sessions",
+   "read_only": 1,
+   "description": "Comma-separated list of Production Sorting documents"
+  },
+  {
+   "fieldname": "section_good_items",
+   "fieldtype": "Section Break",
+   "label": "Good Items (Payable)"
+  },
+  {
+   "fieldname": "good_items",
+   "fieldtype": "Table",
+   "label": "Good Items",
+   "options": "Dropoff Final Good Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_unwanted_items",
+   "fieldtype": "Section Break",
+   "label": "Unwanted Items (Returned to Supplier)"
+  },
+  {
+   "fieldname": "unwanted_items",
+   "fieldtype": "Table",
+   "label": "Unwanted Items",
+   "options": "Dropoff Final Unwanted Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_totals",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "default": "0",
+   "fieldname": "total_good_weight",
+   "fieldtype": "Float",
+   "label": "Total Good Weight (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "total_unwanted_weight",
+   "fieldtype": "Float",
+   "label": "Total Unwanted Weight (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_totals",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "total_verified_weight",
+   "fieldtype": "Float",
+   "label": "Total Verified Weight (kg)",
+   "precision": "3",
+   "read_only": 1,
+   "description": "Good + Unwanted"
+  },
+  {
+   "fieldname": "section_verification",
+   "fieldtype": "Section Break",
+   "label": "Weight Verification"
+  },
+  {
+   "default": "0",
+   "fieldname": "weight_variance",
+   "fieldtype": "Float",
+   "label": "Weight Variance (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "variance_percent",
+   "fieldtype": "Percent",
+   "label": "Variance %",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "default": "0.1",
+   "fieldname": "variance_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Variance Threshold %",
+   "precision": "3"
+  },
+  {
+   "fieldname": "column_break_verification",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "variance_ok",
+   "fieldtype": "Check",
+   "label": "Variance Within Threshold",
+   "read_only": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "verification_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Verification Status",
+   "options": "Pending\nVerified\nNeeds Review",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_workflow",
+   "fieldtype": "Section Break",
+   "label": "Workflow"
+  },
+  {
+   "fieldname": "completed_by",
+   "fieldtype": "Link",
+   "label": "Completed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_at",
+   "fieldtype": "Datetime",
+   "label": "Completed At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_workflow",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "po_final",
+   "fieldtype": "Link",
+   "label": "PO Final",
+   "options": "SMT PO Final",
+   "read_only": 1,
+   "description": "Set when this Dropoff Final is settled via a PO Final"
+  },
+  {
+   "fieldname": "settled_by",
+   "fieldtype": "Link",
+   "label": "Settled By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "settled_at",
+   "fieldtype": "Datetime",
+   "label": "Settled At",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "Dropoff Final",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "read": 1,
+   "write": 0,
+   "role": "Production Worker"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Manager",
+   "share": 1,
+   "write": 1,
+   "submit": 0,
+   "cancel": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "creation": "2026-02-21 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_general",
+  "variance_threshold_percent",
+  "column_break_general",
+  "default_uom",
+  "section_item_groups",
+  "allowed_item_groups"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_general",
+   "fieldtype": "Section Break",
+   "label": "General Settings"
+  },
+  {
+   "default": "0.1",
+   "description": "Maximum allowable variance (%) between dropoff total weight and sorted total weight. Sortings exceeding this threshold require manager approval.",
+   "fieldname": "variance_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Variance Threshold (%)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_general",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Kg",
+   "fieldname": "default_uom",
+   "fieldtype": "Link",
+   "label": "Default UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "section_item_groups",
+   "fieldtype": "Section Break",
+   "label": "Allowed Item Groups"
+  },
+  {
+   "description": "Only items from these Item Groups will be available for sorting in the terminal.",
+   "fieldname": "allowed_item_groups",
+   "fieldtype": "Table",
+   "label": "Allowed Item Groups",
+   "options": "Production Sorting Item Group"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-02-21 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "Production Sorting Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
