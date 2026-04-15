@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"acct_header\",\"type\":\"header\",\"data\":{\"col\":12,\"text\":\"<span class=\\\"h4\\\"><b>SMT Accounting</b></span>\",\"level\":4}},{\"id\":\"acct_shortcut_po\",\"type\":\"shortcut\",\"data\":{\"col\":3,\"shortcut_name\":\"SMT PO\"}},{\"id\":\"acct_shortcut_pof\",\"type\":\"shortcut\",\"data\":{\"col\":3,\"shortcut_name\":\"SMT PO Final\"}},{\"id\":\"acct_spacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"acct_card_settlement\",\"type\":\"card\",\"data\":{\"col\":6,\"card_name\":\"Settlement\"}},{\"id\":\"acct_card_reference\",\"type\":\"card\",\"data\":{\"col\":6,\"card_name\":\"Reference\"}}]",
+ "content": "[{\"id\":\"acct_header\",\"type\":\"header\",\"data\":{\"col\":12,\"text\":\"<span class=\\\"h4\\\"><b>SMT Accounting</b></span>\",\"level\":4}},{\"id\":\"acct_shortcut_po\",\"type\":\"shortcut\",\"data\":{\"col\":3,\"shortcut_name\":\"SMT Price Lock\"}},{\"id\":\"acct_shortcut_pof\",\"type\":\"shortcut\",\"data\":{\"col\":3,\"shortcut_name\":\"SMT Purchase Order\"}},{\"id\":\"acct_spacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"acct_card_settlement\",\"type\":\"card\",\"data\":{\"col\":6,\"card_name\":\"Settlement\"}},{\"id\":\"acct_card_reference\",\"type\":\"card\",\"data\":{\"col\":6,\"card_name\":\"Reference\"}}]",
  "creation": "2026-04-15 00:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -25,8 +25,8 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
-   "label": "SMT PO",
-   "link_to": "SMT PO",
+   "label": "SMT Price Lock",
+   "link_to": "SMT Price Lock",
    "link_type": "DocType",
    "onboard": 1,
    "only_for": "",
@@ -36,8 +36,8 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
-   "label": "SMT PO Final",
-   "link_to": "SMT PO Final",
+   "label": "SMT Purchase Order",
+   "link_to": "SMT Purchase Order",
    "link_type": "DocType",
    "onboard": 1,
    "only_for": "",
@@ -134,15 +134,15 @@
   {
    "color": "Green",
    "doc_view": "List",
-   "label": "SMT PO",
-   "link_to": "SMT PO",
+   "label": "SMT Price Lock",
+   "link_to": "SMT Price Lock",
    "type": "DocType"
   },
   {
    "color": "Blue",
    "doc_view": "List",
-   "label": "SMT PO Final",
-   "link_to": "SMT PO Final",
+   "label": "SMT Purchase Order",
+   "link_to": "SMT Purchase Order",
    "type": "DocType"
   }
  ],

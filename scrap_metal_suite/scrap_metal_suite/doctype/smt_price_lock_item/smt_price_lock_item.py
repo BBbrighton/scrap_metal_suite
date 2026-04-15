@@ -5,5 +5,5 @@ import frappe
 from frappe.model.document import Document
 
 
-class SMTPOFinalAllocation(Document):
+class SMTPriceLockItem(Document):
 	pass

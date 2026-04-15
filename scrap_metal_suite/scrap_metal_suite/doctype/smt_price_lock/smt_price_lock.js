@@ -1,11 +1,11 @@
 // Copyright (c) 2026, X-DESK and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("SMT PO", {
+frappe.ui.form.on("SMT Price Lock", {
 	// No special setup needed — status is system-managed
 });
 
-frappe.ui.form.on("SMT PO Item", {
+frappe.ui.form.on("SMT Price Lock Item", {
 	po_qty: function (frm, cdt, cdn) {
 		calculate_row_amount(frm, cdt, cdn);
 	},

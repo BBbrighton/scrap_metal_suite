@@ -1,4 +1,4 @@
-# Settlement Integration Tests — SMT PO & SMT PO Final
+# Settlement Integration Tests — SMT Price Lock & SMT Purchase Order
 # Run with: bench --site metal execute scrap_metal_suite.api_test.test_settlement.run
 #
 # Tests the Price Lock Settlement business logic:
@@ -69,10 +69,10 @@ def cleanup_test_data():
     """Remove all settlement test data."""
     frappe.set_user("Administrator")
 
-    # Cancel and delete SMT PO Finals first (they link to POs and Dropoff Finals)
-    for name in frappe.get_all("SMT PO Final", filters={"supplier_name": ["like", f"%{TEST_PREFIX}%"]}, pluck="name"):
+    # Cancel and delete SMT Purchase Orders first (they link to POs and Dropoff Finals)
+    for name in frappe.get_all("SMT Purchase Order", filters={"supplier_name": ["like", f"%{TEST_PREFIX}%"]}, pluck="name"):
         try:
-            doc = frappe.get_doc("SMT PO Final", name)
+            doc = frappe.get_doc("SMT Purchase Order", name)
             if doc.docstatus == 1:
                 # Delete draft PI first
                 if doc.purchase_invoice and frappe.db.exists("Purchase Invoice", doc.purchase_invoice):
@@ -80,21 +80,21 @@ def cleanup_test_data():
                     if pi.docstatus == 0:
                         frappe.delete_doc("Purchase Invoice", doc.purchase_invoice, force=True, ignore_permissions=True)
                 doc.cancel()
-            frappe.delete_doc("SMT PO Final", name, force=True, ignore_permissions=True)
+            frappe.delete_doc("SMT Purchase Order", name, force=True, ignore_permissions=True)
         except Exception:
             pass
 
-    # Cancel and delete SMT POs
-    for name in frappe.get_all("SMT PO", filters={"supplier_name": ["like", f"%{TEST_PREFIX}%"]}, pluck="name"):
+    # Cancel and delete SMT Price Locks
+    for name in frappe.get_all("SMT Price Lock", filters={"supplier_name": ["like", f"%{TEST_PREFIX}%"]}, pluck="name"):
         try:
-            doc = frappe.get_doc("SMT PO", name)
+            doc = frappe.get_doc("SMT Price Lock", name)
             if doc.docstatus == 1:
                 # Reset settled qty so cancel doesn't block
                 for row in doc.items:
-                    frappe.db.set_value("SMT PO Item", row.name, {"settled_qty": 0, "remaining_qty": row.po_qty})
+                    frappe.db.set_value("SMT Price Lock Item", row.name, {"settled_qty": 0, "remaining_qty": row.po_qty})
                 doc.reload()
                 doc.cancel()
-            frappe.delete_doc("SMT PO", name, force=True, ignore_permissions=True)
+            frappe.delete_doc("SMT Price Lock", name, force=True, ignore_permissions=True)
         except Exception:
             pass
 
@@ -290,12 +290,12 @@ def test_200_setup(results, ctx):
 
 
 def test_201_po_create_and_submit(results, ctx):
-    """Create and submit an SMT PO — happy path."""
-    print("\n--- 201. SMT PO Create & Submit ---")
+    """Create and submit an SMT Price Lock — happy path."""
+    print("\n--- 201. SMT Price Lock Create & Submit ---")
 
     try:
         po = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": [
@@ -328,12 +328,12 @@ def test_201_po_create_and_submit(results, ctx):
 
 def test_202_po_validation(results, ctx):
     """PO validation guards — zero qty, negative rate, no items."""
-    print("\n--- 202. SMT PO Validation Guards ---")
+    print("\n--- 202. SMT Price Lock Validation Guards ---")
 
     # Zero qty
     try:
         po = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": [{"item_code": ctx["copper"], "po_qty": 0, "po_rate": 300}]
@@ -349,7 +349,7 @@ def test_202_po_validation(results, ctx):
     # Negative rate
     try:
         po = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": [{"item_code": ctx["copper"], "po_qty": 5, "po_rate": -10}]
@@ -365,7 +365,7 @@ def test_202_po_validation(results, ctx):
     # No items
     try:
         po = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": []
@@ -383,14 +383,14 @@ def test_202_po_validation(results, ctx):
 
 def test_203_po_expiry(results, ctx):
     """Auto-expire only Open POs, not Partially Settled."""
-    print("\n--- 203. SMT PO Expiry ---")
+    print("\n--- 203. SMT Price Lock Expiry ---")
 
     from scrap_metal_suite.scheduler import expire_open_pos
 
     # Create PO with past expiry date
     try:
         po = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "expiry_date": add_days(today(), -1),
@@ -410,7 +410,7 @@ def test_203_po_expiry(results, ctx):
 
     # PO with no expiry should NOT be expired
     try:
-        po_main = frappe.get_doc("SMT PO", ctx["po1"])
+        po_main = frappe.get_doc("SMT Price Lock", ctx["po1"])
         assert po_main.status == "Open", f"Main PO should still be Open, got {po_main.status}"
         print(f"  ✓ PO without expiry NOT expired")
         results.add("po_no_expiry_safe", True)
@@ -446,7 +446,7 @@ def test_210_create_dropoff_final(results, ctx):
 
 def test_220_po_final_simple(results, ctx):
     """Simple settlement — allocate all items from Dropoff Final."""
-    print("\n--- 220. SMT PO Final — Simple Settlement ---")
+    print("\n--- 220. SMT Purchase Order — Simple Settlement ---")
 
     if not ctx.get("dof1") or not ctx.get("po1"):
         results.skip("po_final_simple", "Missing prerequisites")
@@ -454,7 +454,7 @@ def test_220_po_final_simple(results, ctx):
 
     try:
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
             "drop_off_finals": [
@@ -501,7 +501,7 @@ def test_220_po_final_simple(results, ctx):
         print(f"  ✓ PO Final totals correct: PO={pof.total_po_value}, Spot={pof.total_spot_value}, Total={pof.total_amount}")
 
         # Check PO settlement
-        po = frappe.get_doc("SMT PO", ctx["po1"])
+        po = frappe.get_doc("SMT Price Lock", ctx["po1"])
         copper_row = next(r for r in po.items if r.item_code == ctx["copper"])
         aluminum_row = next(r for r in po.items if r.item_code == ctx["aluminum"])
 
@@ -538,18 +538,18 @@ def test_220_po_final_simple(results, ctx):
 
 def test_230_po_final_cancel(results, ctx):
     """Cancel PO Final — verify everything reverts."""
-    print("\n--- 230. SMT PO Final Cancel Cascade ---")
+    print("\n--- 230. SMT Purchase Order Cancel Cascade ---")
 
     if not ctx.get("pof1"):
         results.skip("po_final_cancel", "No PO Final to cancel")
         return
 
     try:
-        pof = frappe.get_doc("SMT PO Final", ctx["pof1"])
+        pof = frappe.get_doc("SMT Purchase Order", ctx["pof1"])
         pof.cancel()
 
         # Check PO reverted
-        po = frappe.get_doc("SMT PO", ctx["po1"])
+        po = frappe.get_doc("SMT Price Lock", ctx["po1"])
         copper_row = next(r for r in po.items if r.item_code == ctx["copper"])
         assert flt(copper_row.settled_qty) == 0, f"Copper settled should be 0, got {copper_row.settled_qty}"
         assert po.status == "Open", f"PO status should be Open, got {po.status}"
@@ -592,7 +592,7 @@ def test_240_partial_settlement(results, ctx):
         ctx["dof2"] = dof2_name
 
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
             "drop_off_finals": [{"drop_off_final": dof2_name}],
@@ -611,7 +611,7 @@ def test_240_partial_settlement(results, ctx):
         pof.submit()
         ctx["pof2"] = pof.name
 
-        po = frappe.get_doc("SMT PO", ctx["po1"])
+        po = frappe.get_doc("SMT Price Lock", ctx["po1"])
         copper_row = next(r for r in po.items if r.item_code == ctx["copper"])
         assert flt(copper_row.settled_qty) == 4.0, f"Expected 4, got {copper_row.settled_qty}"
         assert flt(copper_row.remaining_qty) == 6.0, f"Expected 6, got {copper_row.remaining_qty}"
@@ -643,7 +643,7 @@ def test_241_complete_settlement(results, ctx):
         ctx["dof3"] = dof3_name
 
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
             "drop_off_finals": [{"drop_off_final": dof3_name}],
@@ -670,7 +670,7 @@ def test_241_complete_settlement(results, ctx):
         pof.submit()
         ctx["pof3"] = pof.name
 
-        po = frappe.get_doc("SMT PO", ctx["po1"])
+        po = frappe.get_doc("SMT Price Lock", ctx["po1"])
         copper_row = next(r for r in po.items if r.item_code == ctx["copper"])
         aluminum_row = next(r for r in po.items if r.item_code == ctx["aluminum"])
         assert flt(copper_row.settled_qty) == 10.0, f"Copper settled: expected 10, got {copper_row.settled_qty}"
@@ -694,7 +694,7 @@ def test_250_multi_po(results, ctx):
     try:
         # Create two POs
         po_a = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": [{"item_code": ctx["copper"], "po_qty": 5, "po_rate": 300}]
@@ -703,7 +703,7 @@ def test_250_multi_po(results, ctx):
         po_a.submit()
 
         po_b = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": [{"item_code": ctx["copper"], "po_qty": 5, "po_rate": 310}]
@@ -716,7 +716,7 @@ def test_250_multi_po(results, ctx):
 
         # Split allocation across two POs
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
             "drop_off_finals": [{"drop_off_final": dof}],
@@ -770,7 +770,7 @@ def test_260_over_delivery(results, ctx):
 
     try:
         po = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": [{"item_code": ctx["copper"], "po_qty": 5, "po_rate": 300}]
@@ -781,7 +781,7 @@ def test_260_over_delivery(results, ctx):
         dof = create_test_dropoff_final(ctx["supplier"], [(ctx["copper"], 8.0)])
 
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
             "drop_off_finals": [{"drop_off_final": dof}],
@@ -826,7 +826,7 @@ def test_270_over_allocation_blocked(results, ctx):
 
     try:
         po = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": [{"item_code": ctx["copper"], "po_qty": 5, "po_rate": 300}]
@@ -837,7 +837,7 @@ def test_270_over_allocation_blocked(results, ctx):
         dof = create_test_dropoff_final(ctx["supplier"], [(ctx["copper"], 6.0)])
 
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
             "drop_off_finals": [{"drop_off_final": dof}],
@@ -870,7 +870,7 @@ def test_280_cross_supplier_blocked(results, ctx):
     try:
         # PO for supplier 1
         po = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": [{"item_code": ctx["copper"], "po_qty": 5, "po_rate": 300}]
@@ -883,7 +883,7 @@ def test_280_cross_supplier_blocked(results, ctx):
 
         # PO Final for supplier 2 but referencing supplier 1's PO
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier2"],
             "final_date": today(),
             "drop_off_finals": [{"drop_off_final": dof}],
@@ -918,7 +918,7 @@ def test_290_po_cancel_with_settlement(results, ctx):
         return
 
     try:
-        po = frappe.get_doc("SMT PO", ctx["po1"])
+        po = frappe.get_doc("SMT Price Lock", ctx["po1"])
         if po.status in ("Partially Settled", "Fully Settled"):
             po.cancel()
             results.add("po_cancel_blocked", False, "Should have thrown")
@@ -960,8 +960,8 @@ def test_300_accountant_read_access(results, ctx):
             frappe.set_user("Administrator")
             results.add(f"accountant_read_{dt.lower().replace(' ', '_')}", False, e)
 
-    # Accountant should have full access on SMT PO and SMT PO Final
-    for dt in ["SMT PO", "SMT PO Final"]:
+    # Accountant should have full access on SMT Price Lock and SMT Purchase Order
+    for dt in ["SMT Price Lock", "SMT Purchase Order"]:
         try:
             frappe.set_user(TEST_ACCOUNTANT)
             has_create = frappe.has_permission(dt, "create")
@@ -985,7 +985,7 @@ def test_310_rate_locked(results, ctx):
 
     try:
         po = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": [{"item_code": ctx["copper"], "po_qty": 5, "po_rate": 300}]
@@ -997,7 +997,7 @@ def test_310_rate_locked(results, ctx):
 
         # Try to set rate=350, should be forced to 300
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
             "drop_off_finals": [{"drop_off_final": dof}],
@@ -1021,7 +1021,7 @@ def test_310_rate_locked(results, ctx):
         results.add("rate_locked", True)
 
         # Clean up
-        frappe.delete_doc("SMT PO Final", pof.name, force=True, ignore_permissions=True)
+        frappe.delete_doc("SMT Purchase Order", pof.name, force=True, ignore_permissions=True)
     except Exception as e:
         results.add("rate_locked", False, e)
 
@@ -1034,7 +1034,7 @@ def test_320_dropoff_coverage(results, ctx):
 
     try:
         po = frappe.get_doc({
-            "doctype": "SMT PO",
+            "doctype": "SMT Price Lock",
             "supplier": ctx["supplier"],
             "po_date": today(),
             "items": [
@@ -1053,7 +1053,7 @@ def test_320_dropoff_coverage(results, ctx):
 
         # Only allocate copper, skip aluminum
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
             "drop_off_finals": [{"drop_off_final": dof}],
@@ -1087,7 +1087,7 @@ def test_330_spot_zero_rate_blocked(results, ctx):
         dof = create_test_dropoff_final(ctx["supplier"], [(ctx["copper"], 5.0)])
 
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
             "drop_off_finals": [{"drop_off_final": dof}],
@@ -1124,7 +1124,7 @@ def test_340_expired_po_blocked(results, ctx):
         dof = create_test_dropoff_final(ctx["supplier"], [(ctx["copper"], 3.0)])
 
         pof = frappe.get_doc({
-            "doctype": "SMT PO Final",
+            "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
             "drop_off_finals": [{"drop_off_final": dof}],

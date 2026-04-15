@@ -1,7 +1,7 @@
 // Copyright (c) 2026, X-DESK and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("SMT PO Final", {
+frappe.ui.form.on("SMT Purchase Order", {
 	supplier: function (frm) {
 		// Clear child tables when supplier changes
 		if (frm.doc.supplier) {
@@ -40,7 +40,7 @@ frappe.ui.form.on("SMT PO Final", {
 	}
 });
 
-frappe.ui.form.on("SMT PO Final Allocation", {
+frappe.ui.form.on("SMT Purchase Order Allocation", {
 	source_type: function (frm, cdt, cdn) {
 		let row = locals[cdt][cdn];
 		if (row.source_type === "Spot") {
@@ -57,7 +57,7 @@ frappe.ui.form.on("SMT PO Final Allocation", {
 			frappe.call({
 				method: "frappe.client.get_list",
 				args: {
-					doctype: "SMT PO Item",
+					doctype: "SMT Price Lock Item",
 					filters: {
 						parent: row.po,
 						item_code: row.item_code

@@ -13,7 +13,7 @@
   "order_date",
   "status",
   "section_break_details",
-  "smt_po",
+  "smt_price_lock",
   "notes",
   "section_break_order_items",
   "order_items",
@@ -85,11 +85,11 @@
    "label": "Order Details"
   },
   {
-   "description": "Link to SMT PO for price-locked orders. Populates contracted items.",
-   "fieldname": "smt_po",
+   "description": "Link to SMT Price Lock for price-locked orders. Populates contracted items.",
+   "fieldname": "smt_price_lock",
    "fieldtype": "Link",
-   "label": "SMT PO",
-   "options": "SMT PO"
+   "label": "SMT Price Lock",
+   "options": "SMT Price Lock"
   },
   {
    "fieldname": "notes",

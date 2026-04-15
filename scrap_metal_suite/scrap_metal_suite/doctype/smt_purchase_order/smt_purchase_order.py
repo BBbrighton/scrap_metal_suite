@@ -7,7 +7,7 @@ from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
 
-class SMTPOFinal(Document):
+class SMTPurchaseOrder(Document):
 	def autoname(self):
 		if self.custom_reference:
 			self.name = self.custom_reference
@@ -38,7 +38,7 @@ class SMTPOFinal(Document):
 
 		for row in self.allocations:
 			if row.source_type == "PO" and row.po:
-				po_supplier = frappe.db.get_value("SMT PO", row.po, "supplier")
+				po_supplier = frappe.db.get_value("SMT Price Lock", row.po, "supplier")
 				if po_supplier != self.supplier:
 					frappe.throw(
 						_("Allocation row {0}: PO {1} belongs to supplier {2}, "
@@ -71,7 +71,7 @@ class SMTPOFinal(Document):
 					)
 
 				# PO must be in valid status
-				po_status = frappe.db.get_value("SMT PO", row.po, "status")
+				po_status = frappe.db.get_value("SMT Price Lock", row.po, "status")
 				if po_status not in ("Open", "Partially Settled"):
 					frappe.throw(
 						_("Allocation row {0}: PO {1} has status {2}, "
@@ -112,7 +112,7 @@ class SMTPOFinal(Document):
 	def _get_po_item_row(self, alloc_row):
 		"""Find the matching item row in the PO for this allocation."""
 		po_items = frappe.get_all(
-			"SMT PO Item",
+			"SMT Price Lock Item",
 			filters={"parent": alloc_row.po, "item_code": alloc_row.item_code},
 			fields=["name", "item_code", "po_qty", "po_rate", "settled_qty", "remaining_qty"]
 		)
@@ -193,7 +193,7 @@ class SMTPOFinal(Document):
 		"""Increment settled_qty on each PO item row."""
 		for row in self.allocations:
 			if row.source_type == "PO" and row.po:
-				po_doc = frappe.get_doc("SMT PO", row.po)
+				po_doc = frappe.get_doc("SMT Price Lock", row.po)
 				po_doc.update_settled_qty(row.po_item_row, flt(row.qty))
 
 	def mark_dropoff_finals_settled(self):
@@ -238,7 +238,7 @@ class SMTPOFinal(Document):
 		"""Decrement settled_qty on each PO item row."""
 		for row in self.allocations:
 			if row.source_type == "PO" and row.po:
-				po_doc = frappe.get_doc("SMT PO", row.po)
+				po_doc = frappe.get_doc("SMT Price Lock", row.po)
 				po_doc.update_settled_qty(row.po_item_row, -flt(row.qty))
 
 	def revert_dropoff_finals(self):

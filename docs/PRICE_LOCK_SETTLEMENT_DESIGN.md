@@ -4,7 +4,7 @@
 **Author:** Engineering
 **Last updated:** 2026-04-15
 
-> **Terminology note:** Throughout this document, **PO** refers to the initial purchase commitment (the price lock), and **PO Final** refers to the accountant's reconciliation document that closes out one or more POs against actual deliveries. These are custom doctypes (`SMT PO`, `SMT PO Final`) — they are *not* the standard ERPNext Purchase Order. We chose "PO" because it matches the language the client already uses with suppliers.
+> **Terminology note:** Throughout this document, **PO** refers to the initial purchase commitment (the price lock), and **PO Final** refers to the accountant's reconciliation document that closes out one or more POs against actual deliveries. These are custom doctypes (`SMT Price Lock`, `SMT Purchase Order`) — they are *not* the standard ERPNext Purchase Order. We chose "PO" because it matches the language the client already uses with suppliers.
 
 ---
 
@@ -17,7 +17,7 @@ Scrap metal is a fungible commodity business with two unusual properties that br
 
 Standard ERPNext Purchase Order + Purchase Receipt + Purchase Invoice assumes a tight, near-1:1 relationship between order and receipt. That doesn't fit. We need a model where **price commitments and physical deliveries are decoupled**, and a human (the accountant) reconciles them at PO Final time.
 
-This document proposes two custom DocTypes — `SMT PO` and `SMT PO Final` — and walks through the complete lifecycle.
+This document proposes two custom DocTypes — `SMT Price Lock` and `SMT Purchase Order` — and walks through the complete lifecycle.
 
 ---
 
@@ -25,10 +25,10 @@ This document proposes two custom DocTypes — `SMT PO` and `SMT PO Final` — a
 
 | Concept | Meaning |
 |---|---|
-| **SMT PO** (the initial PO) | A commitment from us to buy a specific item, in a specific quantity, at a specific rate, from a specific supplier. Created up-front. Terms are immutable after submit. |
+| **SMT Price Lock** (the initial PO) | A commitment from us to buy a specific item, in a specific quantity, at a specific rate, from a specific supplier. Created up-front. Terms are immutable after submit. |
 | **Drop-off** | The physical event of a supplier delivering material. Captured in the existing Drop-off module. No prices. |
 | **Drop-off Final** | (Built by another team) A finalized, re-weighed and re-graded version of a Drop-off. The authoritative record of what was actually received. |
-| **SMT PO Final** | The accountant's reconciliation document. Links one or more Drop-off Finals to one or more POs (and/or spot prices), produces the Purchase Invoice, and pays the supplier. |
+| **SMT Purchase Order** | The accountant's reconciliation document. Links one or more Drop-off Finals to one or more POs (and/or spot prices), produces the Purchase Invoice, and pays the supplier. |
 | **Spot** | A fallback rate set by the accountant at PO Final time, when no PO covers the material (e.g. downgraded material). |
 
 **Key invariant:** A supplier is *only* paid through a PO Final. There is no other path from material-in-yard to money-out.
@@ -74,11 +74,11 @@ PO has a 30-day expiry. Supplier never delivers. On expiry, status → Expired a
 
 ## 4. Data Model
 
-### 4.1 `SMT PO` (parent)
+### 4.1 `SMT Price Lock` (parent)
 
 | Field | Type | Notes |
 |---|---|---|
-| `naming_series` | Select | `PO-.YYYY.-` |
+| `naming_series` | Select | `PL-.YYYY.-` |
 | `supplier` | Link → Supplier | Required |
 | `supplier_name` | Data | Fetched, read-only |
 | `po_date` | Date | Defaults to today |
@@ -86,14 +86,14 @@ PO has a 30-day expiry. Supplier never delivers. On expiry, status → Expired a
 | `status` | Select | Open / Partially Settled / Fully Settled / Expired / Cancelled. **System-managed.** |
 | `created_by_role` | Select | Manager / Supplier Portal / Accountant |
 | `notes` | Small Text | Free-form |
-| `items` | Table → SMT PO Item | At least one row required |
+| `items` | Table → SMT Price Lock Item | At least one row required |
 | `total_po_value` | Currency | Sum of qty × rate, read-only |
 | `total_settled_value` | Currency | Rolled up, read-only |
-| `amended_from` | Link → SMT PO | Standard Frappe |
+| `amended_from` | Link → SMT Price Lock | Standard Frappe |
 
 **Submit semantics:** Once submitted (`docstatus=1`), the supplier-facing terms (`items.item_code`, `items.po_qty`, `items.po_rate`, `supplier`) are frozen. System-managed fields (`status`, `items.settled_qty`) are updated via `db_set()` from the PO Final controller — no user edits.
 
-### 4.2 `SMT PO Item` (child)
+### 4.2 `SMT Price Lock Item` (child)
 
 | Field | Type | Notes |
 |---|---|---|
@@ -106,23 +106,23 @@ PO has a 30-day expiry. Supplier never delivers. On expiry, status → Expired a
 | `settled_qty` | Float | **System-managed**, rolled up from PO Finals |
 | `remaining_qty` | Float | `po_qty − settled_qty`, read-only |
 
-### 4.3 `SMT PO Final` (parent)
+### 4.3 `SMT Purchase Order` (parent)
 
 | Field | Type | Notes |
 |---|---|---|
-| `naming_series` | Select | `POF-.YYYY.-` |
+| `naming_series` | Select | `SMTPL-.YYYY.-` |
 | `supplier` | Link → Supplier | Required |
 | `final_date` | Date | Defaults to today |
 | `status` | Select | Draft / Submitted / Paid / Cancelled |
-| `drop_off_finals` | Table → SMT PO Final Drop-off | Which Drop-off Finals are being closed |
-| `allocations` | Table → SMT PO Final Allocation | The reconciliation lines |
+| `drop_off_finals` | Table → SMT Purchase Order Drop-off | Which Drop-off Finals are being closed |
+| `allocations` | Table → SMT Purchase Order Allocation | The reconciliation lines |
 | `total_po_value` | Currency | Sum of allocations where source = PO |
 | `total_spot_value` | Currency | Sum of allocations where source = Spot |
 | `total_amount` | Currency | Grand total |
 | `purchase_invoice` | Link → Purchase Invoice | Generated on submit, read-only |
-| `amended_from` | Link → SMT PO Final | Standard |
+| `amended_from` | Link → SMT Purchase Order | Standard |
 
-### 4.4 `SMT PO Final Drop-off` (child)
+### 4.4 `SMT Purchase Order Drop-off` (child)
 
 | Field | Type | Notes |
 |---|---|---|
@@ -130,7 +130,7 @@ PO has a 30-day expiry. Supplier never delivers. On expiry, status → Expired a
 | `drop_off_date` | Date | Fetched |
 | `total_weight` | Float | Fetched, informational |
 
-### 4.5 `SMT PO Final Allocation` (child)
+### 4.5 `SMT Purchase Order Allocation` (child)
 
 | Field | Type | Notes |
 |---|---|---|
@@ -138,7 +138,7 @@ PO has a 30-day expiry. Supplier never delivers. On expiry, status → Expired a
 | `item_code` | Link → Item | Must match drop-off line |
 | `qty` | Float | Allocated quantity |
 | `source_type` | Select | PO / Spot |
-| `po` | Link → SMT PO | Required if source = PO |
+| `po` | Link → SMT Price Lock | Required if source = PO |
 | `po_item_row` | Data | Which child row in the PO |
 | `rate` | Currency | Auto-filled & locked if PO; manual if Spot |
 | `amount` | Currency | qty × rate |
@@ -207,7 +207,7 @@ PO has a 30-day expiry. Supplier never delivers. On expiry, status → Expired a
 This is the screen the accountant lives in. Imagine end of day, supplier "ACME Metals" has dropped off material this morning, the yard team has finalized the Drop-off Final.
 
 ### Step 1 — New PO Final
-Accountant clicks **New SMT PO Final**. Picks supplier: ACME Metals. Date defaults to today.
+Accountant clicks **New SMT Purchase Order**. Picks supplier: ACME Metals. Date defaults to today.
 
 ### Step 2 — Pull Drop-off Finals
 A panel **"Unsettled Drop-off Finals"** auto-populates with all of ACME's drop-offs in `status = Unsettled`:
@@ -291,7 +291,7 @@ Accountant opens the linked Draft PI, reviews it, sets the warehouse, and submit
        │
        ▼
 ┌──────────────────────┐
-│  SMT PO              │  status: Open
+│  SMT Price Lock              │  status: Open
 │  PO-2026-0034        │  Cu A: 10kg @ 300, remaining 10
 └──────────────────────┘
        │
@@ -309,7 +309,7 @@ Accountant opens the linked Draft PI, reviews it, sets the warehouse, and submit
          │
          ▼
 ┌──────────────────────────────┐
-│  SMT PO Final                │  Accountant reconciles
+│  SMT Purchase Order                │  Accountant reconciles
 │  POF-2026-0078               │
 │  ┌────────────────────────┐  │
 │  │ Allocations:           │  │
@@ -343,9 +343,9 @@ Payment Entry (cancel)      ← must cancel first if it exists
     ↓
 Purchase Invoice (cancel)   ← stock entries reverse automatically
     ↓
-SMT PO Final (cancel)       ← decrements PO settled_qty,
+SMT Purchase Order (cancel)       ← decrements PO settled_qty,
     ↓                         reverts Drop-off Final status
-SMT PO                      ← status recomputed automatically
+SMT Price Lock                      ← status recomputed automatically
 ```
 
 **No `is_locked` needed.** Frappe's built-in link-based cancellation cascade handles this natively. If a Payment Entry is submitted against the PI, the PI cannot be cancelled. If the PI is submitted, the PO Final's `on_cancel` blocks. The accountant must unwind in reverse order — Frappe enforces this automatically for all submitted doctypes (custom or standard).
@@ -371,8 +371,8 @@ Two new roles, identical permissions for v1. The distinction exists so we can di
 
 | DocType | SMT Accountant | SMT Accounting Manager | System Manager |
 |---------|---------------|----------------------|----------------|
-| SMT PO | Full | Full | Full |
-| SMT PO Final | Full | Full | Full |
+| SMT Price Lock | Full | Full | Full |
+| SMT Purchase Order | Full | Full | Full |
 
 **Read-only access across all other SMT doctypes:**
 
@@ -401,13 +401,13 @@ A dedicated workspace for the accounting team, following the `SMT Production` wo
 **Restricted to roles:** SMT Accountant, SMT Accounting Manager
 
 **Shortcuts:**
-- New SMT PO
-- New SMT PO Final
-- SMT PO List
-- SMT PO Final List
+- New SMT Price Lock
+- New SMT Purchase Order
+- SMT Price Lock List
+- SMT Purchase Order List
 
 **Link Cards:**
-- **Settlement:** SMT PO, SMT PO Final
+- **Settlement:** SMT Price Lock, SMT Purchase Order
 - **Reference (read-only):** Dropoff Final, Dropoff, Production Sorting, Scrap Purchase, Truck Weight
 
 The workspace gives accountants a single entry point to their workflow without navigating the full Frappe sidebar. Reference cards provide quick access to the read-only doctypes they need for verification.
@@ -416,7 +416,7 @@ The workspace gives accountants a single entry point to their workflow without n
 
 ## 10. Out of Scope for v1
 
-- **Corrective PO Finals after payment.** v1 relies on Frappe's cancel → amend flow. v2 may introduce an `SMT PO Final Adjustment` doctype that posts a debit/credit note.
+- **Corrective PO Finals after payment.** v1 relies on Frappe's cancel → amend flow. v2 may introduce an `SMT Purchase Order Adjustment` doctype that posts a debit/credit note.
 - **Supplier portal access.** Suppliers cannot view or create POs in v1. Manager creates all POs. Portal read-only access deferred to Phase D.
 - **Automatic FIFO allocation.** Accountant always chooses. We may add a "suggest allocation" button later that proposes FIFO as a starting point.
 - **Multi-currency.** THB only.
@@ -435,13 +435,13 @@ The workspace gives accountants a single entry point to their workflow without n
 5. **Item master discipline:** ~~who owns it?~~ **Decision:** Production Manager role. Taxonomy governance is a process concern, not a code concern.
 6. **Reporting needs:** **Decision:** Deferred to Phase D. Planned: Open PO Exposure by Supplier, Settlement History, Spot vs PO Rate Comparison.
 7. **Payment reconciliation trigger:** ~~manual checkbox or bank import?~~ **Decision:** Neither. Dropped `is_locked` entirely. Frappe's built-in cancellation cascade (PE → PI → PO Final) handles payment protection natively.
-8. **Naming clash:** ~~SMT PO vs Purchase Order?~~ **Decision:** `SMT PO` is fine. The `SMT` prefix disambiguates from standard ERPNext Purchase Order.
+8. **Naming clash:** ~~SMT Price Lock vs Purchase Order?~~ **Decision:** `SMT Price Lock` is fine. The `SMT` prefix disambiguates from standard ERPNext Purchase Order.
 
 ---
 
 ## 12. Dropoff Final Integration — Controller Patterns
 
-The SMT PO Final controller manages the Dropoff Final status lifecycle. These are the exact patterns to use:
+The SMT Purchase Order controller manages the Dropoff Final status lifecycle. These are the exact patterns to use:
 
 ### On `on_submit` — Mark Dropoff Finals as Settled
 
@@ -484,7 +484,7 @@ These fields must exist on Dropoff Final for the integration to work:
 | Field | Type | Notes |
 |---|---|---|
 | `status` | Select | Must include: `Unsettled`, `Settled` |
-| `po_final` | Link → SMT PO Final | Back-link to the settling document |
+| `po_final` | Link → SMT Purchase Order | Back-link to the settling document |
 | `settled_by` | Link → User | Who submitted the PO Final |
 | `settled_at` | Datetime | When it was settled |
 
@@ -504,26 +504,26 @@ bench --site metal execute scrap_metal_suite.api_test.test_full_workflow.run
 - `_test_wf_accountant@test.local` — roles: `SMT Accountant` (also gets read on all SMT doctypes)
 
 **New test data (added to ctx):**
-- SMT PO items reuse existing test items (`_TEST_WF_Copper Wire`, `_TEST_WF_Aluminum Sheet`)
+- SMT Price Lock items reuse existing test items (`_TEST_WF_Copper Wire`, `_TEST_WF_Aluminum Sheet`)
 - Test supplier reuses existing `_TEST_WF_ACME Metals`
 
 ### 13.2 Test Groups
 
 Tests numbered 200+ to avoid collision with existing 01–140 range.
 
-**test_200_smt_po_create — Create and submit PO (happy path)**
-1. As accountant, create SMT PO: 10kg Copper Wire @ 300, 5kg Aluminum @ 75
+**test_200_smt_price_lock_create — Create and submit PO (happy path)**
+1. As accountant, create SMT Price Lock: 10kg Copper Wire @ 300, 5kg Aluminum @ 75
 2. Assert `total_po_value == 3,375`
 3. Submit → assert `status == "Open"`
 4. Assert `settled_qty == 0`, `remaining_qty == po_qty` on each row
 5. Store PO name in ctx
 
-**test_201_smt_po_validation — PO validation guards**
+**test_201_smt_price_lock_validation — PO validation guards**
 1. Try create PO with `po_qty = 0` → expect throw
 2. Try create PO with `po_rate = -1` → expect throw
 3. Try create PO with no items → expect throw
 
-**test_202_smt_po_expiry — Auto-expire only Open POs**
+**test_202_smt_price_lock_expiry — Auto-expire only Open POs**
 1. Create PO with `expiry_date = yesterday`, submit
 2. Call `expire_open_pos()` scheduler function
 3. Assert `status == "Expired"`
@@ -547,8 +547,8 @@ This test reuses the existing chain but ensures the Dropoff Final ends at `statu
 11. Assert Dropoff Final `status == "Unsettled"`
 12. Store Dropoff Final name in ctx
 
-**test_220_smt_po_final_simple — Simple full settlement (UC-1)**
-1. As accountant, create SMT PO Final for test supplier
+**test_220_smt_purchase_order_simple — Simple full settlement (UC-1)**
+1. As accountant, create SMT Purchase Order for test supplier
 2. Add Dropoff Final to `drop_off_finals` child table
 3. Add allocation rows:
    - 9kg Copper → source PO, link to test PO → rate auto 300
@@ -565,7 +565,7 @@ This test reuses the existing chain but ensures the Dropoff Final ends at `statu
    - PO Final `total_spot_value == 1×285 = 285`
    - PO Final `total_amount == 3,360`
 
-**test_230_smt_po_final_cancel — Cancel cascade**
+**test_230_smt_purchase_order_cancel — Cancel cascade**
 1. Cancel the PO Final from test_220
 2. Assert:
    - PO `settled_qty` reverted to 0
@@ -626,8 +626,8 @@ This test reuses the existing chain but ensures the Dropoff Final ends at `statu
 ### 13.3 Cleanup
 
 Extends `cleanup_test_data()` to also delete:
-- SMT PO Final (cancel first if submitted) → in reverse dependency order
-- SMT PO (cancel first if submitted)
+- SMT Purchase Order (cancel first if submitted) → in reverse dependency order
+- SMT Price Lock (cancel first if submitted)
 - Draft Purchase Invoices created by tests
 - Test accountant user
 
@@ -639,9 +639,9 @@ Extends `cleanup_test_data()` to also delete:
 | 10–50 | POS flow (session, dropoff, weights) |
 | 60–99 | Production flow (sorting, variance, permissions) |
 | 100–140 | Edge cases (lifecycle, security, reweight, variance) |
-| **200–209** | **SMT PO (create, validate, expiry)** |
+| **200–209** | **SMT Price Lock (create, validate, expiry)** |
 | **210–219** | **Dropoff → Unsettled Dropoff Final (setup for settlement tests)** |
-| **220–239** | **SMT PO Final (happy path, cancel, partial)** |
+| **220–239** | **SMT Purchase Order (happy path, cancel, partial)** |
 | **240–269** | **Multi-PO, over-delivery, complex allocation** |
 | **270–299** | **Validation guards (over-allocation, cross-supplier, rate lock)** |
 | **300–319** | **Permission checks (accountant read access)** |
@@ -651,13 +651,13 @@ Extends `cleanup_test_data()` to also delete:
 
 ## 14. Implementation Phasing (proposed)
 
-**Phase A — SMT PO**
+**Phase A — SMT Price Lock**
 - DocType + child table
 - Validation, submit, cancel, expiry scheduler
 - Accountant UI for create/list/view
 - Basic report: open PO exposure per supplier
 
-**Phase B — SMT PO Final core**
+**Phase B — SMT Purchase Order core**
 - DocType + child tables
 - Allocation validation logic
 - PO Final walkthrough UI (the screen in §6)
@@ -684,7 +684,7 @@ Extends `cleanup_test_data()` to also delete:
 
 | # | Decision | Rationale |
 |---|----------|-----------|
-| 1 | Keep `SMT PO Final Drop-off` child table | UX convenience — gives accountant a clear summary panel. Negligible cost (3 read-only fields, no logic). |
+| 1 | Keep `SMT Purchase Order Drop-off` child table | UX convenience — gives accountant a clear summary panel. Negligible cost (3 read-only fields, no logic). |
 | 2 | Drop `is_locked` field and payment hooks | Frappe's built-in link-based cancellation cascade (PE → PI → PO Final) already prevents cancellation after payment. Redundant protection. |
 | 3 | Auto-expire only `Open` POs | Partially Settled POs have delivered material — auto-expiring them is dangerous. Manager handles these manually. |
 | 4 | No supplier portal in v1 | Reduces scope. Manager creates all POs. Portal read-only access deferred to Phase D. |

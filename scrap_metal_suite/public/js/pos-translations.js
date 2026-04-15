@@ -20,7 +20,7 @@ const POS_I18N = (function() {
     const translations = {
         en: {
             // ===== Landing Page =====
-            posTitle: 'SMT POS by X-DESK',
+            posTitle: 'SMT Price LockS by X-DESK',
             activeSession: 'Active Session',
             noActiveSession: 'No Active Session',
             selectTerminal: 'Select a terminal to start a new session',
@@ -365,7 +365,7 @@ const POS_I18N = (function() {
 
         th: {
             // ===== Landing Page =====
-            posTitle: 'SMT POS โดย X-DESK',
+            posTitle: 'SMT Price LockS โดย X-DESK',
             activeSession: 'เซสชันที่ใช้งาน',
             noActiveSession: 'ไม่มีเซสชันที่ใช้งาน',
             selectTerminal: 'เลือกเทอร์มินัลเพื่อเริ่มเซสชันใหม่',

@@ -12,11 +12,11 @@
 2. [System Architecture](#2-system-architecture)
 3. [Roles & Permissions](#3-roles--permissions)
 4. [Complete Business Flow](#4-complete-business-flow)
-5. [Module Guide: Price Lock (SMT PO)](#5-module-guide-price-lock-smt-po)
+5. [Module Guide: Price Lock (SMT Price Lock)](#5-module-guide-price-lock-smt-po)
 6. [Module Guide: POS Operations](#6-module-guide-pos-operations)
 7. [Module Guide: Dropoff & Weighing](#7-module-guide-dropoff--weighing)
 8. [Module Guide: Production Sorting](#8-module-guide-production-sorting)
-9. [Module Guide: Settlement (SMT PO Final)](#9-module-guide-settlement-smt-po-final)
+9. [Module Guide: Settlement (SMT Purchase Order)](#9-module-guide-settlement-smt-po-final)
 10. [Variance & Verification](#10-variance--verification)
 11. [Printing & Documents](#11-printing--documents)
 12. [Scheduled Tasks (Cron Jobs)](#12-scheduled-tasks-cron-jobs)
@@ -56,14 +56,14 @@ Scrap metal has unique properties that break the standard flow:
 
 | Term | Meaning |
 |------|---------|
-| **SMT PO** | Price commitment (Purchase Order). "We'll buy X kg of item Y at Z THB/kg." |
-| **POS Order** | Operational record of an expected delivery. Auto-created from SMT PO. |
+| **SMT Price Lock** | Price commitment (Purchase Order). "We'll buy X kg of item Y at Z THB/kg." |
+| **POS Order** | Operational record of an expected delivery. Auto-created from SMT Price Lock. |
 | **Dropoff** | A single truck delivery event. One truck, one supplier, possibly fulfilling multiple orders. |
 | **Scrap Weight** | Individual weighing record for scrap items on the platform scale. |
 | **Truck Weight** | Gross (loaded) and tare (empty) weight of the delivery truck. |
 | **Production Sorting** | QC step where material is sorted into good items and unwanted items (by grade). |
 | **Dropoff Final** | The authoritative record of what was actually received after sorting. |
-| **SMT PO Final** | Accountant's reconciliation document. Matches deliveries to price commitments. |
+| **SMT Purchase Order** | Accountant's reconciliation document. Matches deliveries to price commitments. |
 | **Spot Rate** | Price set by the accountant for material not covered by any PO. |
 
 ---
@@ -73,7 +73,7 @@ Scrap metal has unique properties that break the standard flow:
 ### Document Flow
 
 ```
-SMT PO (Price Lock)
+SMT Price Lock (Price Lock)
   │
   ├──▶ POS Order (auto-created)
   │         │
@@ -98,7 +98,7 @@ SMT PO (Price Lock)
   │         │
   └────────►│
             ▼
-       SMT PO Final
+       SMT Purchase Order
        (allocate PO rates + spot rates)
             │
             ▼
@@ -127,7 +127,7 @@ SMT PO (Price Lock)
 | **POS Operator** | Yard staff: weighing, dropoff recording | POS/Dropoff/Weight doctypes |
 | **Production Worker** | Sorting team: grade and sort material | Production Sorting, Production Session |
 | **Production Manager** | Supervise sorting, override variance | All production doctypes + override |
-| **SMT Accountant** | Create POs, settle deliveries, generate invoices | Full on SMT PO/PO Final, read on everything else |
+| **SMT Accountant** | Create POs, settle deliveries, generate invoices | Full on SMT Price Lock/PO Final, read on everything else |
 | **SMT Accounting Manager** | Same as Accountant (v1), future: approvals | Same as SMT Accountant |
 | **System Manager** | Full access to everything | All doctypes |
 
@@ -137,8 +137,8 @@ SMT PO (Price Lock)
 
 | DocType | POS Operator | Production Worker | Production Manager | SMT Accountant |
 |---------|-------------|-------------------|-------------------|----------------|
-| SMT PO | - | - | - | Full |
-| SMT PO Final | - | - | - | Full |
+| SMT Price Lock | - | - | - | Full |
+| SMT Purchase Order | - | - | - | Full |
 | POS Order | Full | - | - | - |
 | Dropoff | Full | - | - | - |
 | Scrap Weight | Full | - | - | - |
@@ -161,7 +161,7 @@ SMT Accountant and SMT Accounting Manager have read-only access to ALL SMT docty
 #### Phase 1: Price Commitment
 
 1. Supplier calls: "I want to lock 10kg copper wire at 300 THB/kg"
-2. **SMT Accountant** creates an **SMT PO** in the system:
+2. **SMT Accountant** creates an **SMT Price Lock** in the system:
    - Supplier: ACME Metals
    - Item: Copper Wire, Qty: 10 kg, Rate: 300 THB/kg
    - Optional: set expiry date (auto-expires if supplier doesn't deliver)
@@ -206,11 +206,11 @@ SMT Accountant and SMT Accounting Manager have read-only access to ALL SMT docty
 
 #### Phase 4: Settlement
 
-14. **SMT Accountant** creates an **SMT PO Final**:
+14. **SMT Accountant** creates an **SMT Purchase Order**:
     - Selects supplier: ACME Metals
     - Selects unsettled Dropoff Final(s) to close
     - Builds allocation table:
-      - 9kg Copper Grade A → allocate against SMT PO @ 300 THB/kg (rate locked)
+      - 9kg Copper Grade A → allocate against SMT Price Lock @ 300 THB/kg (rate locked)
       - 1kg Copper Grade B → Spot rate @ 285 THB/kg (accountant sets manually)
     - System validates: all items fully allocated, no over-allocation
 15. On submit:
@@ -228,15 +228,15 @@ SMT Accountant and SMT Accounting Manager have read-only access to ALL SMT docty
 
 ---
 
-## 5. Module Guide: Price Lock (SMT PO)
+## 5. Module Guide: Price Lock (SMT Price Lock)
 
 ### Purpose
 
-SMT PO (Scrap Metal Trading Purchase Order) is a price commitment: "We will buy X kg of item Y at Z THB/kg from this supplier."
+SMT Price Lock (Scrap Metal Trading Purchase Order) is a price commitment: "We will buy X kg of item Y at Z THB/kg from this supplier."
 
-### Creating an SMT PO
+### Creating an SMT Price Lock
 
-1. Go to **SMT Accounting** workspace → **SMT PO** → **New**
+1. Go to **SMT Accounting** workspace → **SMT Price Lock** → **New**
 2. Select **Supplier**
 3. Set **PO Date** (defaults to today)
 4. Optionally set **Expiry Date** (PO auto-expires after this date)
@@ -315,7 +315,7 @@ Every operator must open a session before working. Sessions track who did what a
 ### POS Order
 
 POS Orders represent expected deliveries. They can be:
-- **Auto-created** from an SMT PO (linked via `smt_po` field)
+- **Auto-created** from an SMT Price Lock (linked via `smt_price_lock` field)
 - **Manually created** by the operator for walk-in suppliers
 
 **Fields:**
@@ -323,7 +323,7 @@ POS Orders represent expected deliveries. They can be:
 |-------|-------------|
 | Supplier | Who is delivering |
 | Order Date | When (auto-filled from PO or today) |
-| SMT PO | Link to price commitment (if any) |
+| SMT Price Lock | Link to price commitment (if any) |
 | Order Items | Expected items with contracted weights |
 | Weighed Items | Actual weights received (auto-filled from Dropoff) |
 | Fulfillment % | How much of the order has been delivered |
@@ -481,15 +481,15 @@ Similar to POS Session — each worker opens a session before sorting.
 
 ---
 
-## 9. Module Guide: Settlement (SMT PO Final)
+## 9. Module Guide: Settlement (SMT Purchase Order)
 
 ### Purpose
 
-The SMT PO Final is the accountant's reconciliation document. It matches physical deliveries (Dropoff Finals) against price commitments (SMT POs) and generates a Purchase Invoice.
+The SMT Purchase Order is the accountant's reconciliation document. It matches physical deliveries (Dropoff Finals) against price commitments (SMT Price Locks) and generates a Purchase Invoice.
 
 ### Creating a PO Final
 
-1. Go to **SMT Accounting** workspace → **SMT PO Final** → **New**
+1. Go to **SMT Accounting** workspace → **SMT Purchase Order** → **New**
 2. Select **Supplier**
 3. **Dropoff Finals panel** — select which unsettled Dropoff Finals to close
 4. **Allocation table** — the heart of settlement:
@@ -651,7 +651,7 @@ Configured in **Production Sorting Settings**:
 |------|----------|-------------|
 | **Close Idle POS Sessions** | Every 15 minutes | Closes POS sessions idle > 90 minutes. Releases the assigned scale. |
 | **Close Idle Production Sessions** | Every 5 minutes | Closes Production sessions idle > 10 minutes. Releases the assigned scale. |
-| **Expire Open POs** | Daily at 1:00 AM | Expires SMT POs with status "Open" and expiry_date in the past. Does NOT expire Partially Settled POs. |
+| **Expire Open POs** | Daily at 1:00 AM | Expires SMT Price Locks with status "Open" and expiry_date in the past. Does NOT expire Partially Settled POs. |
 
 ### How Idle Detection Works
 
@@ -673,7 +673,7 @@ When a session is auto-closed:
 
 ## 13. Validation Rules Reference
 
-### SMT PO
+### SMT Price Lock
 
 | Rule | Error Message |
 |------|--------------|
@@ -682,7 +682,7 @@ When a session is auto-closed:
 | Rate must be > 0 | "Row X: Rate must be greater than 0" |
 | Cannot cancel with settled qty | "Cannot cancel: Row X has settled quantity. Cancel related PO Finals first." |
 
-### SMT PO Final
+### SMT Purchase Order
 
 | Rule | Error Message |
 |------|--------------|
@@ -755,7 +755,7 @@ This is your starting page. You select a terminal and open your session here.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    🏭 SMT POS                           │
+│                    🏭 SMT Price LockS                           │
 │                      by X-DESK                          │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
@@ -929,7 +929,7 @@ This is where you weigh the delivery truck (gross and tare).
 
 ### What You Cannot Do
 
-- Create or modify SMT POs (price commitments)
+- Create or modify SMT Price Locks (price commitments)
 - Create Production Sortings (that's the production team)
 - Create PO Finals (that's the accountant)
 - View settlement or accounting data
@@ -1081,11 +1081,11 @@ You manage price commitments, reconcile deliveries against commitments, and gene
 
 ### Daily Workflow
 
-1. **Price commitments:** Create SMT POs when suppliers call to lock prices
+1. **Price commitments:** Create SMT Price Locks when suppliers call to lock prices
 2. **Settlement:** At end of day (or when Dropoff Finals are ready):
    - Go to SMT Accounting workspace
    - Check for unsettled Dropoff Finals
-   - Create SMT PO Final for each supplier
+   - Create SMT Purchase Order for each supplier
    - Allocate items against POs or spot rates
    - Submit → Draft PI created
 3. **Invoice review:** Open the Draft PI, verify, set warehouse, submit
@@ -1094,18 +1094,18 @@ You manage price commitments, reconcile deliveries against commitments, and gene
 ### Your Workspace
 
 **SMT Accounting** workspace gives you:
-- **Shortcuts:** New SMT PO, New SMT PO Final
-- **Settlement cards:** SMT PO, SMT PO Final
+- **Shortcuts:** New SMT Price Lock, New SMT Purchase Order
+- **Settlement cards:** SMT Price Lock, SMT Purchase Order
 - **Reference cards:** Dropoff Final, Dropoff, Production Sorting, Scrap Purchase, Truck Weight
 
 ### Key Screens
 
 All work is done in **Frappe Desk** (the standard admin interface), not custom terminals.
 
-**SMT PO Form:**
+**SMT Price Lock Form:**
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  SMT PO: PO-2026-00001                    [Submit] [Menu]  │
+│  SMT Price Lock: PO-2026-00001                    [Submit] [Menu]  │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  Status: [Open]              Supplier: [ACME Metals ▼]     │
@@ -1133,10 +1133,10 @@ All work is done in **Frappe Desk** (the standard admin interface), not custom t
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**SMT PO Final Form:**
+**SMT Purchase Order Form:**
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  SMT PO Final: POF-2026-00001              [Submit] [Menu] │
+│  SMT Purchase Order: POF-2026-00001              [Submit] [Menu] │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  Status: [Draft]             Supplier: [ACME Metals ▼]     │
@@ -1152,7 +1152,7 @@ All work is done in **Frappe Desk** (the standard admin interface), not custom t
 │                                                             │
 │  ── Allocations ────────────────────────────────────────    │
 │  ┌──────────┬────────┬──────┬────────┬────────┬────────┐   │
-│  │ DOF      │ Item   │ Qty  │ Source │ SMT PO │ Rate   │   │
+│  │ DOF      │ Item   │ Qty  │ Source │ SMT Price Lock │ Rate   │   │
 │  ├──────────┼────────┼──────┼────────┼────────┼────────┤   │
 │  │ DFL-001  │ Cu A   │ 9.0  │ PO     │PO-001  │ 300.00 │   │
 │  │ DFL-001  │ Cu B   │ 1.0  │ Spot   │        │ 285.00 │   │
@@ -1167,7 +1167,7 @@ All work is done in **Frappe Desk** (the standard admin interface), not custom t
 │  ── Linked Documents ───────────────────────────────────    │
 │  Purchase Invoice: [ACC-PINV-2026-00001]                    │
 │                                                             │
-│  Connections: SMT PO (1) │ Dropoff Final (1) │ PI (1)      │
+│  Connections: SMT Price Lock (1) │ Dropoff Final (1) │ PI (1)      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -1192,12 +1192,12 @@ You can view (but not modify) all operational documents:
 
 ### Dashboard Connections
 
-When viewing an SMT PO, the sidebar shows:
+When viewing an SMT Price Lock, the sidebar shows:
 - **Orders** → POS Orders created from this PO
 - **Settlement** → PO Finals that allocated against this PO
 
-When viewing an SMT PO Final, the sidebar shows:
-- **Settlement** → SMT POs and Dropoff Finals referenced
+When viewing an SMT Purchase Order, the sidebar shows:
+- **Settlement** → SMT Price Locks and Dropoff Finals referenced
 - **Accounting** → linked Purchase Invoice
 
 ### Tips
@@ -1251,8 +1251,8 @@ When viewing an SMT PO Final, the sidebar shows:
 **For:** SMT Accountant, SMT Accounting Manager
 **Restricted to roles:** SMT Accountant, SMT Accounting Manager, System Manager
 **Shows:**
-- **Shortcuts:** SMT PO, SMT PO Final
-- **Settlement cards:** SMT PO, SMT PO Final
+- **Shortcuts:** SMT Price Lock, SMT Purchase Order
+- **Settlement cards:** SMT Price Lock, SMT Purchase Order
 - **Reference cards:** Dropoff Final, Dropoff, Production Sorting, Scrap Purchase, Truck Weight
 
 ---

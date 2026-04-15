@@ -31,11 +31,11 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Naming Series",
-   "options": "POF-.YYYY.-",
+   "options": "SMTPL-.YYYY.-",
    "reqd": 1
   },
   {
-   "description": "Optional. If set, this becomes the document name instead of auto-generated POF-.YYYY.- series.",
+   "description": "Optional. If set, this becomes the document name instead of auto-generated SMTPL-.YYYY.- series.",
    "fieldname": "custom_reference",
    "fieldtype": "Data",
    "label": "Custom Reference",
@@ -89,7 +89,7 @@
    "fieldname": "drop_off_finals",
    "fieldtype": "Table",
    "label": "Dropoff Finals",
-   "options": "SMT PO Final Dropoff",
+   "options": "SMT Purchase Order Dropoff",
    "reqd": 1
   },
   {
@@ -101,7 +101,7 @@
    "fieldname": "allocations",
    "fieldtype": "Table",
    "label": "Allocations",
-   "options": "SMT PO Final Allocation",
+   "options": "SMT Purchase Order Allocation",
    "reqd": 1
   },
   {
@@ -153,7 +153,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "SMT PO Final",
+   "options": "SMT Purchase Order",
    "print_hide": 1,
    "read_only": 1
   }
@@ -164,9 +164,9 @@
   {
    "group": "Settlement",
    "is_child_table": 1,
-   "link_doctype": "SMT PO",
+   "link_doctype": "SMT Price Lock",
    "link_fieldname": "po",
-   "parent_doctype": "SMT PO Final",
+   "parent_doctype": "SMT Purchase Order",
    "table_fieldname": "allocations"
   },
   {
@@ -174,14 +174,14 @@
    "is_child_table": 1,
    "link_doctype": "Dropoff Final",
    "link_fieldname": "drop_off_final",
-   "parent_doctype": "SMT PO Final",
+   "parent_doctype": "SMT Purchase Order",
    "table_fieldname": "drop_off_finals"
   }
  ],
  "modified": "2026-04-15 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
- "name": "SMT PO Final",
+ "name": "SMT Purchase Order",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [

@@ -7,7 +7,7 @@ from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
 
-class SMTPO(Document):
+class SMTPriceLock(Document):
 	def validate(self):
 		self.validate_items()
 		self.calculate_totals()
@@ -38,7 +38,7 @@ class SMTPO(Document):
 		pos_order = frappe.new_doc("POS Order")
 		pos_order.supplier = self.supplier
 		pos_order.order_date = self.po_date
-		pos_order.smt_po = self.name
+		pos_order.smt_price_lock = self.name
 		pos_order.status = "Pending"
 
 		for row in self.items:
@@ -75,7 +75,7 @@ class SMTPO(Document):
 		"""Cancel any POS Orders linked to this PO."""
 		pos_orders = frappe.get_all(
 			"POS Order",
-			filters={"smt_po": self.name},
+			filters={"smt_price_lock": self.name},
 			pluck="name"
 		)
 		for order_name in pos_orders:
@@ -90,7 +90,7 @@ class SMTPO(Document):
 		# Note: In MySQL, SET clauses are evaluated left-to-right, so
 		# settled_qty in the remaining_qty expression already has the new value.
 		frappe.db.sql("""
-			UPDATE `tabSMT PO Item`
+			UPDATE `tabSMT Price Lock Item`
 			SET settled_qty = settled_qty + %s,
 			    remaining_qty = po_qty - settled_qty
 			WHERE name = %s
@@ -98,7 +98,7 @@ class SMTPO(Document):
 
 		# Post-write validation: settled_qty must not exceed po_qty
 		row = frappe.db.get_value(
-			"SMT PO Item", item_row_name,
+			"SMT Price Lock Item", item_row_name,
 			["settled_qty", "po_qty"], as_dict=True
 		)
 		if flt(row.settled_qty) > flt(row.po_qty):

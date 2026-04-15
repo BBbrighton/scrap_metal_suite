@@ -100,12 +100,12 @@ def close_idle_production_sessions():
 
 def expire_open_pos():
     """
-    Expire SMT POs that are past their expiry date.
+    Expire SMT Price Locks that are past their expiry date.
     Only expires POs with status 'Open' — Partially Settled POs are never auto-expired.
     Runs daily at 1am via scheduler.
     """
     expired_pos = frappe.get_all(
-        "SMT PO",
+        "SMT Price Lock",
         filters=[
             ["status", "=", "Open"],
             ["expiry_date", "is", "set"],
@@ -117,7 +117,7 @@ def expire_open_pos():
 
     for po_name in expired_pos:
         try:
-            frappe.db.set_value("SMT PO", po_name, {
+            frappe.db.set_value("SMT Price Lock", po_name, {
                 "status": "Expired",
                 "status_date": now_datetime()
             })

@@ -3,8 +3,8 @@
 
 frappe.ui.form.on("POS Order", {
 	setup: function (frm) {
-		// Filter SMT PO by same supplier and Open/Partially Settled
-		frm.set_query("smt_po", function () {
+		// Filter SMT Price Lock by same supplier and Open/Partially Settled
+		frm.set_query("smt_price_lock", function () {
 			return {
 				filters: {
 					supplier: frm.doc.supplier || "",
@@ -15,14 +15,14 @@ frappe.ui.form.on("POS Order", {
 		});
 	},
 
-	smt_po: function (frm) {
-		if (!frm.doc.smt_po) return;
+	smt_price_lock: function (frm) {
+		if (!frm.doc.smt_price_lock) return;
 
 		frappe.call({
 			method: "frappe.client.get",
 			args: {
-				doctype: "SMT PO",
-				name: frm.doc.smt_po
+				doctype: "SMT Price Lock",
+				name: frm.doc.smt_price_lock
 			},
 			callback: function (r) {
 				if (!r.message) return;
@@ -46,7 +46,7 @@ frappe.ui.form.on("POS Order", {
 				});
 				frm.refresh_field("order_items");
 				frappe.show_alert({
-					message: __("Populated {0} items from SMT PO", [po.items.length]),
+					message: __("Populated {0} items from SMT Price Lock", [po.items.length]),
 					indicator: "green"
 				});
 			}

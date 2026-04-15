@@ -68,9 +68,9 @@
    "fieldname": "po",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "SMT PO",
+   "label": "SMT Price Lock",
    "mandatory_depends_on": "eval:doc.source_type=='PO'",
-   "options": "SMT PO"
+   "options": "SMT Price Lock"
   },
   {
    "depends_on": "eval:doc.source_type=='PO'",
@@ -115,7 +115,7 @@
  "modified": "2026-04-15 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
- "name": "SMT PO Final Allocation",
+ "name": "SMT Purchase Order Allocation",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

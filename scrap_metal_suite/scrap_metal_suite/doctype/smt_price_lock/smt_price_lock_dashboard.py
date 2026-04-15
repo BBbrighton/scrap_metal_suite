@@ -3,9 +3,9 @@ from frappe import _
 
 def get_data():
 	return {
-		"fieldname": "smt_po",
+		"fieldname": "smt_price_lock",
 		"non_standard_fieldnames": {
-			"SMT PO Final": "po",
+			"SMT Purchase Order": "po",
 		},
 		"internal_links": {},
 		"transactions": [
@@ -15,10 +15,10 @@ def get_data():
 			},
 			{
 				"label": _("Settlement"),
-				"items": ["SMT PO Final"],
+				"items": ["SMT Purchase Order"],
 			},
 		],
 		"internal_and_external_links": {
-			"SMT PO Final": ["po", "allocations"],
+			"SMT Purchase Order": ["po", "allocations"],
 		},
 	}

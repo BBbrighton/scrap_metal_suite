@@ -95,7 +95,7 @@
  "modified": "2026-04-15 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
- "name": "SMT PO Item",
+ "name": "SMT Price Lock Item",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

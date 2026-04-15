@@ -5,5 +5,5 @@ import frappe
 from frappe.model.document import Document
 
 
-class SMTPOItem(Document):
+class SMTPurchaseOrderAllocation(Document):
 	pass

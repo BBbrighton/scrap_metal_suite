@@ -14,10 +14,10 @@ def get_data():
 			},
 			{
 				"label": _("Settlement"),
-				"items": ["SMT PO Final"],
+				"items": ["SMT Purchase Order"],
 			},
 		],
 		"non_standard_fieldnames": {
-			"SMT PO Final": "drop_off_final",
+			"SMT Purchase Order": "drop_off_final",
 		},
 	}

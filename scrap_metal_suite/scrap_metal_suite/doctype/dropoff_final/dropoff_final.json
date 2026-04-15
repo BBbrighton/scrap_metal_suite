@@ -255,7 +255,7 @@
    "fieldname": "po_final",
    "fieldtype": "Link",
    "label": "PO Final",
-   "options": "SMT PO Final",
+   "options": "SMT Purchase Order",
    "read_only": 1,
    "description": "Set when this Dropoff Final is settled via a PO Final"
   },
