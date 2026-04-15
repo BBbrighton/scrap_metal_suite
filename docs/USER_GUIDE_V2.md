@@ -616,18 +616,16 @@ Configured in **Production Sorting Settings**:
 
 | Print Format | DocType | Description |
 |-------------|---------|-------------|
-| Weight Receipt | POS Order | Full A4 receipt with order details, weighed items, truck weights, variance, QR code |
+| ใบยืนยันราคา (Price Lock) | SMT Price Lock | Supplier, locked items with rates/settled/remaining, totals, signatures |
+| ใบสั่งซื้อ (Purchase Order) | SMT Purchase Order | Dropoff Finals, allocation table with PO/Spot breakdown, grand total, PI link |
+| ใบคัดแยก (Sorting Report) | Dropoff Final | Good items, unwanted items with reasons, variance summary (pass/fail) |
+| ใบคิวสองภาษา (Queue Ticket) | Dropoff | Truck weights, item summary (indicated vs actual), variance verification |
+| ใบสรุปการส่งมอบ (Delivery Summary) | POS Order | Order items, weighed items, fulfillment status |
+| Scrap Weight Thermal | Scrap Weight | 80mm thermal receipt for individual scrap weighing |
+| Truck Weight Thermal | Truck Weight | 80mm thermal receipt for truck weighing |
 
-### Weight Receipt Contents
-
-- Company logo and QR code
-- Order number, date, supplier
-- **Contracted Items** — what was ordered (item, weight)
-- **Weighed Items** — what was actually received (item, weight)
-- **Truck Weights** — gross, tare, net
-- **Variance** — indicated vs actual, with status badge
-- **Reweight flags** — if any item was re-weighed
-- Signature line
+All A4 formats are bilingual (Thai/English) with company letterhead, QR codes, and signature lines.
+Thermal formats are 80mm width for receipt printers.
 
 ### Printing from Terminal
 
