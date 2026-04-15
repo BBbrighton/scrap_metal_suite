@@ -167,12 +167,6 @@
    "link_fieldname": "drop_off_final",
    "parent_doctype": "SMT PO Final",
    "table_fieldname": "drop_off_finals"
-  },
-  {
-   "group": "Accounting",
-   "link_doctype": "Purchase Invoice",
-   "link_fieldname": "purchase_invoice",
-   "parent_doctype": "SMT PO Final"
   }
  ],
  "modified": "2026-04-15 00:00:00.000000",

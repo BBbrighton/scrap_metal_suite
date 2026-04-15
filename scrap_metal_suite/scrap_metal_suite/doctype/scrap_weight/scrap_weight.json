@@ -2,6 +2,7 @@
  "actions": [],
  "autoname": "naming_series:",
  "creation": "2025-12-01 12:00:00.000000",
+ "default_print_format": "Scrap Weight Thermal",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [

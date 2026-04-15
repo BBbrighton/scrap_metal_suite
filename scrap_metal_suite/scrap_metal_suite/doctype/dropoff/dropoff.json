@@ -1,6 +1,7 @@
 {
  "actions": [],
  "autoname": "naming_series:",
+ "default_print_format": "\u0e43\u0e1a\u0e04\u0e34\u0e27\u0e2a\u0e2d\u0e07\u0e20\u0e32\u0e29\u0e32",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [

@@ -1,6 +1,7 @@
 {
  "actions": [],
  "autoname": "naming_series:",
+ "default_print_format": "Truck Weight Thermal",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
