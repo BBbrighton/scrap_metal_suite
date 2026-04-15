@@ -2,7 +2,7 @@
 # Cron jobs for automated maintenance
 
 import frappe
-from frappe.utils import now_datetime, add_to_date
+from frappe.utils import now_datetime, add_to_date, today
 
 
 def close_idle_sessions():
@@ -96,3 +96,34 @@ def close_idle_production_sessions():
         frappe.logger().info(f"Auto-closed {closed_count} idle production session(s)")
 
     return closed_count
+
+
+def expire_open_pos():
+    """
+    Expire SMT POs that are past their expiry date.
+    Only expires POs with status 'Open' — Partially Settled POs are never auto-expired.
+    Runs daily at 1am via scheduler.
+    """
+    expired_pos = frappe.get_all(
+        "SMT PO",
+        filters=[
+            ["status", "=", "Open"],
+            ["expiry_date", "is", "set"],
+            ["expiry_date", "<", today()],
+            ["docstatus", "=", 1],
+        ],
+        pluck="name"
+    )
+
+    for po_name in expired_pos:
+        try:
+            frappe.db.set_value("SMT PO", po_name, "status", "Expired")
+            frappe.logger().info(f"Auto-expired PO {po_name}")
+        except Exception as e:
+            frappe.logger().error(f"Error expiring PO {po_name}: {str(e)}")
+
+    if expired_pos:
+        frappe.db.commit()
+        frappe.logger().info(f"Auto-expired {len(expired_pos)} PO(s)")
+
+    return len(expired_pos)

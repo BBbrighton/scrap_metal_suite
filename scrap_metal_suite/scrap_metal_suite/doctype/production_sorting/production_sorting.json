@@ -317,6 +317,22 @@
    "write": 1,
    "submit": 1,
    "cancel": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "role": "SMT Accountant"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "role": "SMT Accounting Manager"
   }
  ],
  "sort_field": "modified",

@@ -1,0 +1,150 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"acct_header\",\"type\":\"header\",\"data\":{\"col\":12,\"text\":\"<span class=\\\"h4\\\"><b>SMT Accounting</b></span>\",\"level\":4}},{\"id\":\"acct_shortcut_po\",\"type\":\"shortcut\",\"data\":{\"col\":3,\"shortcut_name\":\"SMT PO\"}},{\"id\":\"acct_shortcut_pof\",\"type\":\"shortcut\",\"data\":{\"col\":3,\"shortcut_name\":\"SMT PO Final\"}},{\"id\":\"acct_spacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"acct_card_settlement\",\"type\":\"card\",\"data\":{\"col\":6,\"card_name\":\"Settlement\"}},{\"id\":\"acct_card_reference\",\"type\":\"card\",\"data\":{\"col\":6,\"card_name\":\"Reference\"}}]",
+ "creation": "2026-04-15 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "accounting",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "SMT Accounting",
+ "links": [
+  {
+   "description": "Price lock and settlement documents",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settlement",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SMT PO",
+   "link_to": "SMT PO",
+   "link_type": "DocType",
+   "onboard": 1,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SMT PO Final",
+   "link_to": "SMT PO Final",
+   "link_type": "DocType",
+   "onboard": 1,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "description": "Read-only reference for verification",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reference",
+   "link_count": 5,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Dropoff Final",
+   "link_to": "Dropoff Final",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Dropoff",
+   "link_to": "Dropoff",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Production Sorting",
+   "link_to": "Production Sorting",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Scrap Purchase",
+   "link_to": "Scrap Purchase",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Truck Weight",
+   "link_to": "Truck Weight",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-04-15 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "SMT Accounting",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "SMT Accountant"
+  },
+  {
+   "role": "SMT Accounting Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 11.0,
+ "shortcuts": [
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "SMT PO",
+   "link_to": "SMT PO",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "SMT PO Final",
+   "link_to": "SMT PO Final",
+   "type": "DocType"
+  }
+ ],
+ "title": "SMT Accounting"
+}

@@ -1,0 +1,232 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-04-15 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "status",
+  "column_break_header",
+  "supplier",
+  "supplier_name",
+  "final_date",
+  "section_dropoff_finals",
+  "drop_off_finals",
+  "section_allocations",
+  "allocations",
+  "section_totals",
+  "total_po_value",
+  "total_spot_value",
+  "column_break_totals",
+  "total_amount",
+  "section_linked_docs",
+  "purchase_invoice",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "POF-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nSubmitted\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "supplier.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "final_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Final Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_dropoff_finals",
+   "fieldtype": "Section Break",
+   "label": "Dropoff Finals Being Settled"
+  },
+  {
+   "fieldname": "drop_off_finals",
+   "fieldtype": "Table",
+   "label": "Dropoff Finals",
+   "options": "SMT PO Final Dropoff",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_allocations",
+   "fieldtype": "Section Break",
+   "label": "Allocations"
+  },
+  {
+   "fieldname": "allocations",
+   "fieldtype": "Table",
+   "label": "Allocations",
+   "options": "SMT PO Final Allocation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_totals",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "default": "0",
+   "fieldname": "total_po_value",
+   "fieldtype": "Currency",
+   "label": "Total PO Value",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "total_spot_value",
+   "fieldtype": "Currency",
+   "label": "Total Spot Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_totals",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Grand Total",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_linked_docs",
+   "fieldtype": "Section Break",
+   "label": "Linked Documents"
+  },
+  {
+   "fieldname": "purchase_invoice",
+   "fieldtype": "Link",
+   "label": "Purchase Invoice",
+   "options": "Purchase Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "SMT PO Final",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [
+  {
+   "group": "Settlement",
+   "is_child_table": 1,
+   "link_doctype": "SMT PO",
+   "link_fieldname": "po",
+   "parent_doctype": "SMT PO Final",
+   "table_fieldname": "allocations"
+  },
+  {
+   "group": "Settlement",
+   "is_child_table": 1,
+   "link_doctype": "Dropoff Final",
+   "link_fieldname": "drop_off_final",
+   "parent_doctype": "SMT PO Final",
+   "table_fieldname": "drop_off_finals"
+  },
+  {
+   "group": "Accounting",
+   "link_doctype": "Purchase Invoice",
+   "link_fieldname": "purchase_invoice",
+   "parent_doctype": "SMT PO Final"
+  }
+ ],
+ "modified": "2026-04-15 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "SMT PO Final",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "SMT Accountant",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "SMT Accounting Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

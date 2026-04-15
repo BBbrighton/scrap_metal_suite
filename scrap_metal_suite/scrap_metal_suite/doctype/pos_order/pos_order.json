@@ -12,7 +12,7 @@
   "order_date",
   "status",
   "section_break_details",
-  "purchase_order",
+  "smt_po",
   "notes",
   "section_break_order_items",
   "order_items",
@@ -84,10 +84,11 @@
    "label": "Order Details"
   },
   {
-   "description": "Reference to purchase order (will be linked later)",
-   "fieldname": "purchase_order",
-   "fieldtype": "Data",
-   "label": "Purchase Order"
+   "description": "Link to SMT PO for price-locked orders. Populates contracted items.",
+   "fieldname": "smt_po",
+   "fieldtype": "Link",
+   "label": "SMT PO",
+   "options": "SMT PO"
   },
   {
    "fieldname": "notes",
@@ -207,6 +208,34 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "POS Operator",
+   "share": 0,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "role": "SMT Accountant"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "role": "SMT Accounting Manager"
   }
  ],
  "sort_field": "modified",

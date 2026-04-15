@@ -295,11 +295,16 @@
    "write": 1
   },
   {
-   "create": 0,
+   "create": 1,
    "delete": 0,
+   "email": 1,
+   "export": 0,
+   "print": 1,
    "read": 1,
-   "write": 0,
-   "role": "Production Worker"
+   "report": 1,
+   "role": "Production Worker",
+   "share": 0,
+   "write": 1
   },
   {
    "create": 1,
@@ -314,6 +319,22 @@
    "write": 1,
    "submit": 0,
    "cancel": 0
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "role": "SMT Accountant"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "role": "SMT Accounting Manager"
   }
  ],
  "sort_field": "modified",
