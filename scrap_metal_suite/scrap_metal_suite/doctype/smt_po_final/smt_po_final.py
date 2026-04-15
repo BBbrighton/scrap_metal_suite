@@ -8,6 +8,10 @@ from frappe.utils import flt, now_datetime
 
 
 class SMTPOFinal(Document):
+	def autoname(self):
+		if self.custom_reference:
+			self.name = self.custom_reference
+
 	def validate(self):
 		self.validate_supplier_consistency()
 		self.validate_allocations()

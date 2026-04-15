@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
+  "custom_reference",
   "status",
   "column_break_header",
   "supplier",
@@ -32,6 +33,14 @@
    "label": "Naming Series",
    "options": "POF-.YYYY.-",
    "reqd": 1
+  },
+  {
+   "description": "Optional. If set, this becomes the document name instead of auto-generated POF-.YYYY.- series.",
+   "fieldname": "custom_reference",
+   "fieldtype": "Data",
+   "label": "Custom Reference",
+   "unique": 1,
+   "set_only_once": 1
   },
   {
    "default": "Draft",
