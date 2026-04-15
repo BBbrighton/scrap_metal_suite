@@ -53,24 +53,23 @@ frappe.ui.form.on("SMT Purchase Order Allocation", {
 	po: function (frm, cdt, cdn) {
 		let row = locals[cdt][cdn];
 		if (row.source_type === "PO" && row.po && row.item_code) {
-			// Fetch rate from PO item row
+			// Fetch rate from PO by reading the parent doc
 			frappe.call({
-				method: "frappe.client.get_list",
+				method: "frappe.client.get",
 				args: {
-					doctype: "SMT Price Lock Item",
-					filters: {
-						parent: row.po,
-						item_code: row.item_code
-					},
-					fields: ["name", "po_rate", "remaining_qty"],
-					limit_page_length: 1
+					doctype: "SMT Price Lock",
+					name: row.po
 				},
 				callback: function (r) {
-					if (r.message && r.message.length > 0) {
-						let po_item = r.message[0];
-						frappe.model.set_value(cdt, cdn, "rate", po_item.po_rate);
-						frappe.model.set_value(cdt, cdn, "po_item_row", po_item.name);
-						calculate_row_amount(frm, cdt, cdn);
+					if (r.message && r.message.items) {
+						let match = r.message.items.find(
+							i => i.item_code === row.item_code
+						);
+						if (match) {
+							frappe.model.set_value(cdt, cdn, "rate", match.po_rate);
+							frappe.model.set_value(cdt, cdn, "po_item_row", match.name);
+							calculate_row_amount(frm, cdt, cdn);
+						}
 					}
 				}
 			});

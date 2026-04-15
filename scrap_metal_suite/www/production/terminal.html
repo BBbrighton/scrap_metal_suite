@@ -63,6 +63,8 @@ body { padding-top: 0 !important; background: #0f172a; }
         <!-- Left Panel: Category Tabs + Item Grid -->
         <div class="prod-panel-left">
             <div class="prod-category-tabs" id="categoryTabs">
+                <button class="prod-category-tab" id="fromDropoffTab" style="display:none;"
+                        onclick="filterCategory(this, 'fromDropoff')" data-i18n="fromDropoff">From Dropoff</button>
                 <button class="prod-category-tab active" onclick="filterCategory(this, 'all')" data-i18n="allGroups">All</button>
                 {% for group in item_groups %}
                 <button class="prod-category-tab" data-group="{{ group | e }}" onclick="filterCategory(this, this.dataset.group)">{{ group }}</button>

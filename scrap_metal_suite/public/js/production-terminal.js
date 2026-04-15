@@ -379,24 +379,28 @@ function switchItemType(type) {
 // ===== Category Filter Tabs =====
 
 function filterCategory(btn, category) {
-    document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+    // Support both terminal CSS conventions
+    document.querySelectorAll('.category-tab, .prod-category-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
+
+    // Get all item buttons (both conventions)
+    var allItems = document.querySelectorAll('.item-btn, .prod-item-btn');
 
     if (category === 'fromDropoff') {
         var dropoffItemCodes = [];
         if (currentDropoff && currentDropoff.source_items) {
             dropoffItemCodes = currentDropoff.source_items.map(function(i) { return i.item || i.item_code; });
         }
-        document.querySelectorAll('.item-btn').forEach(function(item) {
+        allItems.forEach(function(item) {
             var code = item.getAttribute('data-item-code') || '';
             item.style.display = dropoffItemCodes.indexOf(code) >= 0 ? '' : 'none';
         });
         return;
     }
 
-    document.querySelectorAll('.item-btn').forEach(function(item) {
-        var itemCategory = item.getAttribute('data-category') || '';
-        if (category === '' || itemCategory === category) {
+    allItems.forEach(function(item) {
+        var itemCat = item.getAttribute('data-category') || item.getAttribute('data-group') || '';
+        if (category === 'all' || category === '' || itemCat === category) {
             item.style.display = '';
         } else {
             item.style.display = 'none';
