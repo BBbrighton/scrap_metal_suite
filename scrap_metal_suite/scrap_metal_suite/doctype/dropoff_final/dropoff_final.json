@@ -2,6 +2,7 @@
  "actions": [],
  "autoname": "naming_series:",
  "creation": "2026-03-03 00:00:00.000000",
+ "default_print_format": "\u0e43\u0e1a\u0e04\u0e31\u0e14\u0e41\u0e22\u0e01",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
