@@ -7,6 +7,7 @@
  "field_order": [
   "naming_series",
   "status",
+  "status_date",
   "column_break_header",
   "supplier",
   "supplier_name",
@@ -41,6 +42,12 @@
    "in_standard_filter": 1,
    "label": "Status",
    "options": "Open\nPartially Settled\nFully Settled\nExpired\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status_date",
+   "fieldtype": "Datetime",
+   "label": "Status Updated On",
    "read_only": 1
   },
   {

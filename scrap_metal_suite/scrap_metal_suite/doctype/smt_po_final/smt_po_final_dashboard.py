@@ -7,6 +7,7 @@ def get_data():
 		"internal_links": {
 			"SMT PO": ["allocations", "po"],
 			"Dropoff Final": ["drop_off_finals", "drop_off_final"],
+			"Purchase Invoice": ["", "purchase_invoice"],
 		},
 		"transactions": [
 			{

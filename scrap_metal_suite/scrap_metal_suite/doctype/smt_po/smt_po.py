@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt
+from frappe.utils import flt, now_datetime
 
 
 class SMTPO(Document):
@@ -30,7 +30,7 @@ class SMTPO(Document):
 		)
 
 	def on_submit(self):
-		self.db_set("status", "Open")
+		self.db_set({"status": "Open", "status_date": now_datetime()})
 		self.create_pos_order()
 
 	def create_pos_order(self):
@@ -69,7 +69,7 @@ class SMTPO(Document):
 					)
 				)
 		self.cancel_pos_orders()
-		self.db_set("status", "Cancelled")
+		self.db_set({"status": "Cancelled", "status_date": now_datetime()})
 
 	def cancel_pos_orders(self):
 		"""Cancel any POS Orders linked to this PO."""
@@ -123,4 +123,4 @@ class SMTPO(Document):
 		else:
 			status = "Open"
 
-		self.db_set("status", status)
+		self.db_set({"status": status, "status_date": now_datetime()})

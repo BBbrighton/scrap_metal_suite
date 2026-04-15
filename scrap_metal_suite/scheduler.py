@@ -117,7 +117,10 @@ def expire_open_pos():
 
     for po_name in expired_pos:
         try:
-            frappe.db.set_value("SMT PO", po_name, "status", "Expired")
+            frappe.db.set_value("SMT PO", po_name, {
+                "status": "Expired",
+                "status_date": now_datetime()
+            })
             frappe.logger().info(f"Auto-expired PO {po_name}")
         except Exception as e:
             frappe.logger().error(f"Error expiring PO {po_name}: {str(e)}")
