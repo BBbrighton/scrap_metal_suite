@@ -65,13 +65,14 @@ body { padding-top: 0 !important; background: #0f172a; }
             <div class="prod-category-tabs" id="categoryTabs">
                 <button class="prod-category-tab active" onclick="filterCategory(this, 'all')" data-i18n="allGroups">All</button>
                 {% for group in item_groups %}
-                <button class="prod-category-tab" onclick="filterCategory(this, '{{ group }}')">{{ group }}</button>
+                <button class="prod-category-tab" data-group="{{ group | e }}" onclick="filterCategory(this, this.dataset.group)">{{ group }}</button>
                 {% endfor %}
             </div>
             <div class="prod-item-grid" id="itemGrid">
                 {% for item in allowed_items %}
                 <button class="prod-item-btn" data-group="{{ item.item_group }}"
-                        onclick="selectItem('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.item_group }}', '{{ item.stock_uom or 'Kg' }}')">
+                        data-item-code="{{ item.item_code | e }}" data-item-name="{{ item.item_name | e }}" data-item-group="{{ item.item_group | e }}" data-uom="{{ item.stock_uom or 'Kg' | e }}"
+                        onclick="selectItem(this.dataset.itemCode, this.dataset.itemName, this.dataset.itemGroup, this.dataset.uom)">
                     <span class="item-name">{{ item.item_name }}</span>
                     <span class="item-group">{{ item.item_group }}</span>
                 </button>
@@ -174,6 +175,16 @@ body { padding-top: 0 !important; background: #0f172a; }
 </div>
 
 <script>
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // ===== State =====
 const state = {
     session: '{{ session.name }}',
@@ -251,10 +262,10 @@ async function searchDropoff(query) {
 
         resultsEl.innerHTML = results.map(d => `
             <div class="dropoff-result ${d.has_sorting ? 'has-sorting' : ''}"
-                 onclick="selectDropoffResult('${d.name}')">
-                <span class="dropoff-id">${d.name}</span>
+                 onclick="selectDropoffResult('${escapeHtml(d.name)}')">
+                <span class="dropoff-id">${escapeHtml(d.name)}</span>
                 <span class="dropoff-details">
-                    ${d.supplier_name || ''} · ${d.license_plate || ''} · ${(d.total_actual_weight || 0).toFixed(2)} kg
+                    ${escapeHtml(d.supplier_name || '')} · ${escapeHtml(d.license_plate || '')} · ${(d.total_actual_weight || 0).toFixed(2)} kg
                     ${d.has_sorting ? ' · <span style="color:#f59e0b">Already sorted</span>' : ''}
                 </span>
             </div>
@@ -294,17 +305,17 @@ async function loadDropoff(name) {
         const card = document.getElementById('dropoffCard');
         card.style.display = 'block';
         card.innerHTML = `
-            <h4>${d.name}
+            <h4>${escapeHtml(d.name)}
                 <button class="btn-prod-cart-remove" onclick="clearDropoff();" style="float:right;">✕</button>
             </h4>
             <div class="prod-dropoff-info">
                 <div class="dropoff-detail-row">
                     <span class="detail-label">${POS_I18N.t('supplierLabel')}</span>
-                    <span class="detail-value">${d.supplier_name || d.supplier || '-'}</span>
+                    <span class="detail-value">${escapeHtml(d.supplier_name || d.supplier || '-')}</span>
                 </div>
                 <div class="dropoff-detail-row">
                     <span class="detail-label">${POS_I18N.t('plateLabel')}</span>
-                    <span class="detail-value">${d.license_plate || '-'}</span>
+                    <span class="detail-value">${escapeHtml(d.license_plate || '-')}</span>
                 </div>
                 <div class="dropoff-detail-row">
                     <span class="detail-label">${POS_I18N.t('dropoffWeight')}</span>
@@ -312,14 +323,14 @@ async function loadDropoff(name) {
                 </div>
                 <div class="dropoff-detail-row">
                     <span class="detail-label">Status</span>
-                    <span class="detail-value">${d.status}</span>
+                    <span class="detail-value">${escapeHtml(d.status)}</span>
                 </div>
             </div>
             ${state.sourceItems.length ? `
             <div class="prod-source-items">
                 ${state.sourceItems.map(i => `
                     <div class="prod-source-item">
-                        <span>${i.item_name || i.item}</span>
+                        <span>${escapeHtml(i.item_name || i.item)}</span>
                         <span>${(i.total_weight || 0).toFixed(2)} kg</span>
                     </div>
                 `).join('')}
@@ -392,11 +403,11 @@ function renderCart() {
     container.innerHTML = state.cart.map((item) => `
         <div class="prod-cart-item">
             <div class="prod-cart-item-info">
-                <span class="prod-cart-item-name">${item.item_name}</span>
-                <div class="prod-cart-item-group">${item.item_group}</div>
+                <span class="prod-cart-item-name">${escapeHtml(item.item_name)}</span>
+                <div class="prod-cart-item-group">${escapeHtml(item.item_group)}</div>
             </div>
             <span class="prod-cart-item-weight">${item.weight.toFixed(2)} kg</span>
-            <button class="btn-prod-cart-remove" data-uid="${item._uid}" type="button">&#10005;</button>
+            <button class="btn-prod-cart-remove" data-uid="${escapeHtml(item._uid)}" type="button">&#10005;</button>
         </div>
     `).join('');
 
@@ -518,10 +529,10 @@ async function showScaleModal() {
         const list = document.getElementById('scaleList');
         list.innerHTML = scales.map(s => `
             <div class="prod-scale-option ${s.in_use ? 'in-use' : ''}"
-                 onclick="${s.in_use ? '' : `selectScale('${s.name}', '${s.scale_name}')`}">
+                 onclick="${s.in_use ? '' : `selectScale('${escapeHtml(s.name)}', '${escapeHtml(s.scale_name)}')`}">
                 <div>
-                    <strong>${s.scale_name}</strong>
-                    <div style="font-size:0.85rem;color:#94a3b8;">${s.location || ''} · ${s.scale_type}</div>
+                    <strong>${escapeHtml(s.scale_name)}</strong>
+                    <div style="font-size:0.85rem;color:#94a3b8;">${escapeHtml(s.location || '')} · ${escapeHtml(s.scale_type)}</div>
                 </div>
                 <span style="color:${s.in_use ? '#ef4444' : '#4ade80'}">${s.in_use ? 'In Use' : 'Available'}</span>
             </div>

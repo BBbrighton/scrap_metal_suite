@@ -97,7 +97,7 @@ body {
                 <p>Scan a scale QR code or select from list</p>
                 <div class="scale-list">
                     {% for scale in scales %}
-                    <button class="scale-option" onclick="selectScale('{{ scale.name }}', '{{ scale.scale_name }}')">
+                    <button class="scale-option" data-scale-id="{{ scale.name | e }}" data-scale-display="{{ scale.scale_name | e }}" onclick="selectScale(this.dataset.scaleId, this.dataset.scaleDisplay)">
                         <span class="scale-icon">&#9878;</span>
                         <div class="scale-info">
                             <span class="scale-name">{{ scale.scale_name }}</span>
@@ -213,7 +213,8 @@ body {
                     <button class="item-btn"
                             data-category="{{ item.category }}"
                             data-item-code="{{ item.item_code }}"
-                            onclick="selectItemCard('{{ item.item_code }}', '{{ item.item_name }}', '{{ item.uom }}')">
+                            data-item-name="{{ item.item_name | e }}" data-uom="{{ item.uom | e }}"
+                            onclick="selectItemCard(this.dataset.itemCode, this.dataset.itemName, this.dataset.uom)">
                         <span class="item-name">{{ item.item_name }}</span>
                         <span class="item-group-label">{{ item.category }}</span>
                     </button>

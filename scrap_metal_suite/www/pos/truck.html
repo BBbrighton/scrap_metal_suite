@@ -64,6 +64,7 @@
             <button class="btn-header btn-theme" onclick="toggleTheme()" title="Toggle Theme">
                 <span id="themeIcon">&#9728;</span>
             </button>
+            <button class="btn-header" onclick="reprintLastTruckWeight()" title="Reprint last ticket (2 copies)">&#x1F5B6; Print</button>
             <button class="btn-header btn-danger" onclick="confirmCloseSession()" data-i18n="closeSession">Close Session</button>
         </div>
     </header>
@@ -701,6 +702,7 @@ const state = {
     capturedPhotos: [],  // New photos captured in this session
     existingPhotos: [],  // Photos already saved on server
     truckWeights: [],  // Truck weight records from API
+    lastTruckWeight: null,  // Last printed truck weight name (for reprint)
     cameraStream: null,
     cameraCapabilities: null,
     cameraTrack: null,
@@ -2976,10 +2978,27 @@ async function saveWeightByType(weightType, weight, remarks, reweightReason) {
 }
 
 // ===== Print Thermal Receipt =====
-function printTruckWeight(truckWeightName) {
-    // Open print preview in new tab with auto-print trigger
-    const printUrl = '/printview?doctype=Truck%20Weight&name=' + encodeURIComponent(truckWeightName) + '&format=Truck%20Weight%20Thermal&trigger_print=1';
+function printTruckWeight(truckWeightName, copies) {
+    copies = copies || 2;
+    const printUrl = '/printview?doctype=Truck%20Weight&name=' + encodeURIComponent(truckWeightName) + '&format=Truck%20Weight%20Thermal&trigger_print=1&no_letterhead=1';
+    // Print first copy
     window.open(printUrl, '_blank');
+    // Print second copy after delay (allows first print dialog to process)
+    if (copies > 1) {
+        setTimeout(function() {
+            window.open(printUrl, '_blank');
+        }, 1500);
+    }
+    // Store last printed for reprint
+    state.lastTruckWeight = truckWeightName;
+}
+
+function reprintLastTruckWeight() {
+    if (state.lastTruckWeight) {
+        printTruckWeight(state.lastTruckWeight, 2);
+    } else {
+        frappe.show_alert({message: 'No recent weight to reprint', indicator: 'orange'}, 3);
+    }
 }
 
 function showWeightConfirmation(weightType, weight) {

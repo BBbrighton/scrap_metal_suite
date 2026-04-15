@@ -7,6 +7,12 @@ node_modules
 __pycache__
 .vscode/
 
+# Backup files
+*.backup
+*.phase4_backup
+*.bak
+example_tobedeleted/
+
 # Design/planning docs (local only)
 FUTURE_ENHANCEMENTS.md
 PLAN_*.md

@@ -4,7 +4,7 @@
 import json
 import frappe
 from frappe import _
-from frappe.utils import flt, nowdate, now_datetime
+from frappe.utils import flt, now_datetime, sanitize_html
 
 from scrap_metal_suite.api.v1.auth import check_production_operator
 
@@ -28,7 +28,7 @@ def open_session(scale=None):
         "status": "Open",
         "scale": scale
     })
-    session.insert(ignore_permissions=True)
+    session.insert()
 
     return {
         "session": session.name,
@@ -308,10 +308,17 @@ def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
     """Create a new Production Sorting record with good and unwanted items."""
     check_production_operator()
 
-    if isinstance(good_items, str):
-        good_items = json.loads(good_items)
-    if isinstance(unwanted_items, str):
-        unwanted_items = json.loads(unwanted_items)
+    try:
+        if isinstance(good_items, str):
+            good_items = json.loads(good_items)
+    except (json.JSONDecodeError, ValueError):
+        frappe.throw(_("Invalid data format for good items"))
+
+    try:
+        if isinstance(unwanted_items, str):
+            unwanted_items = json.loads(unwanted_items)
+    except (json.JSONDecodeError, ValueError):
+        frappe.throw(_("Invalid data format for unwanted items"))
 
     good_items = good_items or []
     unwanted_items = unwanted_items or []
@@ -329,6 +336,13 @@ def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
     if session_data.operator != frappe.session.user:
         frappe.throw(_("This session does not belong to you"))
 
+    # Validate dropoff
+    dropoff_data = frappe.db.get_value("Dropoff", dropoff, ["name", "status"], as_dict=True)
+    if not dropoff_data:
+        frappe.throw(_("Dropoff {0} not found").format(dropoff))
+    if dropoff_data.status != "Completed":
+        frappe.throw(_("Dropoff {0} is not in Completed status").format(dropoff))
+
     # Build good items
     good_items_list = []
     for item in good_items:
@@ -341,7 +355,7 @@ def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
             "item_code": item.get("item_code"),
             "uom": item.get("uom", "Kg"),
             "weight": weight,
-            "remarks": item.get("remarks", "")
+            "remarks": sanitize_html(str(item.get("remarks", "")).strip())[:1000] if item.get("remarks") else ""
         })
 
     # Build unwanted items
@@ -356,8 +370,8 @@ def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
             "item_code": item.get("item_code"),
             "uom": item.get("uom", "Kg"),
             "weight": weight,
-            "return_reason": item.get("return_reason", "Other"),
-            "remarks": item.get("remarks", "")
+            "return_reason": sanitize_html(str(item.get("return_reason", "Other")).strip())[:500],
+            "remarks": sanitize_html(str(item.get("remarks", "")).strip())[:1000] if item.get("remarks") else ""
         })
 
     sorting = frappe.get_doc({
@@ -383,10 +397,17 @@ def update_sorting(sorting_name, good_items=None, unwanted_items=None):
     """Update good and unwanted items on an existing Production Sorting record."""
     check_production_operator()
 
-    if isinstance(good_items, str):
-        good_items = json.loads(good_items)
-    if isinstance(unwanted_items, str):
-        unwanted_items = json.loads(unwanted_items)
+    try:
+        if isinstance(good_items, str):
+            good_items = json.loads(good_items)
+    except (json.JSONDecodeError, ValueError):
+        frappe.throw(_("Invalid data format for good items"))
+
+    try:
+        if isinstance(unwanted_items, str):
+            unwanted_items = json.loads(unwanted_items)
+    except (json.JSONDecodeError, ValueError):
+        frappe.throw(_("Invalid data format for unwanted items"))
 
     good_items = good_items or []
     unwanted_items = unwanted_items or []
@@ -416,7 +437,7 @@ def update_sorting(sorting_name, good_items=None, unwanted_items=None):
             "item_code": item.get("item_code"),
             "uom": item.get("uom", "Kg"),
             "weight": weight,
-            "remarks": item.get("remarks", "")
+            "remarks": sanitize_html(str(item.get("remarks", "")).strip())[:1000] if item.get("remarks") else ""
         })
 
     # Update unwanted items
@@ -431,8 +452,8 @@ def update_sorting(sorting_name, good_items=None, unwanted_items=None):
             "item_code": item.get("item_code"),
             "uom": item.get("uom", "Kg"),
             "weight": weight,
-            "return_reason": item.get("return_reason", "Other"),
-            "remarks": item.get("remarks", "")
+            "return_reason": sanitize_html(str(item.get("return_reason", "Other")).strip())[:500],
+            "remarks": sanitize_html(str(item.get("remarks", "")).strip())[:1000] if item.get("remarks") else ""
         })
 
     sorting.save()

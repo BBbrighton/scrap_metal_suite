@@ -45,11 +45,11 @@ class ProductionSession(Document):
         sortings = frappe.db.get_all(
             "Production Sorting",
             filters={"session": self.name},
-            fields=["total_sorted_weight"]
+            fields=["total_weight"]
         )
 
         self.total_sortings = len(sortings)
-        self.total_weight_sorted = sum(flt(s.total_sorted_weight) for s in sortings)
+        self.total_weight_sorted = sum(flt(s.total_weight) for s in sortings)
         self.closing_time = now_datetime()
         self.closed_by = frappe.session.user
         self.status = "Closed"

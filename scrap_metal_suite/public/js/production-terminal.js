@@ -3,6 +3,17 @@
  * Handles Production Sorting workflow with scale integration
  */
 
+// ===== Utility =====
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // ===== Global State =====
 let currentSession = null;
 let currentDropoff = null;
@@ -273,9 +284,9 @@ function displayDropoffResults(results) {
     }
 
     container.innerHTML = results.map(d =>
-        '<div class="result-item" onclick="selectDropoff(\'' + d.name + '\')">' +
-        '<div class="result-id">' + d.name + '</div>' +
-        '<div class="result-info">' + (d.supplier_name || d.supplier || '') + ' - ' + d.total_actual_weight + ' kg</div>' +
+        '<div class="result-item" onclick="selectDropoff(\'' + escapeHtml(d.name) + '\')">' +
+        '<div class="result-id">' + escapeHtml(d.name) + '</div>' +
+        '<div class="result-info">' + escapeHtml(d.supplier_name || d.supplier || '') + ' - ' + escapeHtml(d.total_actual_weight) + ' kg</div>' +
         '</div>'
     ).join('');
 }
@@ -301,7 +312,7 @@ async function selectDropoff(dropoffId) {
                 var si = srcItems[i];
                 var w = parseFloat(si.total_weight || si.weight || 0);
                 itemsHtml += '<div class="dropoff-item-row">' +
-                    '<span class="dropoff-item-name">' + (si.item_name || si.item || '') + '</span>' +
+                    '<span class="dropoff-item-name">' + escapeHtml(si.item_name || si.item || '') + '</span>' +
                     '<span class="dropoff-item-weight">' + w.toFixed(1) + ' kg</span>' +
                     '</div>';
             }
@@ -524,8 +535,8 @@ function updateItemsList() {
         goodItems.forEach((item, index) => {
             html += '<div class="item-entry good">' +
                 '<div class="item-details">' +
-                '<span class="item-name">' + item.item_name + '</span>' +
-                '<span class="item-weight">' + item.weight.toFixed(3) + ' ' + item.uom + '</span>' +
+                '<span class="item-name">' + escapeHtml(item.item_name) + '</span>' +
+                '<span class="item-weight">' + item.weight.toFixed(3) + ' ' + escapeHtml(item.uom) + '</span>' +
                 '</div>' +
                 '<button class="btn-remove" onclick="removeItem(\'good\', ' + index + ')">x</button>' +
                 '</div>';
@@ -538,8 +549,8 @@ function updateItemsList() {
         unwantedItems.forEach((item, index) => {
             html += '<div class="item-entry unwanted">' +
                 '<div class="item-details">' +
-                '<span class="item-name">' + item.item_name + '</span>' +
-                '<span class="item-weight">' + item.weight.toFixed(3) + ' ' + item.uom + '</span>' +
+                '<span class="item-name">' + escapeHtml(item.item_name) + '</span>' +
+                '<span class="item-weight">' + item.weight.toFixed(3) + ' ' + escapeHtml(item.uom) + '</span>' +
                 '</div>' +
                 '<button class="btn-remove" onclick="removeItem(\'unwanted\', ' + index + ')">x</button>' +
                 '</div>';

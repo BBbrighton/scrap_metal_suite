@@ -91,7 +91,13 @@ class DropoffFinal(Document):
 		else:
 			self.variance_percent = 0
 
-		self.variance_ok = self.variance_percent <= flt(self.variance_threshold_percent)
+		threshold = flt(self.variance_threshold_percent)
+		if not threshold:
+			threshold = flt(frappe.db.get_single_value(
+				"Production Sorting Settings", "variance_threshold_percent"
+			)) or 5.0
+			self.variance_threshold_percent = threshold
+		self.variance_ok = self.variance_percent <= threshold
 
 	def set_verification_status(self):
 		"""Set verification status based on variance"""
