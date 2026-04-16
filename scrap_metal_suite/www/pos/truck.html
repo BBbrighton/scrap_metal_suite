@@ -10,6 +10,7 @@
 <script src="/assets/scrap_metal_suite/js/html5-qrcode.min.js"></script>
 <script src="/assets/scrap_metal_suite/js/pos-scanner.js"></script>
 <script src="/assets/scrap_metal_suite/js/scale_reader.js"></script>
+<script src="/assets/scrap_metal_suite/js/pos-resizer.js"></script>
 {% endblock %}
 
 {% block page_content %}
@@ -206,6 +207,9 @@
                 </div>
             </div>
         </div>
+
+        <!-- Draggable divider (double-click to reset) -->
+        <div class="panel-resizer" id="panelResizer" role="separator" aria-orientation="vertical" title="Drag to resize — double-click to reset"></div>
 
         <!-- Right Panel - Dropoff Selection & Info -->
         <div class="panel panel-transaction">
@@ -739,6 +743,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         langLabelId: 'langLabel',
         onLanguageChange: updateTranslations  // Truck-specific translation updates
     });
+
+    // Draggable pane divider (min 320px, max 50% viewport, persists in localStorage)
+    if (window.POS_RESIZER) {
+        POS_RESIZER.init({
+            rightSelector: '#truckTerminal .panel-transaction',
+            resizerSelector: '#truckTerminal #panelResizer',
+            storageKey: 'sms.pos.truck.rightPaneWidth'
+        });
+    }
 
     // Initialize unified translation system
     POS_I18N.init(state.language);
