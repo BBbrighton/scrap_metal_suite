@@ -65,7 +65,7 @@
             <button class="btn-header btn-theme" onclick="toggleTheme()" title="Toggle Theme">
                 <span id="themeIcon">&#9728;</span>
             </button>
-            <button class="btn-header" onclick="reprintLastTruckWeight()" title="Reprint last ticket (2 copies)">&#x1F5B6; Print</button>
+            <button class="btn-header" onclick="reprintLastTruckWeight()" title="Reprint last ticket">&#x1F5B6; Print</button>
             <button class="btn-header btn-danger" onclick="confirmCloseSession()" data-i18n="closeSession">Close Session</button>
         </div>
     </header>
@@ -2991,26 +2991,28 @@ async function saveWeightByType(weightType, weight, remarks, reweightReason) {
 }
 
 // ===== Print Thermal Receipt =====
-function printTruckWeight(truckWeightName, copies) {
-    copies = copies || 2;
-    const printUrl = '/printview?doctype=Truck%20Weight&name=' + encodeURIComponent(truckWeightName) + '&format=Truck%20Weight%20Thermal&trigger_print=1&no_letterhead=1';
-    // Print first copy
-    window.open(printUrl, '_blank');
-    // Print second copy after delay (allows first print dialog to process)
-    if (copies > 1) {
-        setTimeout(function() {
-            window.open(printUrl, '_blank');
-        }, 1500);
-    }
-    // Store last printed for reprint
+function printTruckWeight(truckWeightName) {
+    const printUrl = '/printview?doctype=Truck%20Weight&name=' + encodeURIComponent(truckWeightName) + '&format=Truck%20Weight%20Thermal&no_letterhead=1';
     state.lastTruckWeight = truckWeightName;
+    var iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    iframe.src = printUrl;
+    iframe.onload = function() {
+        try { iframe.contentWindow.print(); } catch(e) { window.open(printUrl + '&trigger_print=1', '_blank'); }
+        setTimeout(function() { iframe.remove(); }, 10000);
+    };
+    document.body.appendChild(iframe);
 }
 
 function reprintLastTruckWeight() {
-    if (state.lastTruckWeight) {
-        printTruckWeight(state.lastTruckWeight, 2);
+    var name = state.lastTruckWeight;
+    if (!name && state.truckWeights && state.truckWeights.length > 0) {
+        name = state.truckWeights[0].name;
+    }
+    if (name) {
+        printTruckWeight(name);
     } else {
-        frappe.show_alert({message: 'No recent weight to reprint', indicator: 'orange'}, 3);
+        frappe.show_alert({message: t('noRecentWeight') || 'No weight ticket to reprint. Select a dropoff first.', indicator: 'orange'}, 3);
     }
 }
 

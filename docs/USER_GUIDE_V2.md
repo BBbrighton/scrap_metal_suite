@@ -1,8 +1,8 @@
 # Scrap Metal Suite - Complete User Guide
 
-**Version:** 2.0
-**Last Updated:** 2026-04-15
-**System Version:** v1.0.0 + Price Lock Settlement
+**Version:** 2.1
+**Last Updated:** 2026-04-16
+**System Version:** v1.1.0
 
 ---
 
@@ -12,11 +12,11 @@
 2. [System Architecture](#2-system-architecture)
 3. [Roles & Permissions](#3-roles--permissions)
 4. [Complete Business Flow](#4-complete-business-flow)
-5. [Module Guide: Price Lock (SMT Price Lock)](#5-module-guide-price-lock-smt-po)
+5. [Module Guide: Price Lock (SMT Price Lock)](#5-module-guide-price-lock-smt-price-lock)
 6. [Module Guide: POS Operations](#6-module-guide-pos-operations)
 7. [Module Guide: Dropoff & Weighing](#7-module-guide-dropoff--weighing)
 8. [Module Guide: Production Sorting](#8-module-guide-production-sorting)
-9. [Module Guide: Settlement (SMT Purchase Order)](#9-module-guide-settlement-smt-po-final)
+9. [Module Guide: Settlement (SMT Purchase Order)](#9-module-guide-settlement-smt-purchase-order)
 10. [Variance & Verification](#10-variance--verification)
 11. [Printing & Documents](#11-printing--documents)
 12. [Scheduled Tasks (Cron Jobs)](#12-scheduled-tasks-cron-jobs)
@@ -915,6 +915,30 @@ This is where you weigh the delivery truck (gross and tare).
 - Shows variance amount and percentage
 - Green ✅ if within threshold, red ⚠️ if exceeded
 - **Scrap Weights** — collapsible list of all scrap weights for this dropoff
+
+### Terminal UI Controls
+
+These controls apply to both the Scrap Weighing Terminal (`/pos/terminal`) and the Truck Weighing Terminal (`/pos/truck`).
+
+**Camera Zoom & Tilt (scanner modal)**
+
+When you open the camera to scan a QR code or barcode (`📷 Scan`), zoom and tilt controls appear below the viewfinder:
+
+| Control | Range | Purpose |
+|---------|-------|---------|
+| Zoom | 1.0× – 5.0× | Zoom in on distant or small codes. Use the **−** / **+** buttons or drag the slider. |
+| Tilt | -90° to +90° | Rotate the video feed when the camera is physically mounted sideways or upside-down. Only shown on devices that support it. |
+
+On phones/tablets with a zoom-capable camera the system uses **optical zoom** (full quality). On devices without optical support it falls back to **digital zoom** (shown with a badge next to the value).
+
+**Resizable Panels**
+
+The divider bar between the left and right panels is draggable:
+
+- **Click and drag** left/right to resize. The right panel can shrink to 320 px or expand up to 50% of the screen width.
+- **Double-click** the divider to reset to the default width.
+- Your preferred width is saved in the browser per-terminal (scrap and truck terminals remember independently). Different operators on different tablets keep their own preferences.
+- On small screens (under 768 px) the panels stack vertically and the divider is hidden.
 
 ### Tips
 
