@@ -2814,7 +2814,8 @@ async function connectTruckScale() {
 
 function handleTruckWeightUpdate(data) {
     if (data && data.weight !== undefined) {
-        const weight = parseFloat(data.weight);
+        const conversionFactor = parseFloat(state.scale?.unit_conversion_factor) || 1;
+        const weight = parseFloat(data.weight) * conversionFactor;
 
         // Update both Gross and Tare live weight displays
         const grossLiveValue = document.getElementById('grossLiveValue');
