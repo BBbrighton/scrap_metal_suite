@@ -611,21 +611,28 @@ class ScaleReader {
      * [n-1, n]: CR LF (0x0D 0x0A) or CR+. (0x8D 0x2E for truck variant)
      *
      * Variant A: 0x82 0x28 ... 0x0D 0x0A (smaller scales)
-     * Variant B: 0x82 0xAA ... 0x8D 0x2E (truck scales, header byte 0xAA = 0x2A + 0x80)
+     * Variant B (8N1): 0x82 0xAA ... 0x8D 0xA5 (truck scales, all bytes +0x80)
+     * Variant C (7E1): 0x02 0x2A ... 0x0D 0x25 (truck scales, plain ASCII)
      */
     decodeHP05VariantProtocol(buffer) {
         if (buffer.length < 12) return null;
 
-        // Look for header 0x82 0x28 or 0x82 0xAA
         for (let i = 0; i <= buffer.length - 12; i++) {
-            if (buffer[i] === 0x82 && (buffer[i + 1] === 0x28 || buffer[i + 1] === 0xAA)) {
-                // Found header, look for terminator
+            // Header: 0x82 0x28 or 0x82 0xAA (8N1) or 0x02 0x28 or 0x02 0x2A (7E1)
+            const b0 = buffer[i];
+            const b1 = buffer[i + 1];
+            const isHeader = (b0 === 0x82 && (b1 === 0x28 || b1 === 0xAA)) ||
+                             (b0 === 0x02 && (b1 === 0x28 || b1 === 0x2A));
+
+            if (isHeader) {
                 for (let j = i + 10; j < Math.min(buffer.length - 1, i + 25); j++) {
-                    // Standard terminator: CR LF (0x0D 0x0A)
-                    // Truck variant terminator: 0x8D 0x2E (CR+0x80, then '.')
-                    if ((buffer[j] === 0x0D && buffer[j + 1] === 0x0A) ||
-                        (buffer[j] === 0x8D && buffer[j + 1] === 0x2E)) {
-                        // Found complete frame
+                    // Terminators: CR+LF, CR+%, or high-bit variants
+                    const t0 = buffer[j];
+                    const t1 = buffer[j + 1];
+                    const isTerminator = (t0 === 0x0D && (t1 === 0x0A || t1 === 0x25)) ||
+                                         (t0 === 0x8D && (t1 === 0x2E || t1 === 0xA5 || t1 === 0x0A));
+
+                    if (isTerminator) {
                         const frame = buffer.slice(i, j + 2);
                         const result = this.parseHP05VariantFrame(frame);
                         if (result && result.valid) {
@@ -643,7 +650,12 @@ class ScaleReader {
      */
     parseHP05VariantFrame(frame) {
         if (frame.length < 12) return null;
-        if (frame[0] !== 0x82 || (frame[1] !== 0x28 && frame[1] !== 0xAA)) return null;
+        const h0 = frame[0], h1 = frame[1];
+        if (!((h0 === 0x82 && (h1 === 0x28 || h1 === 0xAA)) ||
+              (h0 === 0x02 && (h1 === 0x28 || h1 === 0x2A)))) return null;
+
+        // Determine if this is a truck scale (header byte 2 is * / 0x2A / 0xAA)
+        const isTruckVariant = (h1 === 0x2A || h1 === 0xAA);
 
         // Status byte - 0x30 typically means stable
         const statusByte = frame[2];
@@ -679,9 +691,9 @@ class ScaleReader {
             weight = parseInt(weightStr, 10);
         }
 
-        // For truck scale variant (header 0xAA): weight is in kg directly
-        // For smaller scales (header 0x28): weight may be in grams
-        if (frame[1] === 0x28 && weight > 1000 && weightStr.length >= 4) {
+        // For truck scale variant (* header): weight is in kg directly
+        // For smaller scales (( header): weight may be in grams
+        if (!isTruckVariant && weight > 1000 && weightStr.length >= 4) {
             weight = weight / 1000;
         }
 
