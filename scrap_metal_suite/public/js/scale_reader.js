@@ -681,17 +681,13 @@ class ScaleReader {
 
         let weight;
         if (decimalPos >= 0) {
-            // Decimal point found in data
             weight = parseFloat(weightStr.slice(0, decimalPos) + '.' + weightStr.slice(decimalPos));
         } else {
             weight = parseInt(weightStr, 10);
         }
 
-        // For truck scale variant (* header): weight is in kg directly
-        // For smaller scales (( header): weight may be in grams
-        if (!isTruckVariant && weight > 1000 && weightStr.length >= 4) {
-            weight = weight / 1000;
-        }
+        // Return raw weight value - unit_conversion_factor from Scale DocType
+        // handles the conversion to kg (e.g. 0.000001 for grams, 1 for kg)
 
         return {
             valid: true,
