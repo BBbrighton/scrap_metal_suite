@@ -192,7 +192,7 @@ class ScaleReader {
             try {
                 // Ensure port is fully closed before opening with new config
                 await this._ensurePortClosed();
-                await this._delay(50); // Small delay for port to settle
+                await this._delay(200); // Delay for port to settle between config tests
 
                 await this.port.open(config);
                 const result = await this.testRead(3000);
@@ -293,7 +293,7 @@ class ScaleReader {
             try {
                 // Ensure port is fully closed before opening with new config
                 await this._ensurePortClosed();
-                await this._delay(50); // Small delay for port to settle
+                await this._delay(200); // Delay for port to settle between config tests
 
                 await this.port.open(config);
 
