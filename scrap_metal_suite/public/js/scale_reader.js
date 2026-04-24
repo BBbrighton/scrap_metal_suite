@@ -626,13 +626,9 @@ class ScaleReader {
 
             if (isHeader) {
                 for (let j = i + 10; j < Math.min(buffer.length - 1, i + 25); j++) {
-                    // Terminators: CR+LF, CR+%, or high-bit variants
+                    // Terminator: CR (0x0D or 0x8D) followed by checksum byte (varies)
                     const t0 = buffer[j];
-                    const t1 = buffer[j + 1];
-                    const isTerminator = (t0 === 0x0D && (t1 === 0x0A || t1 === 0x25)) ||
-                                         (t0 === 0x8D && (t1 === 0x2E || t1 === 0xA5 || t1 === 0x0A));
-
-                    if (isTerminator) {
+                    if (t0 === 0x0D || t0 === 0x8D) {
                         const frame = buffer.slice(i, j + 2);
                         const result = this.parseHP05VariantFrame(frame);
                         if (result && result.valid) {
