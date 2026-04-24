@@ -121,7 +121,7 @@ class ScaleReader {
                 await this.port.open(preferredConfig);
 
                 // Try to read data for 3 seconds
-                const result = await this.testRead(3000);
+                const result = await this.testRead(5000);
 
                 if (result.success) {
                     this.config = preferredConfig;
@@ -192,10 +192,10 @@ class ScaleReader {
             try {
                 // Ensure port is fully closed before opening with new config
                 await this._ensurePortClosed();
-                await this._delay(200); // Delay for port to settle between config tests
+                await this._delay(500); // Delay for port to fully settle between config tests
 
                 await this.port.open(config);
-                const result = await this.testRead(3000);
+                const result = await this.testRead(5000);
 
                 if (result.success) {
                     this.config = config;
@@ -293,12 +293,12 @@ class ScaleReader {
             try {
                 // Ensure port is fully closed before opening with new config
                 await this._ensurePortClosed();
-                await this._delay(200); // Delay for port to settle between config tests
+                await this._delay(500); // Delay for port to fully settle between config tests
 
                 await this.port.open(config);
 
                 // Try to read data for 3 seconds
-                const result = await this.testRead(3000);
+                const result = await this.testRead(5000);
 
                 if (result.success) {
                     // Found working configuration!
