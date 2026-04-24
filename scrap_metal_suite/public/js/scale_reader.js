@@ -169,16 +169,17 @@ class ScaleReader {
     async _autoDetectWithPort(onProgress = null) {
         // Test configurations - ordered by likelihood
         const testConfigs = [
-            // Most common: 4800/8N1 for HP-05 variant
+            // Most common: 4800/8N1 for HP-05 variant (smaller scales)
             { baudRate: 4800, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            // STX protocol
-            { baudRate: 1200, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            // Other 8N1 rates
-            { baudRate: 1200, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            { baudRate: 2400, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            { baudRate: 9600, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            // Other 7E1 rates
+            // Truck scale: 2400/7E1
             { baudRate: 2400, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // STX protocol: 1200/7E1
+            { baudRate: 1200, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // Truck scale alternate: 2400/8N1 (same data, different framing)
+            { baudRate: 2400, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // Other rates
+            { baudRate: 1200, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 9600, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
             { baudRate: 9600, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
         ];
 
@@ -269,16 +270,17 @@ class ScaleReader {
 
         // Test configurations - ordered by likelihood for faster detection
         const testConfigs = [
-            // Most common: 4800/8N1 for HP-05 variant
+            // Most common: 4800/8N1 for HP-05 variant (smaller scales)
             { baudRate: 4800, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            // STX protocol (common for Thai scales)
-            { baudRate: 1200, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            // Other 8N1 rates
-            { baudRate: 1200, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            { baudRate: 2400, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            { baudRate: 9600, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
-            // Other 7E1 rates
+            // Truck scale: 2400/7E1
             { baudRate: 2400, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // STX protocol: 1200/7E1
+            { baudRate: 1200, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // Truck scale alternate: 2400/8N1
+            { baudRate: 2400, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            // Other rates
+            { baudRate: 1200, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
+            { baudRate: 9600, dataBits: 8, parity: 'none', stopBits: 1, flowControl: 'none', bufferSize: 255 },
             { baudRate: 9600, dataBits: 7, parity: 'even', stopBits: 1, flowControl: 'none', bufferSize: 255 },
         ];
 
@@ -602,24 +604,27 @@ class ScaleReader {
      * Common at 4800 baud, 8N1
      *
      * Frame format (variable length, ~18 bytes):
-     * [0-1]: Header 0x82 0x28
+     * [0-1]: Header 0x82 0x28 or 0x82 0xAA (truck scale variant)
      * [2]: Status byte (0x30 = stable)
      * [3-8]: Weight digits with 0x80 offset (e.g., 0xA0 = space, 0xB4 = '4')
      * [...]: More data
-     * [n-1, n]: CR LF (0x0D 0x0A)
+     * [n-1, n]: CR LF (0x0D 0x0A) or CR+. (0x8D 0x2E for truck variant)
      *
-     * Example: 0x82 0x28 0x30 0xa0 0xa0 0xa0 0xa0 0xb4 0xb2 0x30 ... 0x0d 0x0a
-     *          Header   Stat Space Space Space Space '4'  '2'  ...  CR   LF
+     * Variant A: 0x82 0x28 ... 0x0D 0x0A (smaller scales)
+     * Variant B: 0x82 0xAA ... 0x8D 0x2E (truck scales, header byte 0xAA = 0x2A + 0x80)
      */
     decodeHP05VariantProtocol(buffer) {
         if (buffer.length < 12) return null;
 
-        // Look for header 0x82 0x28
+        // Look for header 0x82 0x28 or 0x82 0xAA
         for (let i = 0; i <= buffer.length - 12; i++) {
-            if (buffer[i] === 0x82 && buffer[i + 1] === 0x28) {
-                // Found header, look for CR LF terminator
+            if (buffer[i] === 0x82 && (buffer[i + 1] === 0x28 || buffer[i + 1] === 0xAA)) {
+                // Found header, look for terminator
                 for (let j = i + 10; j < Math.min(buffer.length - 1, i + 25); j++) {
-                    if (buffer[j] === 0x0D && buffer[j + 1] === 0x0A) {
+                    // Standard terminator: CR LF (0x0D 0x0A)
+                    // Truck variant terminator: 0x8D 0x2E (CR+0x80, then '.')
+                    if ((buffer[j] === 0x0D && buffer[j + 1] === 0x0A) ||
+                        (buffer[j] === 0x8D && buffer[j + 1] === 0x2E)) {
                         // Found complete frame
                         const frame = buffer.slice(i, j + 2);
                         const result = this.parseHP05VariantFrame(frame);
@@ -638,24 +643,27 @@ class ScaleReader {
      */
     parseHP05VariantFrame(frame) {
         if (frame.length < 12) return null;
-        if (frame[0] !== 0x82 || frame[1] !== 0x28) return null;
+        if (frame[0] !== 0x82 || (frame[1] !== 0x28 && frame[1] !== 0xAA)) return null;
 
         // Status byte - 0x30 typically means stable
         const statusByte = frame[2];
         const stable = (statusByte === 0x30);
 
-        // Extract weight digits (bytes 3-8, high-bit ASCII)
-        // 0xA0 = space (0x20 + 0x80)
-        // 0xB0-0xB9 = '0'-'9' (0x30-0x39 + 0x80)
+        // Extract weight digits from data bytes (high-bit ASCII)
+        // Scan all data bytes between header and terminator
+        // 0xA0 = space, 0xB0-0xB9 = '0'-'9' (with 0x80 offset)
+        // 0x30-0x39 = '0'-'9' (plain ASCII)
         let weightStr = '';
-        for (let i = 3; i <= 8 && i < frame.length - 2; i++) {
+        let decimalPos = -1;
+        for (let i = 3; i < frame.length - 2; i++) {
             const byte = frame[i];
-            // Remove high bit to get ASCII
             const ascii = byte & 0x7F;
             const char = String.fromCharCode(ascii);
 
             if (char >= '0' && char <= '9') {
                 weightStr += char;
+            } else if (char === '.' || byte === 0xAE) {
+                decimalPos = weightStr.length;
             } else if (char === ' ' || byte === 0xA0) {
                 // Skip spaces (leading padding)
             }
@@ -663,23 +671,17 @@ class ScaleReader {
 
         if (weightStr.length === 0) return null;
 
-        // Parse weight - check for decimal point indicator
-        let weight = parseInt(weightStr, 10);
-
-        // Byte 9 might be decimal position (0x30 = 0 decimals, 0x31 = 1, etc.)
-        if (frame.length > 9) {
-            const decimalByte = frame[9] & 0x7F;
-            if (decimalByte >= 0x30 && decimalByte <= 0x33) {
-                const decimals = decimalByte - 0x30;
-                if (decimals > 0) {
-                    weight = weight / Math.pow(10, decimals);
-                }
-            }
+        let weight;
+        if (decimalPos >= 0) {
+            // Decimal point found in data
+            weight = parseFloat(weightStr.slice(0, decimalPos) + '.' + weightStr.slice(decimalPos));
+        } else {
+            weight = parseInt(weightStr, 10);
         }
 
-        // Default: assume weight is in grams if > 1000, convert to kg
-        // This handles scales that send raw gram values
-        if (weight > 1000 && weightStr.length >= 4) {
+        // For truck scale variant (header 0xAA): weight is in kg directly
+        // For smaller scales (header 0x28): weight may be in grams
+        if (frame[1] === 0x28 && weight > 1000 && weightStr.length >= 4) {
             weight = weight / 1000;
         }
 
