@@ -1,4 +1,210 @@
 frappe.ui.form.on('Dropoff', {
+    refresh: function(frm) {
+        if (frm.is_new()) {
+            return;
+        }
+
+        const status = frm.doc.status;
+        const group = __('Container Actions');
+
+        // Pause (In Progress only)
+        if (status === 'In Progress') {
+            frm.add_custom_button(__('Pause Weighing'), () => {
+                frappe.prompt(
+                    [
+                        {
+                            fieldname: 'reason',
+                            label: __('Reason'),
+                            fieldtype: 'Small Text',
+                        },
+                    ],
+                    (v) => {
+                        frappe.call({
+                            method: 'scrap_metal_suite.api.v1.dropoff.pause_dropoff',
+                            args: {
+                                dropoff: frm.doc.name,
+                                reason: v.reason || '',
+                            },
+                            callback: () => frm.reload_doc(),
+                        });
+                    },
+                    __('Pause Weighing'),
+                    __('Pause')
+                );
+            }, group);
+        }
+
+        // Resume (Paused only) — prompts for session
+        if (status === 'Paused') {
+            frm.add_custom_button(__('Resume Weighing'), () => {
+                frappe.prompt(
+                    [
+                        {
+                            fieldname: 'session',
+                            label: __('POS Session'),
+                            fieldtype: 'Link',
+                            options: 'POS Session',
+                            reqd: 1,
+                        },
+                    ],
+                    (v) => {
+                        frappe.call({
+                            method: 'scrap_metal_suite.api.v1.dropoff.resume_dropoff',
+                            args: {
+                                dropoff: frm.doc.name,
+                                session: v.session,
+                            },
+                            callback: () => frm.reload_doc(),
+                        });
+                    },
+                    __('Resume Weighing'),
+                    __('Resume')
+                );
+            }, group);
+        }
+
+        // Switch Scale (audit-only) — In Progress / Scheduled / Paused
+        if (['In Progress', 'Scheduled', 'Paused'].includes(status)) {
+            frm.add_custom_button(__('Switch Scale'), () => {
+                frappe.prompt(
+                    [
+                        {
+                            fieldname: 'new_scale',
+                            label: __('New Scale'),
+                            fieldtype: 'Link',
+                            options: 'Scale',
+                            reqd: 1,
+                        },
+                        {
+                            fieldname: 'reason',
+                            label: __('Reason'),
+                            fieldtype: 'Small Text',
+                            reqd: 1,
+                        },
+                    ],
+                    (v) => {
+                        frappe.call({
+                            method: 'scrap_metal_suite.api.v1.dropoff.switch_scale',
+                            args: {
+                                dropoff: frm.doc.name,
+                                new_scale: v.new_scale,
+                                reason: v.reason,
+                            },
+                            callback: () => frm.reload_doc(),
+                        });
+                    },
+                    __('Switch Scale'),
+                    __('Confirm')
+                );
+            }, group);
+        }
+
+        // Reassign Session (audit-only) — any status
+        frm.add_custom_button(__('Reassign Session'), () => {
+            frappe.prompt(
+                [
+                    {
+                        fieldname: 'new_session',
+                        label: __('New POS Session'),
+                        fieldtype: 'Link',
+                        options: 'POS Session',
+                        reqd: 1,
+                    },
+                    {
+                        fieldname: 'reason',
+                        label: __('Reason'),
+                        fieldtype: 'Small Text',
+                        reqd: 1,
+                    },
+                ],
+                (v) => {
+                    frappe.call({
+                        method: 'scrap_metal_suite.api.v1.dropoff.reassign_dropoff',
+                        args: {
+                            dropoff: frm.doc.name,
+                            new_session: v.new_session,
+                            reason: v.reason,
+                        },
+                        callback: () => frm.reload_doc(),
+                    });
+                },
+                __('Reassign Session'),
+                __('Confirm')
+            );
+        }, group);
+
+        // Mark Verified (Override) — Needs Review
+        if (frm.doc.verification_status === 'Needs Review' && !frm.doc.verification_overridden) {
+            frm.add_custom_button(__('Mark Verified (Override)'), () => {
+                frappe.prompt(
+                    [
+                        {
+                            fieldname: 'reason',
+                            label: __('Override Reason'),
+                            fieldtype: 'Small Text',
+                            reqd: 1,
+                        },
+                    ],
+                    (v) => {
+                        frappe.call({
+                            method: 'scrap_metal_suite.api.v1.dropoff.verify_dropoff',
+                            args: {
+                                dropoff: frm.doc.name,
+                                override_reason: v.reason,
+                            },
+                            callback: () => frm.reload_doc(),
+                        });
+                    },
+                    __('Mark Verified'),
+                    __('Confirm')
+                );
+            });
+        }
+
+        // Print buttons (In Progress) — bulk per-container print
+        if (status === 'In Progress') {
+            frm.add_custom_button(__('Print all (thermal)'), () => {
+                frappe.call({
+                    method: 'scrap_metal_suite.api.v1.dropoff.list_containers',
+                    args: { dropoff: frm.doc.name },
+                    callback: (r) => {
+                        (r.message || [])
+                            .filter((c) => c.status === 'Active')
+                            .forEach((c) => {
+                                const url =
+                                    '/printview?doctype=Scrap%20Weight%20Container' +
+                                    '&name=' +
+                                    encodeURIComponent(c.name) +
+                                    '&format=Scrap%20Weight%20Container%20Thermal' +
+                                    '&no_letterhead=1';
+                                window.open(url, '_blank');
+                            });
+                    },
+                });
+            }, __('Print'));
+
+            frm.add_custom_button(__('Print all (stickers)'), () => {
+                frappe.call({
+                    method: 'scrap_metal_suite.api.v1.dropoff.list_containers',
+                    args: { dropoff: frm.doc.name },
+                    callback: (r) => {
+                        (r.message || [])
+                            .filter((c) => c.status === 'Active')
+                            .forEach((c) => {
+                                const url =
+                                    '/printview?doctype=Scrap%20Weight%20Container' +
+                                    '&name=' +
+                                    encodeURIComponent(c.name) +
+                                    '&format=Scrap%20Weight%20Container%20Sticker' +
+                                    '&no_letterhead=1';
+                                window.open(url, '_blank');
+                            });
+                    },
+                });
+            }, __('Print'));
+        }
+    },
+
     dropoff_scheduled_start: function(frm) {
         // When start datetime changes, auto-set the end datetime
         if (frm.doc.dropoff_scheduled_start && !frm.doc.dropoff_scheduled_end) {

@@ -35,7 +35,10 @@ web_include_css = [
     "/assets/scrap_metal_suite/css/manager_portal.css",
     "/assets/scrap_metal_suite/css/pos.css",
 ]
-# web_include_js = "/assets/scrap_metal_suite/js/scrap_metal_suite.js"
+web_include_js = [
+    "/assets/scrap_metal_suite/js/pos-translations.js",
+    "/assets/scrap_metal_suite/js/container-translations.js",
+]
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "scrap_metal_suite/public/scss/website"

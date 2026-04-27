@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, nowdate, now_datetime, add_to_date, get_datetime
+from frappe.utils import flt, nowdate, now_datetime, add_to_date, get_datetime, sanitize_html
 import json
 
 from scrap_metal_suite.api.v1.auth import check_pos_operator
@@ -863,54 +863,9 @@ def get_dropoff_verification(dropoff):
     }
 
 
-@frappe.whitelist()
-def complete_dropoff(dropoff):
-    """
-    Complete dropoff - set status to Closed, allocate weights to orders.
-
-    Args:
-        dropoff: Dropoff document name
-
-    Returns:
-        dict: Completion result with updated orders
-    """
-    check_pos_operator()
-
-    doc = frappe.get_doc("Dropoff", dropoff)
-
-    # Phase 8A: Validate can complete (status will auto-transition to Completed)
-    if doc.status not in ["In Progress", "Completed"]:
-        frappe.throw(_("Can only complete dropoff from In Progress status. Current: {0}").format(doc.status))
-
-    if not doc.gross_weight or not doc.tare_weight:
-        frappe.throw(_("Both gross and tare weights are required"))
-
-    if not doc.total_scrap_weight:
-        frappe.throw(_("No scrap weights recorded"))
-
-    # Phase 8A: Set status to Completed - auto-transition in controller will handle this
-    # But we force it here for the API to ensure it's completed
-    doc.status = "Completed"
-    doc.save()
-
-    # Get updated order info
-    orders_updated = []
-    for order_row in doc.orders:
-        order_data = frappe.db.get_value(
-            "POS Order",
-            order_row.pos_order,
-            ["name", "total_received", "fulfillment_percent", "fulfillment_status"],
-            as_dict=True
-        )
-        if order_data:
-            order_data["allocated_weight"] = order_row.allocated_weight
-            orders_updated.append(order_data)
-
-    return {
-        "dropoff": doc.name,
-        "status": "Completed",
-        "orders_updated": orders_updated
-    }
+# NOTE: legacy `complete_dropoff` removed — replaced by container-model version
+# defined in the CONTAINER MODEL (v2) section at the bottom of this file.
+# See docs/DROPOFF_CONTAINER_REDESIGN.md §5.2.
 
 
 # =============================================================================
@@ -1048,4 +1003,447 @@ def delete_weight_photo(parent_doctype, parent_doc, photo_name):
     return {
         "success": True,
         "photo_count": len(parent.photos)
+    }
+
+
+# =============================================================================
+# CONTAINER MODEL (v2 — replaces Scrap Weight)
+# =============================================================================
+#
+# These endpoints implement the container-based weighing model from
+# docs/DROPOFF_CONTAINER_REDESIGN.md. Each container is a single physical unit
+# (bag/bin/pallet) holding one grade at one weight, with its own QR-tagged
+# document. The Dropoff is locked to one operator session and one scale at a
+# time; changes go through pause/resume/switch/reassign helpers below.
+#
+# IMPORTANT: item_name is canonical Thai master data — never wrap with `_()`.
+# See docs/BILINGUAL_GUIDE.md §2.
+
+
+def _build_container_print_urls(session, container_name):
+    """Resolve thermal/sticker print URLs for a container based on POS Profile flags.
+
+    Returns a dict that may contain `thermal` and/or `sticker` keys (or be empty
+    if neither toggle is enabled, or no profile is set on the session).
+    """
+    print_urls = {}
+    if not session:
+        return print_urls
+
+    profile = frappe.db.get_value("POS Session", session, "pos_profile")
+    if not profile:
+        return print_urls
+
+    prof = frappe.db.get_value(
+        "POS Profile Scrap",
+        profile,
+        ["enable_thermal_print", "enable_sticker_print"],
+        as_dict=True,
+    )
+    if not prof:
+        return print_urls
+
+    if prof.enable_thermal_print:
+        print_urls["thermal"] = (
+            f"/printview?doctype=Scrap%20Weight%20Container&name={container_name}"
+            f"&format=Scrap%20Weight%20Container%20Thermal&no_letterhead=1"
+        )
+    if prof.enable_sticker_print:
+        print_urls["sticker"] = (
+            f"/printview?doctype=Scrap%20Weight%20Container&name={container_name}"
+            f"&format=Scrap%20Weight%20Container%20Sticker&no_letterhead=1"
+        )
+    return print_urls
+
+
+def _coerce_bool(value):
+    """Accept truthy strings ("1", "true") and native booleans/ints uniformly.
+
+    JSON / form-encoded payloads deliver booleans as strings; the controller-side
+    bool() of "0" is True, which we don't want.
+    """
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s in ("true", "1", "yes"):
+            return True
+        if s in ("false", "0", "no", ""):
+            return False
+        # Fall through to int conversion attempt for numeric strings.
+        try:
+            return bool(int(s))
+        except (ValueError, TypeError):
+            return False
+    return bool(value)
+
+
+@frappe.whitelist()
+def add_container(dropoff, session, item_code, net_weight, container_type,
+                  entry_method="Manual Entry", deviation_reason=None,
+                  deviation_type=None, remarks=None):
+    """
+    Add a Scrap Weight Container to a Dropoff (the main weighing action).
+
+    First call binds the dropoff's session/scale lock and transitions
+    Scheduled → In Progress (handled by `Dropoff._acquire_container_lock`).
+    Subsequent calls validate the lock and reuse the bound scale.
+
+    Returns: dict with container, container_no, item_code, item_name,
+             net_weight, is_deviation, dropoff_status, dropoff_total,
+             container_count, print_urls.
+    """
+    check_pos_operator()
+
+    # Validate POS Session is open and belongs to current user.
+    session_data = frappe.db.get_value(
+        "POS Session", session,
+        ["status", "scale", "pos_profile", "operator"],
+        as_dict=True
+    )
+    if not session_data or session_data.status != "Open":
+        frappe.throw(_("Session {0} is not open").format(session))
+    if session_data.operator != frappe.session.user:
+        frappe.throw(_("This session does not belong to the current user"))
+
+    _update_session_activity(session)
+
+    # Load the dropoff and run lock validation through the controller.
+    dropoff_doc = frappe.get_doc("Dropoff", dropoff)
+    dropoff_doc._validate_container_lock(session)
+
+    scale = session_data.scale
+    if not scale:
+        frappe.throw(_("Session {0} has no scale assigned").format(session))
+
+    # Acquire (or no-op refresh) the lock; controller mutates in-memory only.
+    dropoff_doc._acquire_container_lock(session, scale)
+
+    # Detect deviation against the dropoff's expected items.
+    expected_codes = {
+        row.item for row in dropoff_doc.expected_items if row.item
+    }
+    is_deviation = item_code not in expected_codes
+
+    # Validate scale capacity (mirror the existing record_scrap_weight check).
+    try:
+        net_weight_f = float(net_weight)
+    except (ValueError, TypeError):
+        frappe.throw(_("Invalid net weight"))
+    if net_weight_f <= 0:
+        frappe.throw(_("Net weight must be greater than 0"))
+
+    scale_max = frappe.db.get_value("Scale", scale, "max_capacity_kg")
+    if scale_max and net_weight_f > flt(scale_max):
+        frappe.throw(
+            _("Weight {0} exceeds scale capacity {1}").format(net_weight_f, scale_max)
+        )
+
+    sanitized_remarks = None
+    if remarks:
+        sanitized_remarks = sanitize_html(str(remarks).strip())[:1000]
+
+    container = frappe.get_doc({
+        "doctype": "Scrap Weight Container",
+        "dropoff": dropoff,
+        "session": session,
+        "scale": scale,
+        "operator": frappe.session.user,
+        "item_code": item_code,
+        # item_name auto-populated by controller before_insert (canonical Thai)
+        "container_type": container_type,
+        "net_weight": flt(net_weight_f),
+        "entry_method": entry_method,
+        "deviation_reason": deviation_reason or None,
+        "deviation_type": deviation_type or None,
+        "remarks": sanitized_remarks,
+    })
+    container.insert()
+
+    # Save the dropoff so sync_actual_items / lock fields persist.
+    dropoff_doc.save()
+
+    print_urls = _build_container_print_urls(session, container.name)
+
+    return {
+        "success": True,
+        "container": container.name,
+        "container_no": container.container_no,
+        "item_code": container.item_code,
+        # NOTE: item_name is canonical — never translated.
+        "item_name": container.item_name,
+        "net_weight": container.net_weight,
+        "is_deviation": container.is_deviation,
+        "dropoff_status": dropoff_doc.status,
+        "dropoff_total": dropoff_doc.total_actual_weight,
+        "container_count": dropoff_doc.container_count,
+        "print_urls": print_urls,
+    }
+
+
+@frappe.whitelist()
+def reweigh_container(container, net_weight, reason, entry_method="Manual Entry"):
+    """
+    Reweigh an existing container in place. Appends a Reweigh row to the
+    container's weight history; updates the dropoff aggregation.
+    """
+    check_pos_operator()
+
+    container_doc = frappe.get_doc("Scrap Weight Container", container)
+    container_doc.record_reweigh(flt(net_weight), reason, entry_method)
+
+    # Re-aggregate parent dropoff totals.
+    dropoff_doc = frappe.get_doc("Dropoff", container_doc.dropoff)
+    dropoff_doc.save()
+
+    print_urls = _build_container_print_urls(container_doc.session, container_doc.name)
+
+    return {
+        "success": True,
+        "container": container_doc.name,
+        "net_weight": container_doc.net_weight,
+        "is_reweighed": container_doc.is_reweighed,
+        "dropoff_total": dropoff_doc.total_actual_weight,
+        "print_urls": print_urls,
+    }
+
+
+@frappe.whitelist()
+def void_container(container, reason, superseded_by=None):
+    """
+    Mark a single container as Voided. Non-destructive (history preserved).
+    """
+    check_pos_operator()
+
+    container_doc = frappe.get_doc("Scrap Weight Container", container)
+    container_doc.record_void(reason, superseded_by)
+
+    dropoff_doc = frappe.get_doc("Dropoff", container_doc.dropoff)
+    dropoff_doc.save()
+
+    return {
+        "success": True,
+        "container": container_doc.name,
+        "status": "Voided",
+        "dropoff_total": dropoff_doc.total_actual_weight,
+    }
+
+
+@frappe.whitelist()
+def get_container(name):
+    """
+    Lookup a container by name (typically from a QR scan).
+
+    Returns the document as a dict. `item_name` is canonical Thai and is
+    rendered as-is (never wrapped with `_()`).
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Scrap Weight Container", name)
+    return doc.as_dict()
+
+
+@frappe.whitelist()
+def list_containers(dropoff, include_voided=False):
+    """
+    List containers for a dropoff, sorted by container_no ascending.
+
+    Args:
+        dropoff: Dropoff document name
+        include_voided: Include status=Voided records when truthy.
+    """
+    check_pos_operator()
+
+    include_voided = _coerce_bool(include_voided)
+
+    filters = {"dropoff": dropoff}
+    if not include_voided:
+        filters["status"] = ["!=", "Voided"]
+
+    rows = frappe.get_all(
+        "Scrap Weight Container",
+        filters=filters,
+        fields=[
+            "name", "container_no", "item_code", "item_name", "container_type",
+            "net_weight", "status", "is_deviation", "deviation_approved_by",
+            "creation", "operator",
+        ],
+        order_by="container_no asc",
+    )
+    return rows
+
+
+@frappe.whitelist()
+def pause_dropoff(dropoff, reason=None):
+    """
+    Pause an in-progress dropoff. Clears session lock; scale lock survives.
+    Status: In Progress → Paused.
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+    doc.pause_weighing(reason)
+
+    return {
+        "success": True,
+        "status": "Paused",
+        "paused_at": doc.paused_at,
+    }
+
+
+@frappe.whitelist()
+def resume_dropoff(dropoff, session):
+    """
+    Resume a paused dropoff under a new (or same) POS Session on the same
+    pinned scale. Status: Paused → In Progress.
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+    doc.resume_weighing(session)
+
+    return {
+        "success": True,
+        "status": "In Progress",
+        "weighing_session": session,
+    }
+
+
+@frappe.whitelist()
+def reassign_dropoff(dropoff, new_session, reason):
+    """
+    Audit-only reassignment of the dropoff's session lock. The new session
+    must be on the same pinned scale (run switch_scale first if not).
+    No role guard yet — design doc §5.2.
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+    doc.reassign_session(new_session, reason)
+
+    return {
+        "success": True,
+        "weighing_session": doc.weighing_session,
+        "weighing_reassigned_at": doc.weighing_reassigned_at,
+    }
+
+
+@frappe.whitelist()
+def switch_scale(dropoff, new_scale, reason):
+    """
+    Audit-only scale switch. Existing containers keep their original scale
+    stamp; future containers will record `new_scale`. No role guard yet.
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+    doc.switch_scale(new_scale, reason)
+
+    return {
+        "success": True,
+        "weighing_scale": doc.weighing_scale,
+        "weighing_scale_changed_at": doc.weighing_scale_changed_at,
+    }
+
+
+@frappe.whitelist()
+def void_dropoff_weighing(dropoff, reason):
+    """
+    Void all Active containers and reset the dropoff for fresh re-weighing.
+    Lock fields cleared; status reverts to Scheduled.
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+
+    # Snapshot the count before voiding (controller mutates them).
+    voided_count = frappe.db.count(
+        "Scrap Weight Container",
+        {"dropoff": dropoff, "status": "Active"},
+    )
+
+    doc.void_weighing(reason)
+
+    return {
+        "success": True,
+        "status": doc.status,
+        "voided_count": voided_count,
+    }
+
+
+@frappe.whitelist()
+def complete_dropoff(dropoff):
+    """
+    Finalise a dropoff. Validates:
+      - status is In Progress (Paused → throw, must resume first)
+      - no unapproved deviations
+      - truck weights present (gross + tare + net)
+
+    Status → Completed. Verification status is recomputed by the controller.
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+
+    if doc.status == "Paused":
+        frappe.throw(_("Cannot complete: dropoff is paused"))
+
+    if doc.status not in ("In Progress", "Completed"):
+        frappe.throw(
+            _("Cannot complete: status is {0}").format(doc.status)
+        )
+
+    if doc.has_unapproved_deviation:
+        frappe.throw(_("Cannot complete: there are unapproved deviations"))
+
+    if not (doc.gross_weight and doc.tare_weight and doc.net_weight):
+        frappe.throw(_("Cannot complete: truck weights (gross, tare, net) are required"))
+
+    doc.status = "Completed"
+    doc.save()
+
+    return {
+        "success": True,
+        "status": "Completed",
+        "verification_status": doc.verification_status,
+    }
+
+
+@frappe.whitelist()
+def approve_container_deviation(container, reason=None):
+    """
+    Approve a flagged deviation on a single container. No role guard yet —
+    audit-only. Re-aggregates the parent dropoff so the
+    `has_unapproved_deviation` flag clears.
+    """
+    check_pos_operator()
+
+    container_doc = frappe.get_doc("Scrap Weight Container", container)
+    container_doc.approve_deviation(reason)
+
+    dropoff_doc = frappe.get_doc("Dropoff", container_doc.dropoff)
+    dropoff_doc.save()
+
+    return {
+        "success": True,
+        "container": container_doc.name,
+        "approved_by": container_doc.deviation_approved_by,
+        "approved_at": container_doc.deviation_approved_at,
+    }
+
+
+@frappe.whitelist()
+def verify_dropoff(dropoff, override_reason=None):
+    """
+    Manually mark a dropoff as Verified. Idempotent if already Verified;
+    requires `override_reason` if currently Needs Review (controller throws).
+    No role guard yet — audit-only.
+    """
+    check_pos_operator()
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+    doc.mark_verified(override_reason)
+
+    return {
+        "success": True,
+        "verification_status": doc.verification_status,
+        "overridden": doc.verification_overridden,
     }

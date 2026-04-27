@@ -7,7 +7,9 @@
   "item_name",
   "column_break_1",
   "total_weight",
-  "weigh_count"
+  "container_count",
+  "deviation_count",
+  "is_expected"
  ],
  "fields": [
   {
@@ -37,12 +39,25 @@
    "read_only": 1
   },
   {
-   "fieldname": "weigh_count",
+   "fieldname": "container_count",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "# Weighings",
+   "label": "Container Count",
    "read_only": 1,
    "description": "Number of times this item was weighed"
+  },
+  {
+   "fieldname": "deviation_count",
+   "fieldtype": "Int",
+   "label": "Deviation Count",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_expected",
+   "fieldtype": "Check",
+   "label": "Is Expected",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,

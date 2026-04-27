@@ -275,7 +275,15 @@ class Dropoff(Document):
         - Pending: Missing weights
         - Verified: All weights AND variance within threshold
         - Needs Review: All weights AND variance NOT ok
+
+        If the dropoff has been manually verified via override
+        (`verification_overridden=1`), keep it Verified — the override is a
+        durable audit decision and must not be reset by recompute.
         """
+        if self.verification_overridden:
+            self.verification_status = "Verified"
+            return
+
         has_gross = self.gross_weight and self.gross_weight > 0
         has_tare = self.tare_weight and self.tare_weight > 0
         has_scrap = self.total_scrap_weight and self.total_scrap_weight > 0
@@ -307,84 +315,100 @@ class Dropoff(Document):
 
     def sync_actual_items(self):
         """
-        Fetch actual weighed items from linked Scrap Weight records.
-        Populates the actual_items child table and item_summary (aggregated by item).
+        Aggregate actual weighed items from Active Scrap Weight Container records.
+
+        Source-of-truth changed (Dropoff Container Redesign §6):
+        - Was: aggregated from `Scrap Weight` + `Scrap Weight Item` (caused duplication
+          when each "submit" inserted a fresh full-snapshot Scrap Weight).
+        - Now: aggregates from `Scrap Weight Container` where status='Active'.
+          Each container is a single grade with a single net weight; reweighs mutate
+          the container in place rather than creating new docs.
+
+        Populates:
+        - self.item_summary: per-grade aggregation (weight, container_count,
+          deviation_count, is_expected)
+        - self.total_actual_weight: sum of Active container net_weight
+        - self.container_count, deviation_container_count, has_unapproved_deviation
+
+        NOTE: self.actual_items is now DEPRECATED and intentionally left empty.
+        The flat per-row table is no longer needed; per-container detail is queried
+        directly from `Scrap Weight Container`. Field is kept for one release for
+        backward-compat with downstream consumers.
         """
         if not self.name:
             return
 
-        # Clear existing tables
+        # Clear summary table; deprecated actual_items intentionally left empty.
         self.actual_items = []
         self.item_summary = []
 
-        # Get all Scrap Weight records linked to this dropoff
-        scrap_weights = frappe.db.get_all(
-            "Scrap Weight",
-            filters={"dropoff": self.name},
-            fields=["name"]
+        containers = self._get_active_containers()
+        expected_codes = {row.item for row in self.expected_items if row.item}
+
+        summary = {}
+        total = 0.0
+        deviation_count = 0
+
+        for ct in containers:
+            net = flt(ct.get("net_weight"))
+            total += net
+            code = ct.get("item_code")
+            if not code:
+                continue
+
+            if code not in summary:
+                summary[code] = {
+                    "item_name": ct.get("item_name"),
+                    "weight": 0.0,
+                    "count": 0,
+                    "deviation_count": 0,
+                    "is_expected": code in expected_codes,
+                }
+            summary[code]["weight"] += net
+            summary[code]["count"] += 1
+            if ct.get("is_deviation"):
+                summary[code]["deviation_count"] += 1
+                deviation_count += 1
+
+        # Pending-approval check: any Active deviation without an approver.
+        has_unapproved = frappe.db.exists(
+            "Scrap Weight Container",
+            {
+                "dropoff": self.name,
+                "status": "Active",
+                "is_deviation": 1,
+                "deviation_approved_by": ["is", "not set"],
+            },
         )
 
-        total_actual = 0
-        # Dictionary to aggregate by item
-        item_totals = {}  # {item_code: {"item_name": str, "weight": float, "count": int}}
-
-        for sw in scrap_weights:
-            # Get items from each Scrap Weight
-            items = frappe.db.get_all(
-                "Scrap Weight Item",
-                filters={"parent": sw.name},
-                fields=["item_code", "item_name", "weight"]
-            )
-            for item in items:
-                weight = flt(item.weight)
-
-                # Add to actual_items (detailed view)
-                self.append("actual_items", {
-                    "scrap_weight": sw.name,
-                    "item": item.item_code,
-                    "item_name": item.item_name,
-                    "actual_weight": weight
-                })
-                total_actual += weight
-
-                # Aggregate by item
-                if item.item_code not in item_totals:
-                    item_totals[item.item_code] = {
-                        "item_name": item.item_name,
-                        "weight": 0,
-                        "count": 0
-                    }
-                item_totals[item.item_code]["weight"] += weight
-                item_totals[item.item_code]["count"] += 1
-
-        # Populate item_summary from aggregated data
-        for item_code, data in item_totals.items():
+        for code, data in summary.items():
             self.append("item_summary", {
-                "item": item_code,
+                "item": code,
                 "item_name": data["item_name"],
                 "total_weight": data["weight"],
-                "weigh_count": data["count"]
+                "container_count": data["count"],
+                "deviation_count": data["deviation_count"],
+                "is_expected": 1 if data["is_expected"] else 0,
             })
 
-        self.total_actual_weight = total_actual
+        self.total_actual_weight = total
+        self.container_count = len(containers)
+        self.deviation_container_count = deviation_count
+        self.has_unapproved_deviation = 1 if has_unapproved else 0
 
     def calculate_totals(self):
-        """Calculate total truck weight and total scrap weight for variance check."""
+        """Calculate total truck weight and total scrap weight for variance check.
+
+        Total scrap weight now sources from `total_actual_weight` (populated by
+        `sync_actual_items` from Active Scrap Weight Container records). The legacy
+        per-Scrap-Weight summing path is retired with the container redesign.
+        """
         # Total truck weight is net weight (1-truck design)
         self.total_truck_weight = flt(self.net_weight) if self.net_weight else 0
 
-        # Calculate total scrap weight from linked Scrap Weight records
-        if self.name:
-            scrap_weights = frappe.db.get_all(
-                "Scrap Weight",
-                filters={"dropoff": self.name},
-                fields=["total_weight"]
-            )
-            total_scrap = sum(flt(sw.total_weight) for sw in scrap_weights)
-        else:
-            total_scrap = 0
-
-        self.total_scrap_weight = flt(total_scrap)
+        # Total scrap weight = sum of Active container net_weight, already computed
+        # by sync_actual_items into self.total_actual_weight.
+        self.total_scrap_weight = flt(self.total_actual_weight)
 
         # Calculate variance (Truck vs Scrap)
         if self.total_truck_weight:
@@ -617,6 +641,216 @@ class Dropoff(Document):
 
                 # Recalculate fulfillment
                 _recalculate_order_fulfillment(order_row.pos_order)
+
+    # =========================================================================
+    # CONTAINER REDESIGN — lock / pause / resume / audit / verification
+    # See docs/DROPOFF_CONTAINER_REDESIGN.md §4.3, §5.2, §5.3
+    # =========================================================================
+
+    def _get_active_containers(self):
+        """Return list of dicts for Active Scrap Weight Containers on this Dropoff.
+
+        Used by `sync_actual_items` and any caller that needs the current truth
+        of weighed material. Voided/Reweighed (superseded) containers are excluded.
+        """
+        if not self.name:
+            return []
+
+        return frappe.db.get_all(
+            "Scrap Weight Container",
+            filters={"dropoff": self.name, "status": "Active"},
+            fields=[
+                "name",
+                "item_code",
+                "item_name",
+                "net_weight",
+                "is_deviation",
+                "deviation_approved_by",
+                "container_no",
+            ],
+            order_by="container_no asc",
+        )
+
+    def _validate_container_lock(self, session):
+        """Validate that a container can be added under the given POS Session.
+
+        Called by the API before insert. Two checks:
+        1. If a session is already locked, reject any other session.
+        2. If a scale is locked, the incoming session's scale must match it.
+        """
+        if not session:
+            return
+
+        if self.weighing_session and self.weighing_session != session:
+            frappe.throw(
+                _("Dropoff {0} is locked to session {1}. Pause and resume to switch.").format(
+                    self.name, self.weighing_session
+                )
+            )
+
+        if self.weighing_session:
+            scale_of_session = frappe.db.get_value("POS Session", session, "scale")
+            if self.weighing_scale and scale_of_session and scale_of_session != self.weighing_scale:
+                frappe.throw(
+                    _("Dropoff {0} requires scale {1}; current session uses {2}.").format(
+                        self.name, self.weighing_scale, scale_of_session
+                    )
+                )
+
+    def _acquire_container_lock(self, session, scale):
+        """Bind this Dropoff to a session/scale on the first container.
+
+        Caller (the API) is responsible for saving — this method only mutates
+        the in-memory document. Idempotent if the lock is already held by the
+        same session.
+        """
+        if not self.weighing_session:
+            self.weighing_session = session
+            self.weighing_scale = scale
+
+        if self.status in ("Scheduled", "Draft"):
+            self.status = "In Progress"
+
+    def pause_weighing(self, reason=None):
+        """Pause an in-progress dropoff. Clears session lock, keeps scale lock.
+
+        Status transition: In Progress -> Paused.
+        """
+        if self.status != "In Progress":
+            frappe.throw(_("Cannot pause: status is {0}").format(self.status))
+
+        self.status = "Paused"
+        self.weighing_session = None
+        self.paused_at = now_datetime()
+        self.paused_by = frappe.session.user
+        self.pause_reason = reason
+        # weighing_scale is intentionally retained.
+        self.save()
+
+    def resume_weighing(self, session):
+        """Resume a paused dropoff under a new (or same) POS Session.
+
+        Status transition: Paused -> In Progress.
+        Refuses if the new session's scale doesn't match the pinned scale.
+        """
+        if self.status != "Paused":
+            frappe.throw(_("Cannot resume: status is {0}").format(self.status))
+
+        scale_of_session = frappe.db.get_value("POS Session", session, "scale")
+        if self.weighing_scale and scale_of_session and scale_of_session != self.weighing_scale:
+            frappe.throw(
+                _(
+                    "Cannot resume: this dropoff is bound to scale {0}; current session uses {1}. Run Switch Scale first."
+                ).format(self.weighing_scale, scale_of_session)
+            )
+
+        self.weighing_session = session
+        self.status = "In Progress"
+        self.resumed_at = now_datetime()
+        self.resumed_by = frappe.session.user
+        self.save()
+
+    def reassign_session(self, new_session, reason):
+        """Audit-only manager override that reassigns the locked session.
+
+        The new session must use the same scale (run switch_scale first if not).
+        No role guard yet — design doc §5.2 marks this as audit-only.
+        """
+        scale_of_session = frappe.db.get_value("POS Session", new_session, "scale")
+        if self.weighing_scale and scale_of_session and scale_of_session != self.weighing_scale:
+            frappe.throw(
+                _(
+                    "Cannot reassign: dropoff is bound to scale {0}; session {1} uses scale {2}. Run Switch Scale first."
+                ).format(self.weighing_scale, new_session, scale_of_session)
+            )
+
+        self.weighing_session = new_session
+        self.weighing_reassigned_at = now_datetime()
+        self.weighing_reassigned_by = frappe.session.user
+        self.weighing_reassign_reason = reason
+        self.save()
+        self.add_comment(
+            "Comment",
+            _("Session reassigned to {0}: {1}").format(new_session, reason or ""),
+        )
+
+    def switch_scale(self, new_scale, reason):
+        """Audit-only manager override that re-pins the dropoff to a new scale.
+
+        Existing containers keep their original scale stamp; only future
+        containers will record `new_scale`.
+        """
+        self.weighing_scale = new_scale
+        self.weighing_scale_changed_at = now_datetime()
+        self.weighing_scale_changed_by = frappe.session.user
+        self.weighing_scale_change_reason = reason
+        self.save()
+        self.add_comment(
+            "Comment",
+            _("Scale switched to {0}: {1}").format(new_scale, reason or ""),
+        )
+
+    def void_weighing(self, reason):
+        """Void all Active containers and reset the dropoff for fresh re-weighing.
+
+        Status transition: any -> Scheduled. Lock fields cleared so any session
+        can pick up the dropoff again.
+        """
+        active = frappe.get_all(
+            "Scrap Weight Container",
+            filters={"dropoff": self.name, "status": "Active"},
+            pluck="name",
+        )
+
+        for container_name in active:
+            frappe.db.set_value(
+                "Scrap Weight Container",
+                container_name,
+                {
+                    "status": "Voided",
+                    "voided_reason": reason,
+                    "voided_at": now_datetime(),
+                    "voided_by": frappe.session.user,
+                },
+            )
+
+        self.weighing_session = None
+        self.weighing_scale = None
+        self.status = "Scheduled"
+        self.save()
+        self.add_comment(
+            "Comment",
+            _("Weighing voided ({0} container(s)): {1}").format(len(active), reason or ""),
+        )
+
+    def mark_verified(self, override_reason=None):
+        """Mark the dropoff Verified.
+
+        Idempotent if already Verified. If currently Needs Review, an override
+        reason is required and gets recorded for audit.
+        """
+        if self.verification_status == "Verified":
+            return
+
+        if self.verification_status == "Needs Review":
+            if not override_reason:
+                frappe.throw(_("Override reason required to verify a Needs-Review dropoff"))
+
+            self.verification_status = "Verified"
+            self.verification_overridden = 1
+            self.verification_override_at = now_datetime()
+            self.verification_override_by = frappe.session.user
+            self.verification_override_reason = override_reason
+            self.save()
+            self.add_comment(
+                "Comment",
+                _("Verification override applied: {0}").format(override_reason),
+            )
+            return
+
+        # Pending or other states: just save as Verified.
+        self.verification_status = "Verified"
+        self.save()
 
 
 def _recalculate_order_fulfillment(pos_order_name):

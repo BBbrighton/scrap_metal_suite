@@ -52,6 +52,31 @@
   "indicated_variance",
   "indicated_variance_percent",
   "indicated_variance_ok",
+  "section_break_weighing_lock",
+  "weighing_session",
+  "weighing_scale",
+  "section_break_pause_resume",
+  "paused_at",
+  "paused_by",
+  "pause_reason",
+  "resumed_at",
+  "resumed_by",
+  "section_break_reassignment_audit",
+  "weighing_reassigned_at",
+  "weighing_reassigned_by",
+  "weighing_reassign_reason",
+  "weighing_scale_changed_at",
+  "weighing_scale_changed_by",
+  "weighing_scale_change_reason",
+  "section_break_container_aggregates",
+  "container_count",
+  "deviation_container_count",
+  "has_unapproved_deviation",
+  "section_break_verification_override",
+  "verification_overridden",
+  "verification_override_at",
+  "verification_override_by",
+  "verification_override_reason",
   "section_break_verification_status",
   "verification_status",
   "section_break_unallocated",
@@ -117,7 +142,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nScheduled\nIn Progress\nCompleted\nCancelled",
+   "options": "Draft\nScheduled\nIn Progress\nPaused\nCompleted\nCancelled",
    "reqd": 1
   },
   {
@@ -383,6 +408,159 @@
    "label": "Indicated Variance OK",
    "read_only": 1,
    "description": "Auto-calculated: indicated variance within threshold"
+  },
+  {
+   "fieldname": "section_break_weighing_lock",
+   "fieldtype": "Section Break",
+   "label": "Weighing Lock"
+  },
+  {
+   "fieldname": "weighing_session",
+   "fieldtype": "Link",
+   "label": "Weighing Session",
+   "options": "POS Session"
+  },
+  {
+   "fieldname": "weighing_scale",
+   "fieldtype": "Link",
+   "label": "Weighing Scale",
+   "options": "Scale"
+  },
+  {
+   "fieldname": "section_break_pause_resume",
+   "fieldtype": "Section Break",
+   "label": "Pause/Resume"
+  },
+  {
+   "fieldname": "paused_at",
+   "fieldtype": "Datetime",
+   "label": "Paused At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paused_by",
+   "fieldtype": "Link",
+   "label": "Paused By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pause_reason",
+   "fieldtype": "Small Text",
+   "label": "Pause Reason"
+  },
+  {
+   "fieldname": "resumed_at",
+   "fieldtype": "Datetime",
+   "label": "Resumed At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "resumed_by",
+   "fieldtype": "Link",
+   "label": "Resumed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_reassignment_audit",
+   "fieldtype": "Section Break",
+   "label": "Reassignment Audit"
+  },
+  {
+   "fieldname": "weighing_reassigned_at",
+   "fieldtype": "Datetime",
+   "label": "Weighing Reassigned At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weighing_reassigned_by",
+   "fieldtype": "Link",
+   "label": "Weighing Reassigned By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weighing_reassign_reason",
+   "fieldtype": "Small Text",
+   "label": "Weighing Reassign Reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weighing_scale_changed_at",
+   "fieldtype": "Datetime",
+   "label": "Weighing Scale Changed At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weighing_scale_changed_by",
+   "fieldtype": "Link",
+   "label": "Weighing Scale Changed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weighing_scale_change_reason",
+   "fieldtype": "Small Text",
+   "label": "Weighing Scale Change Reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_container_aggregates",
+   "fieldtype": "Section Break",
+   "label": "Container Aggregates"
+  },
+  {
+   "fieldname": "container_count",
+   "fieldtype": "Int",
+   "label": "Container Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "deviation_container_count",
+   "fieldtype": "Int",
+   "label": "Deviation Container Count",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "has_unapproved_deviation",
+   "fieldtype": "Check",
+   "label": "Has Unapproved Deviation",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_verification_override",
+   "fieldtype": "Section Break",
+   "label": "Verification Override"
+  },
+  {
+   "default": "0",
+   "fieldname": "verification_overridden",
+   "fieldtype": "Check",
+   "label": "Verification Overridden",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verification_override_at",
+   "fieldtype": "Datetime",
+   "label": "Verification Override At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verification_override_by",
+   "fieldtype": "Link",
+   "label": "Verification Override By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verification_override_reason",
+   "fieldtype": "Small Text",
+   "label": "Verification Override Reason",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_verification_status",
