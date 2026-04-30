@@ -1,11 +1,9 @@
 {
  "actions": [],
- "autoname": "naming_series:",
  "default_print_format": "\u0e43\u0e1a\u0e04\u0e34\u0e27\u0e2a\u0e2d\u0e07\u0e20\u0e32\u0e29\u0e32",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series",
   "dropoff_scheduled_start",
   "dropoff_scheduled_end",
   "column_break_header",
@@ -97,14 +95,6 @@
   "remarks"
  ],
  "fields": [
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "label": "Naming Series",
-   "options": "DO-.YY.MM.DD.-",
-   "reqd": 1
-  },
   {
    "default": "Now",
    "description": "When truck is expected to arrive",
@@ -344,7 +334,7 @@
    "label": "Truck Variance (Net Truck Weight vs Scrap Weight)"
   },
   {
-   "default": "0.001",
+   "default": "0.1",
    "fieldname": "truck_variance_threshold_percent",
    "fieldtype": "Percent",
    "label": "Truck Variance Threshold %",
@@ -380,7 +370,7 @@
    "label": "Indicated Variance (Supplier Indicated vs Actual Weighed)"
   },
   {
-   "default": "0.001",
+   "default": "0.1",
    "fieldname": "indicated_variance_threshold_percent",
    "fieldtype": "Percent",
    "label": "Indicated Variance Threshold %",
@@ -689,7 +679,7 @@
  ],
  "module": "Scrap Metal Suite",
  "name": "Dropoff",
- "naming_rule": "By \"Naming Series\" field",
+ "naming_rule": "Expression (old style)",
  "permissions": [
   {
    "create": 1,

@@ -33,6 +33,14 @@
         indicated_weight: 'Indicated Weight',
         grade: 'Grade',
         scale: 'Scale',
+
+        // Inline weighing card (terminal redesign)
+        select_grade_from_items: 'Select grade from item list',
+        manualEntry: 'Manual',
+        scaleAuto: 'Scale',
+        tare: 'Tare',
+        save_and_print: 'Save & Print',
+        live_weight: 'Live weight',
         session: 'Session',
         operator: 'Operator',
 
@@ -58,9 +66,7 @@
         action_override_verification: 'Override Verification',
         action_void: 'Void',
         action_scan: 'Scan',
-        action_print_thermal: 'Print Thermal',
         action_print_sticker: 'Print Sticker',
-        action_print_all_thermal: 'Print All (Thermal)',
         action_print_all_stickers: 'Print All (Stickers)',
         action_reprint: 'Reprint',
 
@@ -124,6 +130,14 @@
         total_weight: 'น้ำหนักรวมทั้งหมด',
         indicated_weight: 'น้ำหนักตามแจ้ง',
         grade: 'เกรด',
+
+        // Inline weighing card (terminal redesign)
+        select_grade_from_items: 'เลือกเกรดจากรายการสินค้า',
+        manualEntry: 'ป้อนเอง',
+        scaleAuto: 'ตราชั่ง',
+        tare: 'ทาร์า',
+        save_and_print: 'บันทึก & พิมพ์',
+        live_weight: 'น้ำหนักสด',
         scale: 'ตราชั่ง',
         session: 'เซสชัน',
         operator: 'ผู้ปฏิบัติงาน',
@@ -150,9 +164,7 @@
         action_override_verification: 'ข้ามการตรวจสอบ',
         action_void: 'ยกเลิก',
         action_scan: 'สแกน',
-        action_print_thermal: 'พิมพ์ใบรับ',
         action_print_sticker: 'พิมพ์สติ๊กเกอร์',
-        action_print_all_thermal: 'พิมพ์ใบรับทั้งหมด',
         action_print_all_stickers: 'พิมพ์สติ๊กเกอร์ทั้งหมด',
         action_reprint: 'พิมพ์ซ้ำ',
 

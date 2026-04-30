@@ -59,6 +59,10 @@ def get_context(context):
     profile = frappe.get_doc("POS Profile Scrap", session.pos_profile)
     context.profile = profile
 
+    # Container model feature flag (mirrors truck.py)
+    context.use_container_model = bool(getattr(profile, "use_container_model", True))
+    context.enable_sticker_print = bool(getattr(profile, "enable_sticker_print", 0))
+
     # Get items for display (weight only, no rate) with categories
     context.pos_items = []
     categories = set()

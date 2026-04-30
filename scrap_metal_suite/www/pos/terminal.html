@@ -178,7 +178,129 @@
                 </div>
             </div>
 
-            <!-- Cart Items -->
+            {% if use_container_model %}
+            <!-- Container Panel (Container Redesign — design doc §9.1) -->
+            <div class="container-panel dropoff-card" id="containerPanel" style="display:none;">
+                <div class="container-panel-header">
+                    <span class="container-panel-title">
+                        <span data-i18n="container_count">Containers</span>
+                        <span class="container-count-badge" id="containerCountBadge">0</span>
+                    </span>
+                    <span class="container-total-weight" id="containerTotalWeight">0.00 Kg</span>
+                </div>
+
+                <!-- Inline weighing card — replaces the legacy "+ Add Container" modal.
+                     Operator clicks an item in the left panel to set Active Grade,
+                     reads/types the weight, and hits Save & Print. -->
+                <div class="container-weigh-card dropoff-card" id="containerWeighCard">
+                    <!-- Active Grade row -->
+                    <div class="weigh-grade-row" data-fieldname="active_grade">
+                        <span class="weigh-grade-label" data-i18n="grade">Grade</span>
+                        <span class="weigh-grade-value" id="activeGradeName">
+                            <span class="weigh-grade-empty" id="activeGradeEmpty" data-i18n="select_grade_from_items">เลือกเกรดจากรายการสินค้า</span>
+                            <span class="weigh-grade-pill" id="activeGradePill" style="display:none;">
+                                <span id="activeGradeText"></span>
+                                <button type="button" class="weigh-grade-clear" id="btnClearActiveGrade"
+                                        onclick="CONTAINER_UI.clearActiveGrade()" title="Clear grade">&#10005;</button>
+                            </span>
+                        </span>
+                    </div>
+
+                    <!-- Live Scale Read -->
+                    <div class="weigh-scale-row">
+                        <div class="live-weight-display weigh-live-display" id="weighLiveDisplay">
+                            <span class="live-weight-value" id="weighLiveValue">0.00</span>
+                            <span class="live-weight-uom">Kg</span>
+                            <span class="live-weight-stable" id="weighLiveStable" style="display:none;" data-i18n="stable">stable</span>
+                            <span class="weigh-scale-disconnected" id="weighScaleDisconnected" data-i18n="manualEntry">Manual entry</span>
+                        </div>
+                        <button type="button" class="btn-pos btn-secondary btn-sm" id="btnTare"
+                                onclick="CONTAINER_UI.tare()" data-i18n="tare">Tare</button>
+                    </div>
+
+                    <!-- Manual override / weight input -->
+                    <div class="weigh-input-row">
+                        <label class="weigh-input-label" for="containerNetWeight" data-i18n="net_weight">Net Weight</label>
+                        <div class="weight-input-group">
+                            <input type="number" id="containerNetWeight" step="0.01" min="0" placeholder="0.00"
+                                   class="weight-input-large"
+                                   oninput="CONTAINER_UI.onWeightInput()"
+                                   data-fieldname="net_weight">
+                            <span class="weight-uom">Kg</span>
+                        </div>
+                    </div>
+
+                    <!-- Container Type + Save row -->
+                    <div class="weigh-action-row">
+                        <div class="weigh-type-group">
+                            <label class="weigh-input-label" for="containerType" data-i18n="container_type">Container Type</label>
+                            <select id="containerType" class="form-select" data-fieldname="container_type">
+                                <option value="Bag" data-i18n="bag">Bag</option>
+                                <option value="Bin" data-i18n="bin">Bin</option>
+                                <option value="Pallet" data-i18n="pallet">Pallet</option>
+                                <option value="Other" data-i18n="other">Other</option>
+                            </select>
+                        </div>
+                        <button class="btn-pos btn-primary btn-large" id="btnSaveActiveContainer"
+                                onclick="CONTAINER_UI.saveActiveContainer()" disabled
+                                data-fieldname="save_container">
+                            <span data-i18n="save">Save</span> &amp; <span data-i18n="action_print_sticker">Print Sticker</span>
+                        </button>
+                    </div>
+
+                    <!-- Deviation Section (shown only if grade not in expected_items) -->
+                    <div class="deviation-section" id="containerDeviationSection" style="display:none;">
+                        <div class="deviation-warning">
+                            <span class="warning-icon">&#9888;</span>
+                            <span data-i18n="deviation_warning">Grade differs from expected</span>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="prompt_deviation_type">Deviation type</label>
+                            <select id="containerDeviationType" class="form-select">
+                                <option value="">--</option>
+                                <option value="Downgrade" data-i18n="downgrade">Downgrade</option>
+                                <option value="Upgrade" data-i18n="upgrade">Upgrade</option>
+                                <option value="Substitution" data-i18n="substitution">Substitution</option>
+                                <option value="Unplanned-Add" data-i18n="unplanned_add">Unplanned-Add</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="prompt_deviation_reason">Reason for deviation</label>
+                            <textarea id="containerDeviationReason" class="form-textarea" rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Optional Remarks -->
+                    <div class="form-group">
+                        <label data-i18n="remarks">Remarks</label>
+                        <textarea id="containerRemarks" class="form-textarea" rows="2" placeholder="Optional"></textarea>
+                    </div>
+                </div>
+
+                <div class="container-action-bar">
+                    <button class="btn-pos btn-secondary btn-sm" id="btnPauseDropoff" onclick="openPauseModal()" style="display:none;">
+                        &#9208; <span data-i18n="action_pause">Pause</span>
+                    </button>
+                    <button class="btn-pos btn-secondary btn-sm" id="btnResumeDropoff" onclick="resumeDropoffContainer()" style="display:none;">
+                        &#9654; <span data-i18n="action_resume">Resume</span>
+                    </button>
+                    <button class="btn-pos btn-success btn-sm" id="btnCompleteContainerDropoff" onclick="confirmCompleteContainerDropoff()" style="display:none;">
+                        &#10004; <span data-i18n="action_complete">Complete</span>
+                    </button>
+                    <button class="btn-pos btn-secondary btn-sm" onclick="openContainerScanner()">
+                        &#128247; <span data-i18n="action_scan">Scan</span>
+                    </button>
+                </div>
+                <div class="container-list" id="containerList">
+                    <div class="container-empty-state" id="containerEmptyState">
+                        <p data-i18n="container_empty_hint">No containers yet — click an item to start weighing</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not use_container_model %}
+            <!-- Cart Items (legacy flow, gated off when Container model is on) -->
             <div class="cart-section">
                 <div class="cart-header" onclick="toggleCart(event)">
                     <h3>
@@ -201,7 +323,7 @@
                 </div>
             </div>
 
-            <!-- Actions -->
+            <!-- Actions (legacy) -->
             <div class="action-section">
                 <button class="btn-pos btn-secondary" onclick="openRemarksModal()" id="remarksBtn" disabled>
                     &#128172; <span data-i18n="remarks">Remarks</span>
@@ -218,6 +340,7 @@
                     Record Weight
                 </button>
             </div>
+            {% endif %}
         </div>
     </div>
 
@@ -587,6 +710,118 @@
             </div>
         </div>
     </div>
+
+    {% if use_container_model %}
+    <!-- ============================================== -->
+    <!-- Container Modals (Container Redesign §7, §9.1) -->
+    <!-- ============================================== -->
+    <!-- Note: Add Container modal was removed in favour of the inline
+         #containerWeighCard panel above. See CONTAINER_UI.saveActiveContainer. -->
+
+    <!-- Reweigh Container Modal -->
+    <div class="modal" id="reweighContainerModal" style="display:none;">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3 data-i18n="action_reweigh">Reweigh</h3>
+                <button class="modal-close" onclick="closeReweighModal()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label><span data-i18n="container_no">Container No</span></label>
+                    <div class="form-readonly" id="reweighContainerLabel">--</div>
+                </div>
+                <div class="form-group">
+                    <label><span data-i18n="net_weight">Net Weight</span> (<span data-i18n="status_active">Active</span>)</label>
+                    <div class="form-readonly" id="reweighCurrentWeight">--</div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="net_weight">Net Weight</label>
+                    <div class="weight-input-group">
+                        <input type="number" id="reweighNewWeight" step="0.01" min="0" placeholder="0.00"
+                               class="weight-input-large">
+                        <span class="weight-uom">Kg</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label><span data-i18n="prompt_reweigh_reason">Reason for reweigh</span> <span class="required">*</span></label>
+                    <textarea id="reweighReason" class="form-textarea" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeReweighModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn-pos btn-primary" onclick="confirmReweigh()" data-i18n="save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Void Container Modal -->
+    <div class="modal" id="voidContainerModal" style="display:none;">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3 data-i18n="void_container">Void Container</h3>
+                <button class="modal-close" onclick="closeVoidModal()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label><span data-i18n="container_no">Container No</span></label>
+                    <div class="form-readonly" id="voidContainerLabel">--</div>
+                </div>
+                <div class="form-group">
+                    <label><span data-i18n="prompt_void_reason">Reason for voiding</span> <span class="required">*</span></label>
+                    <textarea id="voidReason" class="form-textarea" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeVoidModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn-pos btn-danger" onclick="confirmVoidContainer()" data-i18n="action_void">Void</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pause Dropoff Modal -->
+    <div class="modal" id="pauseDropoffModal" style="display:none;">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3 data-i18n="action_pause">Pause</h3>
+                <button class="modal-close" onclick="closePauseModal()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label data-i18n="prompt_pause_reason">Reason for pause</label>
+                    <textarea id="pauseReason" class="form-textarea" rows="2" placeholder="Optional"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closePauseModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn-pos btn-primary" onclick="confirmPause()" data-i18n="action_pause">Pause</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approve Deviation Modal -->
+    <div class="modal" id="approveDeviationModal" style="display:none;">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3 data-i18n="action_approve_deviation">Approve Deviation</h3>
+                <button class="modal-close" onclick="closeApproveDeviationModal()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label data-i18n="container_no">Container No</label>
+                    <div class="form-readonly" id="approveDeviationLabel">--</div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="prompt_deviation_reason">Reason for deviation</label>
+                    <textarea id="approveDeviationReason" class="form-textarea" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closeApproveDeviationModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn-pos btn-primary" onclick="confirmApproveDeviation()" data-i18n="action_approve_deviation">Approve</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     {% endif %}
 </div>
 
@@ -868,6 +1103,11 @@ function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
     fetchDropoffDetails(name);
 
     updateButtonStates();
+
+    // Container redesign: load containers + show panel (gated by feature flag)
+    if (window.CONTAINER_UI) {
+        CONTAINER_UI.onDropoffSelected(state.dropoff);
+    }
 }
 
 // Fetch dropoff details from API
@@ -1108,6 +1348,9 @@ function clearDropoff() {
     state.capturedPhotos = [];
     state.existingPhotos = [];
     state.scrapWeights = [];
+
+    // Hide container panel (Container Redesign)
+    if (window.CONTAINER_UI) CONTAINER_UI.onDropoffCleared();
     const searchInput = document.getElementById('dropoffSearch');
     if (searchInput) {
         searchInput.value = '';
@@ -1174,6 +1417,14 @@ function filterCategory(btn, category) {
 }
 
 function selectItem(code, name, uom) {
+    // Container redesign: when the inline Container weighing card is rendered,
+    // clicking an item just sets the Active Grade in that card — no modal,
+    // no cart. Falls through to the legacy modal+cart flow when the flag is off.
+    if (window.CONTAINER_UI && CONTAINER_UI.isEnabled && CONTAINER_UI.isEnabled()) {
+        CONTAINER_UI.setActiveGrade(code, name);
+        return;
+    }
+
     state.currentItem = { code, name, uom };
     document.getElementById('modalItemName').textContent = name;
     document.getElementById('modalUom').textContent = uom;
@@ -1235,9 +1486,12 @@ function addToCart() {
 
 function renderCart() {
     const container = document.getElementById('cartItems');
+    // Cart DOM is gated off when use_container_model=true — bail out cleanly.
+    if (!container) return;
+    const totalEl = document.getElementById('totalWeight');
     if (state.cart.length === 0) {
         container.innerHTML = `<div class="cart-empty">${t('noItemsAdded')}</div>`;
-        document.getElementById('totalWeight').textContent = '0.00 Kg';
+        if (totalEl) totalEl.textContent = '0.00 Kg';
         return;
     }
 
@@ -1260,7 +1514,7 @@ function renderCart() {
     });
 
     const totalWeight = state.cart.reduce((sum, item) => sum + item.weight, 0);
-    document.getElementById('totalWeight').textContent = totalWeight.toFixed(2) + ' Kg';
+    if (totalEl) totalEl.textContent = totalWeight.toFixed(2) + ' Kg';
 
     // Update cart count badge
     updateCartCount();
@@ -1290,9 +1544,14 @@ function updateButtonStates() {
     const hasOrder = !!state.dropoff;
     const hasItems = state.cart.length > 0;
 
-    document.getElementById('recordWeightBtn').disabled = !hasOrder || !hasItems;
-    document.getElementById('remarksBtn').disabled = !hasOrder;
-    document.getElementById('photoBtn').disabled = !hasOrder;
+    // These DOM nodes only exist in the legacy (non-container) layout — guard
+    // before touching them so the inline Container UI stays clean.
+    const recordBtn = document.getElementById('recordWeightBtn');
+    const remarksBtn = document.getElementById('remarksBtn');
+    const photoBtn = document.getElementById('photoBtn');
+    if (recordBtn) recordBtn.disabled = !hasOrder || !hasItems;
+    if (remarksBtn) remarksBtn.disabled = !hasOrder;
+    if (photoBtn) photoBtn.disabled = !hasOrder;
 }
 
 // ===== Remarks =====
@@ -2291,11 +2550,18 @@ function handleWeightUpdate(data) {
     const weightKg = data.weight * conversionFactor;
 
     state.liveWeight = weightKg;
+    state.scaleStable = !!data.stable;
 
     // Update live weight display if visible
     const liveWeightEl = document.getElementById('liveWeightValue');
     if (liveWeightEl) {
         liveWeightEl.textContent = weightKg.toFixed(2);
+    }
+
+    // Container UI: forward the live reading to the inline weighing card so the
+    // operator sees the scale stream without opening any modal.
+    if (window.CONTAINER_UI && CONTAINER_UI.onLiveWeight) {
+        CONTAINER_UI.onLiveWeight(weightKg, !!data.stable);
     }
 
     // Update status indicator
@@ -2572,6 +2838,765 @@ function updateWeightModalDisplay() {
         inputDisplay.style.display = 'flex';
     }
 }
+
+// =====================================================================
+// Container Redesign UI module (design doc §7, §9.1)
+// Gated by Jinja `use_container_model` flag — only initialised if the
+// container panel is in the DOM. Coexists with legacy scrap weight UI.
+// =====================================================================
+{% if use_container_model %}
+window.CONTAINER_UI = (function () {
+    const containerState = {
+        dropoff: null,                 // {name, status, expected_items: Set<item_code>, supplier_name, ...}
+        containers: [],                // active containers (latest list)
+        voidedContainers: [],          // voided list
+        currentRowAction: null,        // {action, container} for modals
+        weightFromScale: false,        // true when the displayed weight came from scale stream
+        activeGrade: null,             // {code, name} — set by clicking an item on the left panel
+        manualWeightOverride: false,   // operator typed into the weight input → don't overwrite from scale
+        tareOffset: 0,                 // subtracted from incoming live readings (Tare button)
+    };
+
+    // ---- API wrappers ----
+    function api(method, args) { return POS_CORE.callAPI(method, args); }
+
+    // ---- Print iframe (mirrors reprintLastTruckWeight pattern) ----
+    function printContainer(printUrl) {
+        if (!printUrl) return;
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+        iframe.src = printUrl;
+        iframe.onload = function () {
+            try { iframe.contentWindow.print(); }
+            catch (e) { window.open(printUrl + '&trigger_print=1', '_blank'); }
+            setTimeout(function () { iframe.remove(); }, 10000);
+        };
+        document.body.appendChild(iframe);
+    }
+
+    // Auto-print on add_container / reweigh_container success.
+    // Only the sticker prints per-container; the per-Dropoff thermal receipt
+    // is generated separately from the parent Dropoff (`ใบคิวสองภาษา`).
+    function fireBothPrints(printUrls) {
+        if (!printUrls) return;
+        if (printUrls.sticker) printContainer(printUrls.sticker);
+    }
+
+    // ---- Status helpers ----
+    function isInProgress() { return containerState.dropoff && containerState.dropoff.status === 'In Progress'; }
+    function isPaused() { return containerState.dropoff && containerState.dropoff.status === 'Paused'; }
+    function isCompleted() { return containerState.dropoff && containerState.dropoff.status === 'Completed'; }
+
+    function refreshActionBar() {
+        const dropoff = containerState.dropoff;
+        if (!dropoff) return;
+
+        const btnAdd = document.getElementById('btnAddContainer');
+        const btnPause = document.getElementById('btnPauseDropoff');
+        const btnResume = document.getElementById('btnResumeDropoff');
+        const btnComplete = document.getElementById('btnCompleteContainerDropoff');
+
+        const inProgress = isInProgress();
+        const paused = isPaused();
+        const scheduled = dropoff.status === 'Scheduled';
+
+        // Add Container: shown when In Progress / Scheduled (will auto-acquire lock); hidden when Paused/Completed.
+        if (btnAdd) btnAdd.style.display = (inProgress || scheduled) ? 'inline-flex' : 'none';
+        if (btnPause) btnPause.style.display = inProgress ? 'inline-flex' : 'none';
+        if (btnResume) btnResume.style.display = paused ? 'inline-flex' : 'none';
+        if (btnComplete) btnComplete.style.display = inProgress ? 'inline-flex' : 'none';
+    }
+
+    function refreshHeaderTotals() {
+        const total = containerState.containers.reduce((sum, c) => sum + (parseFloat(c.net_weight) || 0), 0);
+        document.getElementById('containerTotalWeight').textContent = total.toFixed(2) + ' Kg';
+        document.getElementById('containerCountBadge').textContent = containerState.containers.filter(c => c.status !== 'Voided').length;
+    }
+
+    // ---- Container list rendering ----
+    function statusBadge(c) {
+        if (c.status === 'Voided') return '<span class="badge-status status-voided" data-i18n-static="status_voided">' + t('status_voided') + '</span>';
+        if (c.status === 'Reweighed') return '<span class="badge-status status-reweighed">' + t('status_reweighed') + '</span>';
+        return '<span class="badge-status status-active">' + t('status_active') + '</span>';
+    }
+
+    function deviationBadge(c) {
+        if (!c.is_deviation) return '';
+        if (c.deviation_approved_by) {
+            return '<span class="badge-status badge-deviation-approved" title="' + t('deviation_approved_by') + ': ' + (c.deviation_approved_by || '') + '">'
+                + t('deviation') + ' &#10004;</span>';
+        }
+        return '<span class="badge-status badge-deviation">' + t('deviation_approval_required') + '</span>';
+    }
+
+    function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function renderContainerList() {
+        const listEl = document.getElementById('containerList');
+        const emptyEl = document.getElementById('containerEmptyState');
+        if (!listEl) return;
+
+        const all = containerState.containers.slice();
+        // Active first (sorted by container_no), Voided collapsed at bottom
+        const active = all.filter(c => c.status !== 'Voided').sort((a, b) => (a.container_no || '').localeCompare(b.container_no || ''));
+        const voided = containerState.voidedContainers.slice();
+
+        if (!active.length && !voided.length) {
+            if (emptyEl) emptyEl.style.display = 'block';
+            const oldRows = listEl.querySelectorAll('.container-row, .container-voided-block');
+            oldRows.forEach(r => r.remove());
+            return;
+        }
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        let html = '';
+        active.forEach(c => {
+            // NOTE: item_name is canonical — never run it through t().
+            const w = (parseFloat(c.net_weight) || 0).toFixed(2);
+            const safeName = escapeHtml(c.name);
+            const approveBtn = (c.is_deviation && !c.deviation_approved_by)
+                ? ('<button class="btn-pos btn-warning btn-xs" onclick="CONTAINER_UI.openApproveDeviation(\'' + safeName + '\')">' + t('action_approve_deviation') + '</button>')
+                : '';
+            const ctypeKey = String(c.container_type || '').toLowerCase();
+            const ctypeLabel = (ctypeKey ? (t(ctypeKey) || c.container_type) : '') || '';
+            html += '<div class="container-row" data-name="' + safeName + '">'
+                +   '<div class="container-row-main">'
+                +     '<span class="container-row-no">' + escapeHtml(c.container_no || '') + '</span>'
+                +     '<span class="container-row-name">' + escapeHtml(c.item_name || c.item_code || '') + '</span>'
+                +     '<span class="container-row-type">' + escapeHtml(ctypeLabel) + '</span>'
+                +     '<span class="container-row-weight">' + w + ' Kg</span>'
+                +     statusBadge(c) + deviationBadge(c)
+                +   '</div>'
+                +   '<div class="container-row-actions">'
+                +     '<button class="btn-pos btn-secondary btn-xs" onclick="CONTAINER_UI.openReweigh(\'' + safeName + '\')">' + t('action_reweigh') + '</button>'
+                +     '<button class="btn-pos btn-secondary btn-xs" onclick="CONTAINER_UI.printOne(\'' + safeName + '\', \'sticker\')">' + t('action_print_sticker') + '</button>'
+                +     approveBtn
+                +     '<button class="btn-pos btn-danger btn-xs" onclick="CONTAINER_UI.openVoid(\'' + safeName + '\')">' + t('action_void') + '</button>'
+                +   '</div>'
+                + '</div>';
+        });
+
+        if (voided.length) {
+            html += '<details class="container-voided-block"><summary>' + t('status_voided') + ' (' + voided.length + ')</summary>';
+            voided.forEach(c => {
+                const w = (parseFloat(c.net_weight) || 0).toFixed(2);
+                html += '<div class="container-row container-row-voided">'
+                    +   '<span class="container-row-no">' + escapeHtml(c.container_no || '') + '</span>'
+                    +   '<span class="container-row-name">' + escapeHtml(c.item_name || c.item_code || '') + '</span>'
+                    +   '<span class="container-row-weight">' + w + ' Kg</span>'
+                    +   statusBadge(c)
+                    + '</div>';
+            });
+            html += '</details>';
+        }
+
+        // Replace previous content
+        const oldRows = listEl.querySelectorAll('.container-row, .container-voided-block');
+        oldRows.forEach(r => r.remove());
+        listEl.insertAdjacentHTML('beforeend', html);
+    }
+
+    // ---- Load containers from API ----
+    async function loadContainers() {
+        if (!containerState.dropoff) return;
+        try {
+            const [activeRes, voidedRes] = await Promise.all([
+                api('scrap_metal_suite.api.v1.dropoff.list_containers', { dropoff: containerState.dropoff.name, include_voided: 0 }),
+                api('scrap_metal_suite.api.v1.dropoff.list_containers', { dropoff: containerState.dropoff.name, include_voided: 1 }),
+            ]);
+            containerState.containers = (activeRes && activeRes.message) || [];
+            const all = (voidedRes && voidedRes.message) || [];
+            containerState.voidedContainers = all.filter(c => c.status === 'Voided');
+            refreshHeaderTotals();
+            renderContainerList();
+        } catch (err) {
+            console.error('Failed to load containers:', err);
+        }
+    }
+
+    // ---- onDropoffSelected entry point ----
+    function onDropoffSelected(dropoff) {
+        containerState.dropoff = {
+            name: dropoff.name,
+            status: dropoff.status || 'Draft',
+            supplier_name: dropoff.supplierName || '',
+            expected_items: new Set(),
+        };
+        // Show panel
+        const panel = document.getElementById('containerPanel');
+        if (panel) panel.style.display = 'block';
+
+        refreshActionBar();
+        loadContainers();
+
+        // Pull expected_items (set) once details API has populated truckWeights/etc.
+        // The legacy fetchDropoffDetails has already fired; mirror the same call to grab expected_items.
+        api('scrap_metal_suite.api.v1.dropoff.get_dropoff_details', { dropoff: dropoff.name })
+            .then(res => {
+                if (res && res.message) {
+                    const det = res.message;
+                    const codes = (det.expected_items || []).map(e => e.item).filter(Boolean);
+                    containerState.dropoff.expected_items = new Set(codes);
+                    if (det.status) {
+                        containerState.dropoff.status = det.status;
+                        refreshActionBar();
+                    }
+                }
+            })
+            .catch(err => console.error('Failed to fetch expected_items:', err));
+    }
+
+    function onDropoffCleared() {
+        containerState.dropoff = null;
+        containerState.containers = [];
+        containerState.voidedContainers = [];
+        clearActiveGradeImpl();
+        const panel = document.getElementById('containerPanel');
+        if (panel) panel.style.display = 'none';
+    }
+
+    // ---- Inline weighing card (replaces the legacy add-container modal) ----
+
+    // The Container UI is "enabled" when the inline card is rendered in the DOM
+    // — i.e. when use_container_model is true at template-render time. Tests
+    // and the selectItem() handler use this gate to decide which flow to run.
+    function isEnabledImpl() {
+        return !!document.getElementById('containerWeighCard');
+    }
+
+    function refreshSaveButton() {
+        const btn = document.getElementById('btnSaveActiveContainer');
+        if (!btn) return;
+        const weightEl = document.getElementById('containerNetWeight');
+        const w = weightEl ? parseFloat(weightEl.value) : NaN;
+        const ok = !!containerState.activeGrade && !!containerState.dropoff
+                   && !isNaN(w) && w > 0;
+        btn.disabled = !ok;
+    }
+
+    function refreshDeviationSection() {
+        const section = document.getElementById('containerDeviationSection');
+        if (!section) return;
+        const code = containerState.activeGrade ? containerState.activeGrade.code : '';
+        const expected = containerState.dropoff && containerState.dropoff.expected_items;
+        const isDeviation = code && expected && expected.size > 0 && !expected.has(code);
+        section.style.display = isDeviation ? 'block' : 'none';
+    }
+
+    function setActiveGradeImpl(itemCode, itemName) {
+        if (!isEnabledImpl()) return;
+        if (!containerState.dropoff) {
+            frappe.msgprint(t('selectDropoffToRecordWeights') || 'Select a dropoff first');
+            return;
+        }
+        // NOTE: itemName is canonical Thai — never run it through t().
+        containerState.activeGrade = { code: itemCode, name: itemName };
+
+        const empty = document.getElementById('activeGradeEmpty');
+        const pill = document.getElementById('activeGradePill');
+        const text = document.getElementById('activeGradeText');
+        if (empty) empty.style.display = 'none';
+        if (pill) pill.style.display = 'inline-flex';
+        if (text) text.textContent = itemName || itemCode;
+
+        // Visually highlight the matching item-btn on the left panel.
+        document.querySelectorAll('.item-btn').forEach(btn => {
+            btn.classList.toggle('active-grade',
+                btn.getAttribute('data-item-code') === itemCode);
+        });
+
+        refreshDeviationSection();
+        refreshSaveButton();
+    }
+
+    function clearActiveGradeImpl() {
+        containerState.activeGrade = null;
+        const empty = document.getElementById('activeGradeEmpty');
+        const pill = document.getElementById('activeGradePill');
+        if (empty) empty.style.display = 'inline';
+        if (pill) pill.style.display = 'none';
+        document.querySelectorAll('.item-btn.active-grade')
+            .forEach(b => b.classList.remove('active-grade'));
+        refreshDeviationSection();
+        refreshSaveButton();
+    }
+
+    function onWeightInputImpl() {
+        // The operator typed into the weight box — switch to manual mode and
+        // stop letting the live scale stream overwrite their entry.
+        containerState.manualWeightOverride = true;
+        containerState.weightFromScale = false;
+        refreshSaveButton();
+    }
+
+    function onLiveWeightImpl(weightKg, stable) {
+        if (!isEnabledImpl()) return;
+        const adjusted = weightKg - (containerState.tareOffset || 0);
+
+        const liveVal = document.getElementById('weighLiveValue');
+        const stableEl = document.getElementById('weighLiveStable');
+        const disconnected = document.getElementById('weighScaleDisconnected');
+        if (liveVal) liveVal.textContent = adjusted.toFixed(2);
+        if (stableEl) stableEl.style.display = stable ? 'inline-block' : 'none';
+        if (disconnected) disconnected.style.display = 'none';
+
+        // Auto-fill the weight input from the scale unless the operator has
+        // typed a manual override.
+        if (!containerState.manualWeightOverride) {
+            const inputEl = document.getElementById('containerNetWeight');
+            if (inputEl) inputEl.value = adjusted.toFixed(2);
+            containerState.weightFromScale = true;
+            refreshSaveButton();
+        }
+    }
+
+    function tareImpl() {
+        // Zero the displayed live value at the current reading. If no live
+        // stream is active, just clear the manual input so the operator can
+        // start fresh.
+        if (window.state && state.isScaleConnected && state.liveWeight != null) {
+            containerState.tareOffset = state.liveWeight;
+            const liveVal = document.getElementById('weighLiveValue');
+            if (liveVal) liveVal.textContent = '0.00';
+        }
+        const inputEl = document.getElementById('containerNetWeight');
+        if (inputEl) inputEl.value = '';
+        containerState.manualWeightOverride = false;
+        containerState.weightFromScale = false;
+        refreshSaveButton();
+    }
+
+    function resetWeighCard() {
+        clearActiveGradeImpl();
+        const inputEl = document.getElementById('containerNetWeight');
+        const remarksEl = document.getElementById('containerRemarks');
+        const devTypeEl = document.getElementById('containerDeviationType');
+        const devReasonEl = document.getElementById('containerDeviationReason');
+        const typeEl = document.getElementById('containerType');
+        if (inputEl) inputEl.value = '';
+        if (remarksEl) remarksEl.value = '';
+        if (devTypeEl) devTypeEl.value = '';
+        if (devReasonEl) devReasonEl.value = '';
+        if (typeEl) typeEl.value = 'Bag';
+        containerState.manualWeightOverride = false;
+        containerState.weightFromScale = false;
+        containerState.tareOffset = 0;
+        refreshSaveButton();
+    }
+
+    async function saveActiveContainerImpl() {
+        const dropoff = containerState.dropoff;
+        if (!dropoff) return;
+
+        if (!containerState.activeGrade) {
+            frappe.msgprint(t('select_grade_from_items') || 'Select a grade first');
+            return;
+        }
+        const itemCode = containerState.activeGrade.code;
+
+        const typeEl = document.getElementById('containerType');
+        const containerType = typeEl ? typeEl.value : 'Bag';
+
+        const weightEl = document.getElementById('containerNetWeight');
+        const netWeight = weightEl ? parseFloat(weightEl.value) : NaN;
+        const remarksEl = document.getElementById('containerRemarks');
+        const remarks = remarksEl ? (remarksEl.value || '').trim() : '';
+        const devTypeEl = document.getElementById('containerDeviationType');
+        const devReasonEl = document.getElementById('containerDeviationReason');
+        const deviationType = devTypeEl ? (devTypeEl.value || '').trim() : '';
+        const deviationReason = devReasonEl ? (devReasonEl.value || '').trim() : '';
+
+        if (!containerType) {
+            frappe.msgprint(t('container_type'));
+            return;
+        }
+        if (isNaN(netWeight) || netWeight <= 0) {
+            frappe.msgprint(t('error_weight_invalid') || 'Invalid weight');
+            return;
+        }
+        const expected = dropoff.expected_items;
+        const isDeviation = expected && expected.size > 0 && !expected.has(itemCode);
+        if (isDeviation && (!deviationType || !deviationReason)) {
+            frappe.msgprint(t('error_reason_required') || 'Reason required');
+            return;
+        }
+
+        try {
+            const res = await api('scrap_metal_suite.api.v1.dropoff.add_container', {
+                dropoff: dropoff.name,
+                session: state.session,
+                item_code: itemCode,
+                net_weight: netWeight,
+                container_type: containerType,
+                entry_method: containerState.weightFromScale ? 'Scale' : 'Manual Entry',
+                deviation_reason: deviationReason || null,
+                deviation_type: deviationType || null,
+                remarks: remarks || null,
+            });
+
+            const msg = res && res.message;
+            if (!msg || !msg.success) {
+                frappe.msgprint(t('error') || 'Failed');
+                return;
+            }
+            frappe.show_alert({ message: t('container_added'), indicator: 'green' }, 3);
+
+            if (msg.dropoff_status && containerState.dropoff) {
+                containerState.dropoff.status = msg.dropoff_status;
+                refreshActionBar();
+            }
+
+            // Always auto-print on Save & Print.
+            fireBothPrints(msg.print_urls);
+
+            // Reset card for the next bag, refresh the list.
+            resetWeighCard();
+            loadContainers();
+        } catch (err) {
+            console.error('add_container error:', err);
+            frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message || 'Failed' });
+        }
+    }
+
+    // ---- Back-compat shims for the removed Add Container modal ----
+    // External callers (e.g. older code, scanner workflows) may still call
+    // these names; route them to the inline-card flow.
+    function openAddContainerModalImpl() {
+        // The modal is gone — there's nothing to "open" anymore. Make sure a
+        // dropoff is selected and surface a hint if no grade is set yet.
+        if (!containerState.dropoff) {
+            frappe.msgprint(t('selectDropoffToRecordWeights') || 'Select a dropoff first');
+            return;
+        }
+        if (!containerState.activeGrade) {
+            frappe.show_alert({
+                message: t('select_grade_from_items') || 'Click a grade on the left to start weighing',
+                indicator: 'blue'
+            }, 4);
+        }
+        const inputEl = document.getElementById('containerNetWeight');
+        if (inputEl) inputEl.focus();
+    }
+    function closeAddContainerModalImpl() { /* no-op */ }
+    function onContainerGradeChangeImpl() { refreshDeviationSection(); }
+    async function saveContainerImpl(_autoPrint) { return saveActiveContainerImpl(); }
+
+    // ---- Reweigh modal ----
+    function openReweighImpl(containerName) {
+        const c = containerState.containers.find(x => x.name === containerName);
+        if (!c) return;
+        containerState.currentRowAction = { action: 'reweigh', container: containerName };
+        document.getElementById('reweighContainerLabel').textContent = c.container_no || containerName;
+        document.getElementById('reweighCurrentWeight').textContent = (parseFloat(c.net_weight) || 0).toFixed(2) + ' Kg';
+        document.getElementById('reweighNewWeight').value = '';
+        document.getElementById('reweighReason').value = '';
+        document.getElementById('reweighContainerModal').style.display = 'flex';
+    }
+
+    function closeReweighImpl() {
+        document.getElementById('reweighContainerModal').style.display = 'none';
+        containerState.currentRowAction = null;
+    }
+
+    async function confirmReweighImpl() {
+        const action = containerState.currentRowAction;
+        if (!action) return;
+        const newWeight = parseFloat(document.getElementById('reweighNewWeight').value);
+        const reason = (document.getElementById('reweighReason').value || '').trim();
+        if (isNaN(newWeight) || newWeight <= 0) {
+            frappe.msgprint(t('error_weight_invalid'));
+            return;
+        }
+        if (!reason) {
+            frappe.msgprint(t('error_reason_required'));
+            return;
+        }
+        try {
+            const res = await api('scrap_metal_suite.api.v1.dropoff.reweigh_container', {
+                container: action.container,
+                net_weight: newWeight,
+                reason: reason,
+                entry_method: 'Manual Entry',
+            });
+            const msg = res && res.message;
+            if (!msg || !msg.success) {
+                frappe.msgprint(t('error'));
+                return;
+            }
+            closeReweighImpl();
+            frappe.show_alert({ message: t('container_reweighed'), indicator: 'green' }, 3);
+            fireBothPrints(msg.print_urls);
+            loadContainers();
+        } catch (err) {
+            console.error('reweigh_container error:', err);
+            frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message || 'Failed' });
+        }
+    }
+
+    // ---- Void modal ----
+    function openVoidImpl(containerName) {
+        const c = containerState.containers.find(x => x.name === containerName);
+        if (!c) return;
+        containerState.currentRowAction = { action: 'void', container: containerName };
+        document.getElementById('voidContainerLabel').textContent = c.container_no || containerName;
+        document.getElementById('voidReason').value = '';
+        document.getElementById('voidContainerModal').style.display = 'flex';
+    }
+
+    function closeVoidImpl() {
+        document.getElementById('voidContainerModal').style.display = 'none';
+        containerState.currentRowAction = null;
+    }
+
+    async function confirmVoidImpl() {
+        const action = containerState.currentRowAction;
+        if (!action) return;
+        const reason = (document.getElementById('voidReason').value || '').trim();
+        if (!reason) {
+            frappe.msgprint(t('error_reason_required'));
+            return;
+        }
+        try {
+            const res = await api('scrap_metal_suite.api.v1.dropoff.void_container', {
+                container: action.container,
+                reason: reason,
+            });
+            const msg = res && res.message;
+            if (!msg || !msg.success) {
+                frappe.msgprint(t('error'));
+                return;
+            }
+            closeVoidImpl();
+            frappe.show_alert({ message: t('container_voided'), indicator: 'orange' }, 3);
+            loadContainers();
+        } catch (err) {
+            console.error('void_container error:', err);
+            frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message || 'Failed' });
+        }
+    }
+
+    // ---- Pause / Resume ----
+    function openPauseImpl() {
+        document.getElementById('pauseReason').value = '';
+        document.getElementById('pauseDropoffModal').style.display = 'flex';
+    }
+    function closePauseImpl() {
+        document.getElementById('pauseDropoffModal').style.display = 'none';
+    }
+    async function confirmPauseImpl() {
+        if (!containerState.dropoff) return;
+        const reason = (document.getElementById('pauseReason').value || '').trim();
+        try {
+            const res = await api('scrap_metal_suite.api.v1.dropoff.pause_dropoff', {
+                dropoff: containerState.dropoff.name,
+                reason: reason || null,
+            });
+            const msg = res && res.message;
+            if (msg && msg.success) {
+                closePauseImpl();
+                containerState.dropoff.status = msg.status || 'Paused';
+                refreshActionBar();
+                frappe.show_alert({ message: t('dropoff_paused'), indicator: 'orange' }, 3);
+            }
+        } catch (err) {
+            console.error('pause_dropoff error:', err);
+            frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message });
+        }
+    }
+
+    async function resumeDropoffImpl() {
+        if (!containerState.dropoff) return;
+        try {
+            const res = await api('scrap_metal_suite.api.v1.dropoff.resume_dropoff', {
+                dropoff: containerState.dropoff.name,
+                session: state.session,
+            });
+            const msg = res && res.message;
+            if (msg && msg.success) {
+                containerState.dropoff.status = msg.status || 'In Progress';
+                refreshActionBar();
+                frappe.show_alert({ message: t('dropoff_resumed'), indicator: 'green' }, 3);
+                loadContainers();
+            }
+        } catch (err) {
+            console.error('resume_dropoff error:', err);
+            frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message || t('error_scale_mismatch') });
+        }
+    }
+
+    // ---- Complete ----
+    async function confirmCompleteImpl() {
+        if (!containerState.dropoff) return;
+        if (!confirm(t('action_complete') + '?')) return;
+        try {
+            const res = await api('scrap_metal_suite.api.v1.dropoff.complete_dropoff', {
+                dropoff: containerState.dropoff.name,
+            });
+            const msg = res && res.message;
+            if (msg && msg.success) {
+                containerState.dropoff.status = 'Completed';
+                refreshActionBar();
+                frappe.show_alert({ message: t('status_completed'), indicator: 'green' }, 5);
+                loadContainers();
+            }
+        } catch (err) {
+            console.error('complete_dropoff error:', err);
+            // Likely "unapproved deviations" or "truck weights required" message — surface it.
+            frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message || 'Failed' });
+        }
+    }
+
+    // ---- Approve deviation ----
+    function openApproveDeviationImpl(containerName) {
+        const c = containerState.containers.find(x => x.name === containerName);
+        if (!c) return;
+        containerState.currentRowAction = { action: 'approve', container: containerName };
+        document.getElementById('approveDeviationLabel').textContent = c.container_no || containerName;
+        document.getElementById('approveDeviationReason').value = '';
+        document.getElementById('approveDeviationModal').style.display = 'flex';
+    }
+    function closeApproveDeviationImpl() {
+        document.getElementById('approveDeviationModal').style.display = 'none';
+        containerState.currentRowAction = null;
+    }
+    async function confirmApproveDeviationImpl() {
+        const action = containerState.currentRowAction;
+        if (!action) return;
+        const reason = (document.getElementById('approveDeviationReason').value || '').trim();
+        try {
+            const res = await api('scrap_metal_suite.api.v1.dropoff.approve_container_deviation', {
+                container: action.container,
+                reason: reason || null,
+            });
+            const msg = res && res.message;
+            if (msg && msg.success) {
+                closeApproveDeviationImpl();
+                frappe.show_alert({ message: t('action_approve_deviation'), indicator: 'green' }, 3);
+                loadContainers();
+            }
+        } catch (err) {
+            console.error('approve_container_deviation error:', err);
+            frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message });
+        }
+    }
+
+    // ---- Print one (sticker reprint from row) ----
+    // The container has only a sticker format; the per-Dropoff thermal receipt
+    // is generated from the parent Dropoff (`ใบคิวสองภาษา`).
+    function printOneImpl(containerName /*, kind */) {
+        const dt = encodeURIComponent('Scrap Weight Container');
+        const fmt = encodeURIComponent('Scrap Weight Container Sticker');
+        const url = '/printview?doctype=' + dt + '&name=' + encodeURIComponent(containerName) + '&format=' + fmt + '&no_letterhead=1';
+        printContainer(url);
+    }
+
+    // ---- Scan QR ----
+    function openScannerImpl() {
+        if (!window.POS_SCANNER) {
+            frappe.msgprint(t('action_scan'));
+            return;
+        }
+        POS_SCANNER.open(async function (raw) {
+            const parsed = POS_SCANNER.parseQRValue(raw, ['/app/scrap-weight-container/']);
+            try {
+                const res = await api('scrap_metal_suite.api.v1.dropoff.get_container', { name: parsed });
+                const c = res && res.message;
+                if (!c) {
+                    frappe.msgprint(t('error') + ': ' + parsed);
+                    return;
+                }
+                // Surface a quick action chooser.
+                const actions = [
+                    { label: t('action_reweigh'), fn: () => openReweighImpl(c.name) },
+                    { label: t('action_print_sticker'), fn: () => printOneImpl(c.name) },
+                    { label: t('action_void'), fn: () => openVoidImpl(c.name) },
+                ];
+                const choice = window.prompt(
+                    (c.container_no || c.name) + ' (' + (c.item_name || c.item_code) + ', ' + (parseFloat(c.net_weight) || 0).toFixed(2) + ' Kg)\n' +
+                    actions.map((a, i) => (i + 1) + ') ' + a.label).join('\n')
+                );
+                const idx = parseInt(choice, 10);
+                if (idx >= 1 && idx <= actions.length) actions[idx - 1].fn();
+            } catch (err) {
+                console.error('get_container error:', err);
+                frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message });
+            }
+        });
+    }
+
+    return {
+        onDropoffSelected: onDropoffSelected,
+        onDropoffCleared: onDropoffCleared,
+        loadContainers: loadContainers,
+
+        // Inline weighing card (the new primary weighing UX)
+        isEnabled: isEnabledImpl,
+        setActiveGrade: setActiveGradeImpl,
+        clearActiveGrade: clearActiveGradeImpl,
+        saveActiveContainer: saveActiveContainerImpl,
+        onLiveWeight: onLiveWeightImpl,
+        onWeightInput: onWeightInputImpl,
+        tare: tareImpl,
+
+        // Back-compat shims for the removed Add Container modal
+        openAddContainerModal: openAddContainerModalImpl,
+        closeAddContainerModal: closeAddContainerModalImpl,
+        onContainerGradeChange: onContainerGradeChangeImpl,
+        saveContainer: saveContainerImpl,
+
+        openReweigh: openReweighImpl,
+        closeReweigh: closeReweighImpl,
+        confirmReweigh: confirmReweighImpl,
+
+        openVoid: openVoidImpl,
+        closeVoid: closeVoidImpl,
+        confirmVoid: confirmVoidImpl,
+
+        openPause: openPauseImpl,
+        closePause: closePauseImpl,
+        confirmPause: confirmPauseImpl,
+        resumeDropoff: resumeDropoffImpl,
+        confirmComplete: confirmCompleteImpl,
+
+        openApproveDeviation: openApproveDeviationImpl,
+        closeApproveDeviation: closeApproveDeviationImpl,
+        confirmApproveDeviation: confirmApproveDeviationImpl,
+
+        printOne: printOneImpl,
+        openScanner: openScannerImpl,
+    };
+})();
+
+// Inline onclick wrappers that delegate to CONTAINER_UI
+function openAddContainerModal() { CONTAINER_UI.openAddContainerModal(); }
+function closeAddContainerModal() { CONTAINER_UI.closeAddContainerModal(); }
+function onContainerGradeChange() { CONTAINER_UI.onContainerGradeChange(); }
+function saveContainer(autoPrint) { CONTAINER_UI.saveContainer(autoPrint); }
+
+function openReweighModal(containerName) { CONTAINER_UI.openReweigh(containerName); }
+function closeReweighModal() { CONTAINER_UI.closeReweigh(); }
+function confirmReweigh() { CONTAINER_UI.confirmReweigh(); }
+
+function openVoidModal(containerName) { CONTAINER_UI.openVoid(containerName); }
+function closeVoidModal() { CONTAINER_UI.closeVoid(); }
+function confirmVoidContainer() { CONTAINER_UI.confirmVoid(); }
+
+function openPauseModal() { CONTAINER_UI.openPause(); }
+function closePauseModal() { CONTAINER_UI.closePause(); }
+function confirmPause() { CONTAINER_UI.confirmPause(); }
+function resumeDropoffContainer() { CONTAINER_UI.resumeDropoff(); }
+function confirmCompleteContainerDropoff() { CONTAINER_UI.confirmComplete(); }
+
+function openApproveDeviationModal(containerName) { CONTAINER_UI.openApproveDeviation(containerName); }
+function closeApproveDeviationModal() { CONTAINER_UI.closeApproveDeviation(); }
+function confirmApproveDeviation() { CONTAINER_UI.confirmApproveDeviation(); }
+
+function openContainerScanner() { CONTAINER_UI.openScanner(); }
+{% endif %}
 </script>
 
 {% endblock %}

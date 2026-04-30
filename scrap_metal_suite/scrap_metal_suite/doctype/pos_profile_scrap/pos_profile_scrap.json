@@ -15,10 +15,7 @@
   "section_break_items",
   "items",
   "section_break_container_printing",
-  "enable_thermal_print",
   "enable_sticker_print",
-  "column_break_printing",
-  "thermal_printer_name",
   "sticker_printer_name"
  ],
  "fields": [
@@ -86,27 +83,10 @@
   },
   {
    "default": "1",
-   "description": "Auto-print 80mm thermal receipt on container save",
-   "fieldname": "enable_thermal_print",
-   "fieldtype": "Check",
-   "label": "Enable Thermal Print"
-  },
-  {
-   "default": "1",
-   "description": "Auto-print sticker label on container save",
+   "description": "Auto-print sticker label on container save (the only per-container print; the per-Dropoff thermal receipt is generated separately)",
    "fieldname": "enable_sticker_print",
    "fieldtype": "Check",
    "label": "Enable Sticker Print"
-  },
-  {
-   "fieldname": "column_break_printing",
-   "fieldtype": "Column Break"
-  },
-  {
-   "description": "OS-level printer name (optional, for routing)",
-   "fieldname": "thermal_printer_name",
-   "fieldtype": "Data",
-   "label": "Thermal Printer Name"
   },
   {
    "description": "OS-level printer name (optional, for routing)",

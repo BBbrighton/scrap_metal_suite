@@ -6,8 +6,14 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
+from scrap_metal_suite.overrides.naming import supplier_monthly_name
+
 
 class SMTPriceLock(Document):
+	def autoname(self):
+		# PLO-{supplier_short}-YYMM-### (per-supplier, per-month counter).
+		self.name = supplier_monthly_name("PLO", self.supplier)
+
 	def validate(self):
 		self.validate_items()
 		self.calculate_totals()

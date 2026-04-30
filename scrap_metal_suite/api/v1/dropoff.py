@@ -1021,10 +1021,12 @@ def delete_weight_photo(parent_doctype, parent_doc, photo_name):
 
 
 def _build_container_print_urls(session, container_name):
-    """Resolve thermal/sticker print URLs for a container based on POS Profile flags.
+    """Resolve sticker print URL for a container based on POS Profile flags.
 
-    Returns a dict that may contain `thermal` and/or `sticker` keys (or be empty
-    if neither toggle is enabled, or no profile is set on the session).
+    Returns a dict that may contain a `sticker` key, or be empty if the
+    profile's sticker toggle is off (or no profile is set on the session).
+    The per-Dropoff thermal receipt is generated separately — there is no
+    per-container thermal format.
     """
     print_urls = {}
     if not session:
@@ -1034,21 +1036,10 @@ def _build_container_print_urls(session, container_name):
     if not profile:
         return print_urls
 
-    prof = frappe.db.get_value(
-        "POS Profile Scrap",
-        profile,
-        ["enable_thermal_print", "enable_sticker_print"],
-        as_dict=True,
+    enable_sticker = frappe.db.get_value(
+        "POS Profile Scrap", profile, "enable_sticker_print"
     )
-    if not prof:
-        return print_urls
-
-    if prof.enable_thermal_print:
-        print_urls["thermal"] = (
-            f"/printview?doctype=Scrap%20Weight%20Container&name={container_name}"
-            f"&format=Scrap%20Weight%20Container%20Thermal&no_letterhead=1"
-        )
-    if prof.enable_sticker_print:
+    if enable_sticker:
         print_urls["sticker"] = (
             f"/printview?doctype=Scrap%20Weight%20Container&name={container_name}"
             f"&format=Scrap%20Weight%20Container%20Sticker&no_letterhead=1"

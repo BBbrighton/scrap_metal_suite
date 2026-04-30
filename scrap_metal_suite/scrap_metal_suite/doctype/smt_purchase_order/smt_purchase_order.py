@@ -6,11 +6,16 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
+from scrap_metal_suite.overrides.naming import supplier_monthly_name
+
 
 class SMTPurchaseOrder(Document):
 	def autoname(self):
+		# Operator-supplied reference wins; otherwise SPO-{supplier_short}-YYMM-###.
 		if self.custom_reference:
 			self.name = self.custom_reference
+			return
+		self.name = supplier_monthly_name("SPO", self.supplier)
 
 	def validate(self):
 		self.validate_supplier_consistency()

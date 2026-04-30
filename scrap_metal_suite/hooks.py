@@ -271,6 +271,10 @@ fixtures = [
 # --------------------------------------------
 doc_events = {
     "Supplier": {
-        "before_insert": "scrap_metal_suite.overrides.supplier.set_source_on_manual_create"
+        "before_insert": [
+            "scrap_metal_suite.overrides.supplier.set_source_on_manual_create",
+            "scrap_metal_suite.overrides.supplier.populate_short_code",
+        ],
+        "before_save": "scrap_metal_suite.overrides.supplier.populate_short_code",
     }
 }

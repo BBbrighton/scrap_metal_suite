@@ -6954,3 +6954,283 @@ button.category-tab.from-order-tab.active {
 .pos-terminal.light-theme .entry-method-badge.manual {
     background: #d97706;
 }
+
+/* =============================================================================
+   Container Redesign — terminal.html inline weighing card + container list
+   ============================================================================= */
+
+/* -- Inline weighing card -- */
+.container-weigh-card {
+    padding: 12px 14px;
+    margin-top: 10px;
+    border-radius: 8px;
+    background: var(--card-bg, #1f2937);
+    border: 1px solid var(--card-border, #374151);
+}
+
+.weigh-grade-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--card-border, #374151);
+    margin-bottom: 10px;
+}
+.weigh-grade-label {
+    font-size: 13px;
+    color: var(--text-muted, #9ca3af);
+    min-width: 60px;
+}
+.weigh-grade-value { flex: 1; }
+.weigh-grade-empty {
+    color: var(--text-muted, #9ca3af);
+    font-style: italic;
+    font-size: 13px;
+}
+.weigh-grade-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    border-radius: 16px;
+    background: var(--accent-soft, #1e3a8a33);
+    color: var(--accent, #60a5fa);
+    font-weight: 600;
+}
+.weigh-grade-clear {
+    background: transparent;
+    border: 0;
+    color: var(--accent, #60a5fa);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+}
+.weigh-grade-clear:hover { color: #f87171; }
+
+.weigh-scale-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+}
+.weigh-live-display {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex: 1;
+}
+.weigh-live-display .live-weight-value {
+    font-size: 28px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--success, #22c55e);
+}
+.weigh-live-display .live-weight-uom {
+    font-size: 14px;
+    color: var(--text-muted, #9ca3af);
+}
+.weigh-live-display .live-weight-stable {
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--success-soft, #16653433);
+    color: var(--success, #22c55e);
+    font-size: 11px;
+    font-weight: 600;
+}
+.weigh-scale-disconnected {
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--warning-soft, #78350f33);
+    color: var(--warning, #f59e0b);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.weigh-input-row,
+.weigh-action-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 6px 0;
+}
+.weigh-input-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted, #9ca3af);
+    margin-bottom: 4px;
+}
+.weight-input-large {
+    flex: 1;
+    font-size: 22px;
+    font-weight: 600;
+    text-align: right;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--input-bg, #111827);
+    border: 1px solid var(--card-border, #374151);
+    color: var(--text-primary, #f9fafb);
+}
+.weight-input-large:focus {
+    outline: 2px solid var(--accent, #60a5fa);
+    outline-offset: -1px;
+}
+.weight-input-group {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.weight-uom { color: var(--text-muted, #9ca3af); }
+
+.weigh-action-row {
+    align-items: flex-end;
+    margin-top: 6px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--card-border, #374151);
+}
+.weigh-type-group { flex: 0 0 140px; }
+.weigh-type-group .form-select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--input-bg, #111827);
+    border: 1px solid var(--card-border, #374151);
+    color: var(--text-primary, #f9fafb);
+}
+.btn-pos.btn-large {
+    flex: 1;
+    padding: 12px 18px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+/* -- Container list rows -- */
+.container-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    margin: 6px 0;
+    border-radius: 6px;
+    background: var(--card-bg, #1f2937);
+    border: 1px solid var(--card-border, #374151);
+}
+.container-row-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+.container-row-no {
+    flex: 0 0 28px;
+    text-align: center;
+    color: var(--text-muted, #9ca3af);
+    font-size: 12px;
+    font-weight: 600;
+}
+.container-row-name {
+    flex: 1;
+    color: var(--text-primary, #f9fafb);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.container-row-type {
+    flex: 0 0 50px;
+    color: var(--text-muted, #9ca3af);
+    font-size: 12px;
+    text-align: center;
+}
+.container-row-weight {
+    flex: 0 0 100px;
+    text-align: right;
+    color: var(--success, #22c55e);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.container-row-actions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+.container-row-actions .btn-pos {
+    padding: 4px 8px;
+    font-size: 11px;
+}
+.container-row-voided {
+    opacity: 0.55;
+    text-decoration: line-through;
+}
+
+/* Voided block fold */
+.container-voided-block {
+    margin-top: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--bg-muted, #11182780);
+    border: 1px dashed var(--card-border, #374151);
+}
+.container-voided-block-header {
+    color: var(--text-muted, #9ca3af);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+}
+
+/* Action bar at the bottom */
+.container-action-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 0;
+    margin-top: 12px;
+    border-top: 1px solid var(--card-border, #374151);
+}
+
+/* Panel header: count + total */
+.container-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--card-border, #374151);
+}
+.container-panel-title { font-size: 14px; font-weight: 600; }
+.container-count-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--accent-soft, #1e3a8a33);
+    color: var(--accent, #60a5fa);
+    font-size: 11px;
+}
+.container-total-weight {
+    font-weight: 700;
+    color: var(--success, #22c55e);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Light theme overrides */
+.pos-terminal.light-theme .container-weigh-card,
+.pos-terminal.light-theme .container-row,
+.pos-terminal.light-theme .container-voided-block {
+    background: #ffffff;
+    border-color: #e5e7eb;
+}
+.pos-terminal.light-theme .weight-input-large,
+.pos-terminal.light-theme .weigh-type-group .form-select {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    color: #111827;
+}

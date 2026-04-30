@@ -1,12 +1,10 @@
 {
  "actions": [],
- "autoname": "naming_series:",
  "creation": "2026-04-15 00:00:00.000000",
  "default_print_format": "\u0e43\u0e1a\u0e2a\u0e31\u0e48\u0e07\u0e0b\u0e37\u0e49\u0e2d",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series",
   "custom_reference",
   "status",
   "column_break_header",
@@ -28,15 +26,7 @@
  ],
  "fields": [
   {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "label": "Naming Series",
-   "options": "SMTPL-.YYYY.-",
-   "reqd": 1
-  },
-  {
-   "description": "Optional. If set, this becomes the document name instead of auto-generated SMTPL-.YYYY.- series.",
+   "description": "Optional. If set, this becomes the document name instead of auto-generated SPO-{supplier_short}-YYMM-### series.",
    "fieldname": "custom_reference",
    "fieldtype": "Data",
    "label": "Custom Reference",
@@ -183,7 +173,7 @@
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "SMT Purchase Order",
- "naming_rule": "By \"Naming Series\" field",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

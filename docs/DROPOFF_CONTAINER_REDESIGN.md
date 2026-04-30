@@ -487,71 +487,48 @@ If B is on a different scale: resume blocked. Manager runs `switch_scale` first 
 
 ## 8. Print formats
 
-**Two distinct print formats targeting two distinct printers:**
+**One per-container print format** + the existing per-Dropoff thermal receipt:
 
 | Format | Printer | Paper | Trigger |
 |---|---|---|---|
-| `Scrap Weight Container Thermal` | Thermal receipt printer (80mm) | 80mm × auto | Per-container; auto on save + manual reprint |
 | `Scrap Weight Container Sticker` | Label / sticker printer | Sticker stock (size TBD per hardware) | Per-container; auto on save + manual reprint |
+| `ใบคิวสองภาษา` (existing — Dropoff) | Thermal receipt printer (80mm) | 80mm × auto | Per-Dropoff; manual on completion |
 
-Both formats consume the same `Scrap Weight Container` document. Operators don't choose between them — both fire on save (or one, per `POS Profile Scrap` configuration). The thermal copy stays at the weighing station as a paper trail; the sticker is physically applied to the bag.
+The sticker is physically applied to each bag/bin/pallet. The customer-facing thermal receipt is rendered from the parent Dropoff (one per dropoff, not per container) — same as before the redesign.
 
-`POS Profile Scrap` gains:
-- `enable_thermal_print` (Check, default 1)
+> **Decision (2026-05-01)**: removed the per-container `Scrap Weight Container Thermal` format originally specified in §8.1. It was redundant with the per-Dropoff `ใบคิวสองภาษา` summary, and no operator workflow needed a paper receipt per bag. Schema (`POS Profile Scrap.enable_thermal_print` / `thermal_printer_name`), API (`_build_container_print_urls` thermal branch), terminal UI (Print Thermal buttons, action chooser entry, hidden auto-print iframe), translations (`action_print_thermal*`), tests, and the live `Scrap Weight Container Thermal` Print Format have all been ripped out. See §14.15.
+
+`POS Profile Scrap` has:
 - `enable_sticker_print` (Check, default 1)
-- `thermal_printer_name` (Data, optional — for OS-level printer routing)
-- `sticker_printer_name` (Data, optional)
+- `sticker_printer_name` (Data, optional — for OS-level printer routing)
 
-### 8.1 NEW: `Scrap Weight Container Thermal`
-- Size: 80mm × auto (matches existing thermal pattern).
-- Bilingual labels (UI text Thai+English); item name shown ONCE in canonical Thai.
+### 8.1 NEW: `Scrap Weight Container Sticker`
+- Size: matches the chosen sticker printer (50×80mm portrait by default).
+- Bilingual labels (UI text Thai+English); item name shown ONCE in canonical Thai (never translated — see [BILINGUAL_GUIDE.md §2](BILINGUAL_GUIDE.md)).
 - QR encodes container `name` only (scan resolves to current doc — never stale).
-- Layout (text mock):
-
-```
-┌─────────────────────────────┐
-│ DO-260320-00002             │
-│ ทรัพย์หิรัณย์ • Tharp Hirun  │
-├─────────────────────────────┤
-│  CTN-2026-00007             │
-│  [QR · 28mm sq]             │
-│                             │
-│  ทองแดงปอก                   │  ← item_name, ONLY
-│                             │
-│  Net • สุทธิ                 │
-│  746.4 kg                   │  ← 32px bold
-│                             │
-│  Bag 7/10 • Type: Bag       │
-│  ⚠ Downgrade                │  ← only if is_deviation=1
-│  Op: jaruwan • 10:14        │
-└─────────────────────────────┘
-```
-
-Note: supplier name shows in canonical form too; if you need an English transliteration, use `supplier.supplier_name_en` or similar (same rule as item names — don't translate at runtime).
-
-### 8.2 NEW: `Scrap Weight Container Sticker`
-- Size: matches the chosen sticker printer (e.g. 50×80mm, 40×60mm — TBD when hardware is selected).
-- Same bilingual labels + canonical Thai item name as the thermal version.
-- More compact: container ID + QR + item_name + net_weight as the prominent elements; supplier and dropoff IDs in fine print.
 - Adhesive — applied directly to the bag/bin/pallet.
-- QR encoding: identical to thermal (container `name` only).
-- Layout (text mock, e.g. 50×80mm portrait):
+- Required minimum content (per Wave 7 spec): Drop-off ID, Supplier, Plate, Operator, Date (= `last_reweigh_at` if reweighed, else `creation`), Bag #. Plus QR, container ID, item name, net weight.
+- Layout (text mock, 50×80mm portrait):
 
 ```
 ┌──────────────────┐
 │  CTN-2026-00007  │
-│  [QR · 25mm sq]  │
+│  [QR · 22mm sq]  │
 │                  │
 │  ทองแดงปอก       │
 │                  │
 │  746.4 kg        │
-│                  │
-│  DO-260320-00002 │
-│  Bag 7/10 ⚠      │
+├──────────────────┤
+│ Drop-off  DO-... │
+│ ผู้ขาย    ...    │
+│ ทะเบียน   ...    │
+│ ผู้ชั่ง    ...    │
+│ วันที่    yyyy-... ↻ │  ← ↻ if reweighed
+│ Bag       7 ⚠    │
 └──────────────────┘
 ```
 
-### 8.3 MODIFIED: `ใบคิวสองภาษา` (Dropoff summary)
+### 8.2 MODIFIED: `ใบคิวสองภาษา` (Dropoff summary)
 - Replace the duplicated `actual_items` rows with a per-grade summary table:
 
 | เกรด · Grade | จำนวน · Bags | น้ำหนัก · Weight (kg) | สถานะ · Status |
@@ -562,13 +539,13 @@ Note: supplier name shows in canonical form too; if you need an English translit
 
 - Add a containers detail page (optional second page) listing each container row.
 
-### 8.4 Auto-print trigger
-- Frontend on `add_container` success: fire **both** print formats in parallel (one hidden iframe per format), each routed to its own printer via OS print dialog (or auto-routed if `*_printer_name` configured at the OS level).
-- Per-`POS Profile Scrap` toggles disable either format independently (`enable_thermal_print`, `enable_sticker_print`).
-- Manual print buttons always present, each split into Thermal / Sticker:
-  - Container list row → "Print Thermal" + "Print Sticker"
-  - Scanner: scan QR → both reprint buttons
-  - Bulk: dropoff page → "Print all (thermal)" + "Print all (stickers)"
+### 8.3 Auto-print trigger
+- Frontend on `add_container` / `reweigh_container` success: fire the sticker print via a hidden iframe (routed to the OS-level sticker printer if `sticker_printer_name` is set on the POS Profile).
+- Per-`POS Profile Scrap` toggle: `enable_sticker_print`.
+- Manual reprint affordances (sticker only):
+  - Container list row → "Print Sticker"
+  - Scanner: scan QR → reprint sticker
+  - Bulk: dropoff page → "Print all (stickers)"
 
 ---
 
@@ -752,7 +729,7 @@ For known-bad dropoffs like DO-260320-00002:
 
 ## 14. To-do (implementation checklist)
 
-**Implementation status as of 2026-04-25:** Waves 1–5 complete. Code lives on branch `feature/container-redesign` (uncommitted as of session signoff). Resume by running `bench migrate` and tests, then committing.
+**Implementation status as of 2026-04-27:** Waves 1–5 + Phase 12 (tests) committed at `8cca2f3`. Wave 6 (UI relocation, redesign, translations, multi-doc tests) work-in-progress on `feature/container-redesign`, uncommitted. See §14.13 for the running summary.
 
 ### Phase 1 — Schema ✅ DONE (Wave 1)
 - [x] Create DocType `Scrap Weight Container` (JSON + controller + tests) — 35 fields, naming `CTN-.YYYY.-.#####`
@@ -786,31 +763,36 @@ For known-bad dropoffs like DO-260320-00002:
 - [x] API: `verify_dropoff` (manual override for Needs Review, audit-only)
 - [x] Legacy `record_scrap_weight` and `load_scrap_weight` preserved for backward compat
 
-### Phase 4 — Print ✅ DONE (Wave 4)
-- [x] Print format `Scrap Weight Container Thermal` (80mm × auto, bilingual, QR via `qr_src`)
-- [x] Print format `Scrap Weight Container Sticker` (50×80mm placeholder, bilingual, QR)
+### Phase 4 — Print ✅ DONE (Wave 4 + Wave 7 simplification)
+- [x] ~~Print format `Scrap Weight Container Thermal`~~ — **REMOVED Wave 7 (2026-05-01)**: redundant with the per-Dropoff `ใบคิวสองภาษา`. See §14.15.
+- [x] Print format `Scrap Weight Container Sticker` (50×80mm, bilingual, QR via `qr_data_uri`, all 6 required fields per Wave 7)
 - [x] Update `ใบคิวสองภาษา` — replaced per-row actual_items with per-grade item_summary table + deviations callout + verification override callout
-- [x] Frontend auto-print: hidden iframes firing BOTH formats on `add_container` / `reweigh_container` success
-- [x] Per-row + bulk print buttons (both formats)
-- [x] Per-Profile auto-print toggles wired through
+- [x] Frontend auto-print: hidden iframe firing the sticker on `add_container` / `reweigh_container` success
+- [x] Per-row + bulk sticker reprint buttons
+- [x] Per-Profile sticker auto-print toggle wired through
 
-### Phase 5 — UI (truck terminal) ✅ MOSTLY DONE (Wave 5)
-- [x] New Containers panel in `/pos/truck.html` (+862 lines HTML/JS)
-- [x] "Add Container" modal (grade picker, type dropdown, manual weight, deviation prompt)
-- [x] Container row actions (Reweigh, Print Thermal, Print Sticker, Void)
-- [x] Pause / Resume buttons + status display
-- [x] Scanner: QR → load container → action menu
-- [x] Feature flag `use_container_model` (default on) — legacy scrap-weight panel preserved when off
-- [ ] **FOLLOW-UP** Switch Scale / Reassign Session / Void Dropoff Weighing / Verify Dropoff buttons in truck terminal (currently desk-only; deferred per UI scope)
-- [ ] **FOLLOW-UP** Live scale binding in Add Container modal (currently manual entry only — wire `scale_reader.js` callbacks)
+### Phase 5 — UI (POS terminal) ✅ DONE (Wave 5 + Wave 6 corrections)
+- [x] ~~New Containers panel in `/pos/truck.html`~~ — **CORRECTED**: panel moved to `/pos/terminal.html` (Scrap-usage scale terminal). Truck terminal is for whole-truck gross/tare/net only.
+- [x] Container UI relocated `truck.html` → `terminal.html` (2026-04-27): truck.html lost ~858 lines, terminal.html gained ~861 lines. Terminal.py provides `use_container_model` and `enable_sticker_print` context (the `enable_thermal_print` flag was removed in Wave 7). Truck.py reverted to pre-redesign.
+- [x] **Inline weighing card** replaces the modal (2026-04-27): redesigned right panel as single unified flow. Operator clicks grade in left panel `รายการสินค้า` → grade becomes Active Grade → live weight display + manual override + Container Type → Save & Print. Cart UI gated off when `use_container_model=on`.
+- [x] CONTAINER_UI module gained `setActiveGrade()`, `clearActiveGrade()`, `saveActiveContainer()`, `tare()`, `onLiveWeight()`, `onWeightInput()`, `isEnabled()`. Legacy modal functions kept as no-op shims for back-compat.
+- [x] CSS for container UI (~280 lines appended to `pos.css`): `.container-weigh-card`, `.weigh-grade-row/-empty/-pill`, `.weigh-scale-row/-live-display`, `.weigh-input-row`, `.weigh-action-row`, `.container-row` with full sub-class layout, voided rows folded with strikethrough, light-theme overrides.
+- [x] Translation fixes (2026-04-27): `select_grade_from_items`, `manualEntry`, `scaleAuto`, `tare`, `save_and_print`, `live_weight` added to `container-translations.js` (en + th). Was rendering raw key names due to missing entries.
+- [x] Container row actions (Reweigh, Print Sticker, Void) — wired (Print Thermal removed Wave 7)
+- [x] Pause / Resume / Complete buttons + status display
+- [x] Scanner: QR → load container → action menu (existing flow preserved)
+- [x] Feature flag `use_container_model` (default on) — legacy cart-based scrap-weight panel preserved when off (rollback path, unexercised by tests)
+- [ ] **FOLLOW-UP** Live scale binding tested only in static manual-entry mode — wire `scale_reader.js` continuous read into `CONTAINER_UI.onLiveWeight()` and verify (the hook exists, just needs hardware)
+- [ ] **FOLLOW-UP** Switch Scale / Reassign Session / Void Dropoff Weighing / Verify Dropoff buttons in terminal UI (currently desk-only)
 - [ ] **FOLLOW-UP** QR scan action chooser uses `window.prompt` — replace with proper popover
 - [ ] **FOLLOW-UP** Add real `use_container_model` field to `POS Profile Scrap` doctype (currently read via `getattr`)
+- [x] ~~**FOLLOW-UP** Replace `qr_src` Jinja filter with `qr_foundry` module~~ — DONE (2026-05-01): both Container Thermal and Sticker now use `<img src="{{ qr_data_uri(doc.doctype, doc.name) }}">` (qr_foundry's documented inline-data-URI pattern from `test_print_format.html`). The previous `{{ qr_src(...) }}` was bare inside a `<div>` so the URL rendered as plain text — no QR ever printed. Verified by rendering both formats against `CTN-2026-00023`: both return `<img>` + base64 PNG data URI.
 
 ### Phase 6 — UI (desk) ✅ DONE (Wave 5)
 - [x] Dropoff form: custom buttons in `Container Actions` group (Pause, Resume, Switch Scale, Reassign Session)
 - [x] "Mark Verified (Override)" button on Dropoff (visible when `verification_status = Needs Review`)
-- [x] Container form: Reweigh / Void / Print Thermal / Print Sticker / Approve Deviation buttons
-- [x] Bulk print buttons on Dropoff (`Print all (thermal)` / `Print all (stickers)`)
+- [x] Container form: Reweigh / Void / Print Sticker / Approve Deviation buttons (Print Thermal removed Wave 7)
+- [x] Bulk print button on Dropoff (`Print all (stickers)`) — Print all (thermal) removed Wave 7
 - [ ] **FOLLOW-UP** Audit timeline visualization (pauses, resumes, reassigns, scale switches, verification overrides) — fields exist, but no dedicated timeline widget yet
 - [ ] **FOLLOW-UP** Dropoff form: read-only containers list section (separate from buttons)
 
@@ -864,14 +846,137 @@ For known-bad dropoffs like DO-260320-00002:
     - Status transitions across modules (Container → Sorting → Final Settlement)
     - Test fixtures for cross-module workflows
 
-### Phase 12 — Tests ✅ DONE (Wave 5)
-- [x] `test_scrap_weight_container.py` — 14 unit tests covering all controller paths
+### Phase 12 — Tests ✅ DONE (Wave 5 + Wave 6 expansion)
+- [x] `test_scrap_weight_container.py` — 14 unit tests covering all controller paths (all passing on `metal` after fixture fixes — POS Profile Scrap items child uses `item_code` not `item`; POS Session validate_open_session enforces one-per-operator; calculate_verification_status now respects `verification_overridden` flag)
 - [x] `test_dropoff_container_settings.py` — 1 minimal defaults test
-- [x] `api_test/test_container_workflow.py` — 11-step integration test (open session → add 5 containers → reweigh → pause → resume → 6th container → complete)
-- [ ] **PENDING** Run tests: `bench --site metal execute scrap_metal_suite.api_test.test_container_workflow.run` (next session)
+- [x] `api_test/test_container_workflow.py` — 11-step integration test (open session → add 5 containers → reweigh → pause → resume → 6th container → complete) — passing
+- [x] `api_test/test_container_multi_doc_workflow.py` — **NEW (2026-04-27)**: Two scenarios, 14/14 assertions passing:
+    - Scenario A: 1 Price Lock → 3 Dropoffs across days, multiple grades, multiple containers per grade. Assert each `add_container` returns thermal+sticker print URLs; FIFO allocation cumulatively reaches Fulfilled (100%).
+    - Scenario B: 2 Price Locks → 1 Dropoff (mixed shipments). 10 containers (5×100kg grade A + 5×100kg grade D). Assert PL1 = 50% Partial, PL2 = 100% Fulfilled. Dropoff-level print URL constructable.
+- [x] `ui_test/` — **NEW (2026-04-27)**: Playwright + pytest scaffold. 2 tests passing (~22s headed):
+    - `test_pos_terminal.py::test_add_container_happy_path` — drives the new inline weighing flow at `/pos/terminal`
+    - `test_desk_dropoff.py::test_mark_verified_override` — clicks the desk Dropoff form's Mark Verified button, asserts override audit fields
+    - Fixtures use document API only (no direct `db.set_value`); each seed bound to a unique `_TEST_UI_` prefix.
+    - Run: `cd ~/frappe-bench && SMT_UI_ADMIN_PWD="$SMT_UI_ADMIN_PWD" env/bin/pytest apps/scrap_metal_suite/scrap_metal_suite/ui_test/ -v`
+    - Env vars: `SMT_UI_HEADLESS=1` (hide browser), `SMT_UI_SLOW_MO=0` (no throttle), `SMT_UI_BASE_URL`, `SMT_UI_SITE`, `SMT_UI_ADMIN_PWD`.
 - [ ] **PENDING** Migration tests against real production data snapshot
+- [ ] **PENDING** UI test for legacy cart fallback path (when `use_container_model=false`)
+- [ ] **PENDING** UI test for Pause/Resume cycle
+- [ ] **PENDING** UI test for Reweigh flow
 
 ---
+
+### 14.13 — Wave 6 running summary (2026-04-27, uncommitted)
+
+In one continuous push following the `8cca2f3` checkpoint, the following landed on `feature/container-redesign` (uncommitted as of writing):
+
+1. **Bench migrate** — schema applied cleanly to `metal` site
+2. **Unit tests** — fixed 3 fixture bugs, all 14 pass; one controller bug fixed (`calculate_verification_status` now respects `verification_overridden=1`)
+3. **Multi-doc integration test** — wrote `test_container_multi_doc_workflow.py` from scratch covering both Scenario A and Scenario B (1↔N relationships between Price Lock / POS Order / Dropoff). 14/14 assertions pass.
+4. **Container UI relocation** — moved CONTAINER_UI from `truck.html` (wrong) to `terminal.html` (correct — Scrap-usage scale terminal). truck.html reverted to truck weighing only. Both controllers updated.
+5. **Inline weighing card redesign** — replaced the modal-based "+ Add Container" flow with an always-visible inline card. Operator picks a grade from the existing left-panel `รายการสินค้า`, the right panel shows Active Grade + Live Scale + Type + Save & Print. Cart UI gated off when `use_container_model` is on.
+6. **CSS** — ~280 lines of styles for the new card and container row layout (was previously rendering as unstyled inline text).
+7. **Translations** — 6 new keys added to `container-translations.js` (en + th) for inline card labels that were rendering raw key names.
+8. **Playwright UI tests** — set up scaffolding (`ui_test/` directory: conftest.py, fixtures.py, 2 tests). Both pass in ~22s headed mode. Login via `/api/method/login` with `SMT_UI_ADMIN_PWD` env var (the admin password for this site is held outside the repo).
+9. **Operational notes** — `redis_cache` had been killed in a prior session; restarted on port 13001. `bench start` requires both redis services running. Use `bench build --app scrap_metal_suite` after CSS/JS edits to bundle assets, then `bench --site metal clear-cache` and a hard browser refresh.
+
+**Pending for next session:**
+- Browser smoke test of the actual scale-driven flow (live serial reads)
+- Commit Wave 6 as a follow-up commit (or two — one for the relocation, one for the redesign)
+- More UI tests (Pause/Resume, Reweigh, legacy cart fallback)
+
+### 14.14 — Wave 7 print format completion (2026-05-01)
+
+Fixed the broken QR rendering and expanded the sticker to carry the minimum 6 fields a yard-floor sticker needs to be self-sufficient.
+
+**Schema additions** to `Scrap Weight Container` (snapshot fields, all `read_only`, populated by `fetch_from`):
+| field | source | rationale |
+|-------|--------|-----------|
+| `supplier` | `dropoff.supplier` | reportable / filterable without joining Dropoff |
+| `supplier_name` | `dropoff.supplier_name` | sticker text + survives Dropoff field edits |
+| `license_plate` | `dropoff.license_plate` | required on the sticker; cached at weighing time |
+| `operator_name` | `operator.full_name` | friendlier display than `operator` (User email) |
+
+**Backfill patch** `scrap_metal_suite.patches.v2_0.backfill_container_snapshot_fields` — populates the four new columns on existing rows from their related Dropoff/User. Idempotent: only touches rows where the target field is empty.
+
+**Print format fixes** (in `fixtures/print_format.json`):
+- **QR rendering** — both Container Thermal and Sticker were calling `{{ qr_src(...) }}` *bare* inside a `<div>`, so the URL string rendered as text and no QR ever printed. Switched to `<img src="{{ qr_data_uri(doc.doctype, doc.name) }}">` per qr_foundry's documented inline-data-URI pattern. Self-contained PNG, offline-safe for thermal printers.
+- **Container Thermal**: replaced runtime `frappe.db.get_value` lookup with cached `doc.supplier_name`; added License Plate row; switched Operator row to display `operator_name` (with `operator` fallback).
+- **Container Sticker**: replaced the one-line footer (`{{ doc.dropoff }} • Bag {{ doc.container_no }}`) with a 6-row meta block: Drop-off, Supplier, Plate, Operator, Date, Bag.
+
+**Verification** ([api_test/test_container_print.py](../scrap_metal_suite/api_test/test_container_print.py)):
+- Renders both formats for a real container (`CTN-2026-00023`)
+- Asserts `<img>` + base64 data URI + no unrendered Jinja
+- Asserts each of the 6 required fields appears in the rendered HTML
+- Both formats: PASS
+
+Existing tests still green: container workflow integration test (11/11) and multi-doc workflow test (14/14).
+
+**Helper:** `api_test/update_container_pf.py` re-pushes the Container Sticker `html` from the fixture into the live site, bypassing `sync_fixtures` (blocked on this site by unrelated legacy formats with stale `standard=Yes`). Useful while iterating on the print format. Worth a separate small patch later to flip those legacy formats to `standard=No` so `sync_fixtures` works site-wide.
+
+### 14.15 — Wave 7 thermal-removal + variance-threshold fix (2026-05-01)
+
+**Decision: drop the per-container thermal print format.**
+The `Scrap Weight Container Thermal` (80mm receipt) was redundant with the per-Dropoff `ใบคิวสองภาษา` summary. No operator workflow needed a paper receipt per bag — only the sticker (the physical adhesive label that stays on the bag/bin/pallet). Removing it simplifies the print UX (one format, one printer toggle, one auto-print iframe).
+
+**What changed:**
+- `fixtures/print_format.json` — `Scrap Weight Container Thermal` entry deleted.
+- Live `metal` site — `Print Format` record deleted via `api_test/drop_container_thermal_pf.py` one-shot.
+- `POS Profile Scrap` doctype — `enable_thermal_print` and `thermal_printer_name` fields removed; `column_break_printing` removed (only one column needed now).
+- `api/v1/dropoff.py:_build_container_print_urls` — thermal branch dropped; returns only `{"sticker": ...}` when the profile flag is on.
+- `www/pos/terminal.py` — `context.enable_thermal_print` removed.
+- `www/pos/terminal.html` — Save & Print button text → "Save & Print Sticker"; row "Print Thermal" button removed; scanner action chooser drops the Print Thermal entry; `printOneImpl` simplified (sticker-only, no `kind` argument); `fireBothPrints` keeps the name but only fires the sticker (kept the function name to avoid a wider rename).
+- `public/js/container-translations.js` — `action_print_thermal` and `action_print_all_thermal` keys dropped (en + th).
+- `ui_test/fixtures.py` — `enable_thermal_print: 1` dropped from POS Profile fixture.
+- `api_test/test_container_multi_doc_workflow.py` — header comment + `add_containers` helper updated to assert sticker-only; sample print log no longer prints the thermal URL.
+- `api_test/test_container_print.py` — loop reduced to the single sticker format.
+- `api_test/update_container_pf.py` — `TARGETS` reduced to `{"Scrap Weight Container Sticker"}`.
+
+**Variance-threshold fix (incidental, same wave):**
+The truck terminal was showing "✓ ค่าต่างอยู่ในเกณฑ์" (within threshold) for a 23% variance — the `Percent` field was being multiplied by 100 in JS, turning a saved 1% threshold into 100%. Server-side flags (`truck_variance_ok`, `indicated_variance_ok`) were already correct; only the UI was wrong. Fixed [truck.html:1338, 1380, 3237, 3259](../scrap_metal_suite/www/pos/truck.html#L1338) (drop `* 100`), corrected the JSON defaults from `0.001` → `0.1` ([dropoff.json:347, 383](../scrap_metal_suite/scrap_metal_suite/doctype/dropoff/dropoff.json#L347)), and the controller fallbacks ([dropoff.py:417, 440](../scrap_metal_suite/scrap_metal_suite/doctype/dropoff/dropoff.py#L417)). Backfill patch `patches.v2_0.fix_variance_threshold_defaults` updated 53 of 59 stale-default Dropoffs to 0.1%.
+
+**Pending after Wave 7:**
+- Print UI / UX (auto-print timing, dual-printer routing — now actually single-printer, much simpler)
+- Naming series review (`CTN-.YYYY.-.#####` vs `CTN-{dropoff}-####` etc.)
+
+### 14.16 — Wave 8 naming-series redesign (2026-05-01)
+
+**Decision: embed `Supplier.short_code` in document IDs across the four operator-facing doctypes**, so paper, screen, and spoken IDs identify *who* and *when* at a glance instead of being opaque global counters.
+
+**New patterns:**
+
+| DocType | Pattern | Sample | Counter scope |
+|---|---|---|---|
+| `SMT Price Lock` | `PLO-{short}-YYMM-###` | `PLO-ACME-2604-001` | per-supplier × per-month |
+| `POS Order` | mirrors PLO (no own counter) | `PDR-ACME-2604-001` (from PLO-ACME-2604-001) | derived 1:1 from `smt_price_lock` |
+| `SMT Purchase Order` | `SPO-{short}-YYMM-###` | `SPO-ACME-2604-001` | per-supplier × per-month |
+| `Dropoff` | `DO-{short}-YYMMDD-#` | `DO-ACME-260427-1` | per-supplier × per-day |
+
+PDR mirroring (1:1) is the structural contract: a PLO names its derived POS Order by swapping the `PLO-` prefix for `PDR-`. If a PLO ever spawned two POS Orders, the second insert would collide on the unique `name` constraint — that's the safety net, not a workaround.
+
+**`Supplier.short_code` Custom Field:**
+- Data, 2-8 ASCII chars (`[A-Z0-9]`), `reqd: 1`, `unique: 1`
+- In list view + standard filter for easy supplier scoping
+- Auto-defaulted by `overrides/supplier.populate_short_code`: takes the first 4 ASCII alphanumerics of `supplier_name`, uppercased; appends `2`, `3`, ... on collision (e.g. `ACME` then `ACME2` then `ACME3`).
+- For Thai-only supplier names (no usable ASCII chars) the auto-default refuses and the operator must type a code — they already have spoken nicknames for these suppliers (e.g. `TRP`, `LUNG`), and forcing them to type the office's own abbreviation produces docnames the office actually uses.
+- Edit policy: editable forever, but only affects *new* documents. Existing submitted docs keep their original names. Description on the field surfaces this rule. Cascade-rename of historical docs is not implemented (would risk audit-trail integrity).
+
+**Implementation:**
+- Custom Field in `fixtures/custom_field.json`
+- Auto-default + ASCII validation in `overrides/supplier.py` (wired via `doc_events.Supplier.before_insert` and `before_save` in `hooks.py`)
+- Shared naming helpers in [overrides/naming.py](../scrap_metal_suite/overrides/naming.py): `supplier_short()`, `supplier_monthly_name()`, `supplier_daily_name()`, `derive_pdr_from_plo()`
+- `autoname()` overrides on the four target controllers; the legacy `naming_series` field + `"autoname": "naming_series:"` directive removed from each JSON; `naming_rule` set to `"Expression (old style)"` (a Frappe-recognised value indicating controller-driven naming)
+
+**Existing data**: per the design discussion, the user opted not to backfill old docnames. Old PLs (`PL-2026-*`), POs (`SMTPL-2026-*`), Dropoffs (`DO-YYMMDD-#####`, `DROP-*`) keep their original names. New docs created after this wave use the new patterns. No collision risk because the new prefixes (`PLO`, `PDR`, `SPO`) don't overlap with the old (`PL`, `SMTPL`, `DO`) — the old `DO-YYMMDD-#####` and new `DO-{short}-YYMMDD-#` share the `DO-` root but the second segment width differentiates them.
+
+**Verification (against `metal`):**
+- Container workflow integration test: `Created Dropoff DO-TEST-260501-1 ...` → 11/11 pass
+- Multi-doc workflow test: `PL1 PLO-TEST-2605-002 -> POS Order PDR-TEST-2605-002` → 14/14 pass (PDR mirror confirmed)
+- Sticker render smoke test: 6/6 required fields + valid QR
+
+**Pending after Wave 8:**
+- Print UI / UX (the ground is much smoother now — single sticker format, supplier-coded names)
+- Optional: `Supplier.short_code` editor convenience (preview button "this would name your next PLO `PLO-XYZ-2605-001`") — only if operators ask
 
 ## 15. Appendix
 

@@ -6,13 +6,29 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from scrap_metal_suite.overrides.naming import (
+    derive_pdr_from_plo,
+    supplier_monthly_name,
+)
+
 
 class POSOrder(Document):
     """
     POS Order DocType Controller
 
-    Implements validations from DROPOFF_ARCHITECTURE.md Part 13 (Edge Cases)
+    Implements validations from DROPOFF_ARCHITECTURE.md Part 13 (Edge Cases).
+
+    Naming: when sourced from a Price Lock (the normal case), the docname
+    deterministically mirrors the PLO with the prefix swapped to PDR
+    (PLO-ACME-2604-001 -> PDR-ACME-2604-001). When created standalone (rare),
+    falls back to a per-supplier-per-month running counter.
     """
+
+    def autoname(self):
+        if self.smt_price_lock:
+            self.name = derive_pdr_from_plo(self.smt_price_lock)
+        else:
+            self.name = supplier_monthly_name("PDR", self.supplier)
 
     def validate(self):
         self.calculate_contracted_weight()

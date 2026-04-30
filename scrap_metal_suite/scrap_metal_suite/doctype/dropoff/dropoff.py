@@ -6,14 +6,26 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
+from scrap_metal_suite.overrides.naming import supplier_daily_name
+
 
 class Dropoff(Document):
     """
     Drop-off DocType Controller
 
     Implements validations from DROPOFF_ARCHITECTURE.md Part 13 (Edge Cases)
-    Updated for 1-truck-per-dropoff design (license_plate on form, not child table)
+    Updated for 1-truck-per-dropoff design (license_plate on form, not child table).
+
+    Naming: DO-{supplier_short}-YYMMDD-# where YYMMDD is the scheduled-start
+    date (falls back to creation if scheduled_start is empty). Counter is
+    per-supplier, per-day; grows past single digit if a supplier exceeds 9
+    drop-offs in one day.
     """
+
+    def autoname(self):
+        # Use scheduled-start date when set; otherwise current time.
+        on_date = self.dropoff_scheduled_start or None
+        self.name = supplier_daily_name("DO", self.supplier, on_date=on_date)
 
     def validate(self):
         self.validate_single_supplier()       # Edge Case 13.3
@@ -414,7 +426,7 @@ class Dropoff(Document):
         if self.total_truck_weight:
             self.truck_variance = self.total_truck_weight - self.total_scrap_weight
             self.truck_variance_percent = abs(self.truck_variance / self.total_truck_weight * 100)
-            self.truck_variance_ok = self.truck_variance_percent <= flt(self.truck_variance_threshold_percent or 0.001)
+            self.truck_variance_ok = self.truck_variance_percent <= flt(self.truck_variance_threshold_percent or 0.1)
         else:
             self.truck_variance = 0
             self.truck_variance_percent = 0
@@ -437,7 +449,7 @@ class Dropoff(Document):
         if indicated > 0:
             self.indicated_variance = indicated - actual
             self.indicated_variance_percent = abs(self.indicated_variance / indicated * 100)
-            self.indicated_variance_ok = self.indicated_variance_percent <= flt(self.indicated_variance_threshold_percent or 0.001)
+            self.indicated_variance_ok = self.indicated_variance_percent <= flt(self.indicated_variance_threshold_percent or 0.1)
         else:
             self.indicated_variance = 0
             self.indicated_variance_percent = 0

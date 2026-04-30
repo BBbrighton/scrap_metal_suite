@@ -1,12 +1,10 @@
 {
  "actions": [],
- "autoname": "naming_series:",
  "creation": "2026-04-15 00:00:00.000000",
  "default_print_format": "\u0e43\u0e1a\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19\u0e23\u0e32\u0e04\u0e32",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series",
   "status",
   "status_date",
   "column_break_header",
@@ -27,14 +25,6 @@
   "amended_from"
  ],
  "fields": [
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "label": "Naming Series",
-   "options": "PL-.YYYY.-",
-   "reqd": 1
-  },
   {
    "default": "Open",
    "fieldname": "status",
@@ -157,7 +147,7 @@
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "SMT Price Lock",
- "naming_rule": "By \"Naming Series\" field",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
