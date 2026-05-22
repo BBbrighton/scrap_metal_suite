@@ -18,39 +18,31 @@
   "item_code",
   "item_name",
   "section_break_container",
-  "container_no",
   "container_type",
   "net_weight",
   "entry_method",
   "section_break_status",
   "status",
-  "is_reweighed",
-  "last_reweigh_at",
-  "last_reweigh_by",
-  "last_reweigh_reason",
-  "section_break_deviation",
-  "expected_item",
-  "is_deviation",
-  "deviation_type",
-  "deviation_reason",
-  "deviation_approved_by",
-  "deviation_approved_at",
+  "is_reweight",
+  "reweighed_from",
   "section_break_voiding",
   "superseded_by",
   "voided_reason",
   "voided_at",
   "voided_by",
   "section_break_audit",
-  "weight_history",
+  "scrap_weight",
   "legacy_scrap_weight",
-  "remarks"
+  "remarks",
+  "section_break_photos",
+  "photos"
  ],
  "fields": [
   {
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Naming Series",
-   "options": "CTN-.YYYY.-.#####",
+   "options": "CTN-.YY.MM.-.#####",
    "reqd": 1
   },
   {
@@ -146,14 +138,6 @@
    "label": "Container"
   },
   {
-   "description": "Sequence within dropoff",
-   "fieldname": "container_no",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Container No",
-   "reqd": 1
-  },
-  {
    "fieldname": "container_type",
    "fieldtype": "Select",
    "label": "Container Type",
@@ -192,71 +176,19 @@
   },
   {
    "default": "0",
-   "fieldname": "is_reweighed",
+   "description": "Wave 10: 1 if this container is the replacement weighing for a previously voided one (because the parent Dropoff already had a submitted Scrap Weight when the void happened). 0 = original weighing or pre-Scrap-Weight correction.",
+   "fieldname": "is_reweight",
    "fieldtype": "Check",
-   "label": "Is Reweighed",
+   "label": "Is Reweight",
    "read_only": 1
   },
   {
-   "fieldname": "last_reweigh_at",
-   "fieldtype": "Datetime",
-   "label": "Last Reweigh At",
-   "read_only": 1
-  },
-  {
-   "fieldname": "last_reweigh_by",
+   "description": "Back-link to the voided container this one replaces. Set when is_reweight=1.",
+   "fieldname": "reweighed_from",
    "fieldtype": "Link",
-   "label": "Last Reweigh By",
-   "options": "User",
+   "label": "Reweighed From",
+   "options": "Scrap Weight Container",
    "read_only": 1
-  },
-  {
-   "fieldname": "last_reweigh_reason",
-   "fieldtype": "Small Text",
-   "label": "Last Reweigh Reason"
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "section_break_deviation",
-   "fieldtype": "Section Break",
-   "label": "Deviation"
-  },
-  {
-   "fieldname": "expected_item",
-   "fieldtype": "Link",
-   "label": "Expected Item",
-   "options": "Item",
-   "read_only": 1
-  },
-  {
-   "default": "0",
-   "description": "computed",
-   "fieldname": "is_deviation",
-   "fieldtype": "Check",
-   "label": "Is Deviation",
-   "read_only": 1
-  },
-  {
-   "fieldname": "deviation_type",
-   "fieldtype": "Select",
-   "label": "Deviation Type",
-   "options": "\nDowngrade\nUpgrade\nSubstitution\nUnplanned-Add"
-  },
-  {
-   "fieldname": "deviation_reason",
-   "fieldtype": "Small Text",
-   "label": "Deviation Reason"
-  },
-  {
-   "fieldname": "deviation_approved_by",
-   "fieldtype": "Link",
-   "label": "Deviation Approved By",
-   "options": "User"
-  },
-  {
-   "fieldname": "deviation_approved_at",
-   "fieldtype": "Datetime",
-   "label": "Deviation Approved At"
   },
   {
    "collapsible": 1,
@@ -296,12 +228,6 @@
    "label": "Audit"
   },
   {
-   "fieldname": "weight_history",
-   "fieldtype": "Table",
-   "label": "Weight History",
-   "options": "Container Weight History"
-  },
-  {
    "description": "migration trail",
    "fieldname": "legacy_scrap_weight",
    "fieldtype": "Data",
@@ -309,14 +235,36 @@
    "read_only": 1
   },
   {
+   "description": "Wave 10: link to the Scrap Weight receipt this container is part of. Stamped at the moment that receipt is generated; never changes after. A cancelled receipt's containers retain their original link, so audit queries by scrap_weight reconstruct what each receipt covered.",
+   "fieldname": "scrap_weight",
+   "fieldtype": "Link",
+   "label": "Scrap Weight Receipt",
+   "options": "Scrap Weight",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_photos",
+   "fieldtype": "Section Break",
+   "label": "Photos"
+  },
+  {
+   "description": "Wave 11: per-bag photos (proof of grade, condition). Captured at weighing time via the inline weighing card on the POS terminal. Reuses the Weight Photo child doctype shared with Scrap Weight and Truck Weight.",
+   "fieldname": "photos",
+   "fieldtype": "Table",
+   "label": "Photos",
+   "options": "Weight Photo"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-25 12:00:00.000000",
+ "modified": "2026-05-01 21:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "Scrap Weight Container",

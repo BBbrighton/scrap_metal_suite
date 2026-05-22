@@ -1,46 +1,31 @@
 {
  "actions": [],
- "autoname": "naming_series:",
  "creation": "2025-12-01 12:00:00.000000",
  "default_print_format": "Scrap Weight Thermal",
  "doctype": "DocType",
  "engine": "InnoDB",
+ "is_submittable": 1,
  "field_order": [
-  "naming_series",
   "dropoff",
   "supplier_name",
   "column_break_1",
   "posting_date",
-  "posting_time",
-  "is_reweight",
-  "reweight_reason",
-  "reweight_at",
-  "reweight_by",
-  "section_break_session",
-  "session",
-  "operator",
-  "column_break_3",
-  "pos_profile",
-  "scale",
-  "entry_method",
+  "is_amended",
+  "section_break_amend",
+  "amended_from",
+  "amend_reason",
   "section_break_items",
   "items",
   "section_break_totals",
   "total_weight",
+  "total_container_count",
+  "section_break_audit",
+  "generated_by",
+  "generated_at",
   "section_break_remarks",
-  "remarks",
-  "section_break_photos",
-  "photos"
+  "remarks"
  ],
  "fields": [
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "label": "Naming Series",
-   "options": "WGT-.YY.MM.DD.-",
-   "reqd": 1
-  },
   {
    "fieldname": "dropoff",
    "fieldtype": "Link",
@@ -49,7 +34,7 @@
    "label": "Drop-off",
    "options": "Dropoff",
    "reqd": 1,
-   "description": "The drop-off event this weight record belongs to"
+   "description": "The drop-off this receipt is for. One submitted Scrap Weight per Dropoff at a time."
   },
   {
    "fetch_from": "dropoff.supplier_name",
@@ -70,106 +55,52 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Posting Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "posting_time",
-   "fieldtype": "Time",
-   "label": "Posting Time"
+   "read_only": 1
   },
   {
    "default": "0",
-   "fieldname": "is_reweight",
+   "fieldname": "is_amended",
    "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Is Re-weight",
+   "label": "Is Amended",
    "read_only": 1,
-   "description": "Indicates this is a re-weighing"
-  },
-  {
-   "fieldname": "reweight_by",
-   "fieldtype": "Link",
-   "label": "Reweight By",
-   "options": "User",
-   "read_only": 1,
-   "depends_on": "is_reweight",
-   "description": "Who performed the reweight"
-  },
-  {
-   "fieldname": "reweight_at",
-   "fieldtype": "Datetime",
-   "label": "Reweight At",
-   "read_only": 1,
-   "depends_on": "is_reweight",
-   "description": "When the reweight occurred"
-  },
-  {
-   "fieldname": "reweight_reason",
-   "fieldtype": "Small Text",
-   "label": "Reweight Reason",
-   "depends_on": "is_reweight",
-   "description": "Reason for re-weighing"
+   "description": "1 = generated after a reweigh, supersedes a previously cancelled Scrap Weight."
   },
   {
    "collapsible": 1,
-   "fieldname": "section_break_session",
+   "fieldname": "section_break_amend",
    "fieldtype": "Section Break",
-   "label": "Session Info"
+   "label": "Amendment Trail",
+   "depends_on": "is_amended"
   },
   {
-   "fieldname": "session",
+   "fieldname": "amended_from",
    "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "POS Session",
-   "options": "POS Session"
-  },
-  {
-   "fieldname": "operator",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Operator",
-   "options": "User",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_3",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "pos_profile",
-   "fieldtype": "Link",
-   "label": "POS Profile",
-   "options": "POS Profile Scrap",
-   "read_only": 1
-  },
-  {
-   "fieldname": "scale",
-   "fieldtype": "Link",
-   "label": "Scale",
-   "options": "Scale",
+   "label": "Amended From",
+   "options": "Scrap Weight",
    "read_only": 1,
-   "description": "Scrap scale used for this weighing"
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1
   },
   {
-   "default": "Manual Entry",
-   "fieldname": "entry_method",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Entry Method",
-   "options": "Scale (Auto)\nManual Entry",
-   "description": "How this weight was recorded"
+   "fieldname": "amend_reason",
+   "fieldtype": "Small Text",
+   "label": "Amend Reason",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_items",
    "fieldtype": "Section Break",
-   "label": "Items"
+   "label": "Per-Grade Summary"
   },
   {
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Items",
    "options": "Scrap Weight Item",
-   "reqd": 1
+   "read_only": 1,
+   "description": "One row per grade — aggregated from all Active containers at the moment this receipt was generated."
   },
   {
    "fieldname": "section_break_totals",
@@ -184,39 +115,59 @@
    "read_only": 1
   },
   {
+   "fieldname": "total_container_count",
+   "fieldtype": "Int",
+   "label": "Container Count",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit"
+  },
+  {
+   "fieldname": "generated_by",
+   "fieldtype": "Link",
+   "label": "Generated By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "generated_at",
+   "fieldtype": "Datetime",
+   "label": "Generated At",
+   "read_only": 1
+  },
+  {
    "collapsible": 1,
    "fieldname": "section_break_remarks",
    "fieldtype": "Section Break",
-   "label": "Additional Info"
+   "label": "Remarks"
   },
   {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks"
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "section_break_photos",
-   "fieldtype": "Section Break",
-   "label": "Photos"
-  },
-  {
-   "fieldname": "photos",
-   "fieldtype": "Table",
-   "label": "Photos",
-   "options": "Weight Photo"
   }
  ],
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2025-12-25 12:00:00.000000",
+ "links": [
+  {
+   "link_doctype": "Scrap Weight Container",
+   "link_fieldname": "scrap_weight"
+  }
+ ],
+ "modified": "2026-05-01 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "Scrap Weight",
- "naming_rule": "By \"Naming Series\" field",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -226,9 +177,12 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 0,
    "email": 1,
@@ -238,6 +192,7 @@
    "report": 1,
    "role": "POS Operator",
    "share": 0,
+   "submit": 1,
    "write": 1
   },
   {
@@ -257,7 +212,7 @@
    "role": "SMT Accounting Manager"
   }
  ],
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

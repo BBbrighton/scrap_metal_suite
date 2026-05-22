@@ -13,12 +13,16 @@ PREFIX = "_TEST_PR_"
 def _ensure_supplier() -> str:
     name = f"{PREFIX}Supplier"
     if frappe.db.exists("Supplier", name):
+        # Older test fixtures pre-date the short_code Custom Field; backfill if missing.
+        if not frappe.db.get_value("Supplier", name, "short_code"):
+            frappe.db.set_value("Supplier", name, "short_code", "TESTPR", update_modified=False)
         return name
     s = frappe.get_doc({
         "doctype": "Supplier",
         "supplier_name": name,
         "supplier_group": frappe.db.get_value("Supplier Group", {}, "name") or "All Supplier Groups",
         "supplier_type": "Company",
+        "short_code": "TESTPR",
     })
     s.insert(ignore_permissions=True)
     return s.name

@@ -8,6 +8,7 @@
   "item_code",
   "item_name",
   "column_break_1",
+  "container_count",
   "weight",
   "uom"
  ],
@@ -33,11 +34,19 @@
    "fieldtype": "Column Break"
   },
   {
+   "fieldname": "container_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Bags",
+   "read_only": 1,
+   "description": "Number of bags weighed for this grade"
+  },
+  {
    "fieldname": "weight",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Weight",
-   "reqd": 1
+   "label": "Total Weight (kg)",
+   "read_only": 1
   },
   {
    "default": "Kg",

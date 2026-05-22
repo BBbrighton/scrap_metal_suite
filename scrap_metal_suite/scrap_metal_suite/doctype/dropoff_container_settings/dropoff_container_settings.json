@@ -5,39 +5,15 @@
  "engine": "InnoDB",
  "field_order": [
   "section_thresholds",
-  "deviation_approval_threshold_kg",
-  "deviation_approval_threshold_pct",
-  "column_break_thresholds",
   "weight_variance_threshold_pct",
   "section_gates",
-  "allow_unplanned_grades",
-  "require_reason_on_deviation",
-  "column_break_gates",
   "auto_print_sticker_default"
  ],
  "fields": [
   {
    "fieldname": "section_thresholds",
    "fieldtype": "Section Break",
-   "label": "Deviation Thresholds"
-  },
-  {
-   "default": "100",
-   "description": "Single-container deviation > this kg triggers approval gate",
-   "fieldname": "deviation_approval_threshold_kg",
-   "fieldtype": "Float",
-   "label": "Deviation Approval Threshold (kg)"
-  },
-  {
-   "default": "5",
-   "description": "Or > this % of dropoff expected total",
-   "fieldname": "deviation_approval_threshold_pct",
-   "fieldtype": "Percent",
-   "label": "Deviation Approval Threshold (%)"
-  },
-  {
-   "fieldname": "column_break_thresholds",
-   "fieldtype": "Column Break"
+   "label": "Thresholds"
   },
   {
    "default": "0.1",
@@ -49,25 +25,7 @@
   {
    "fieldname": "section_gates",
    "fieldtype": "Section Break",
-   "label": "Gate Flags"
-  },
-  {
-   "default": "1",
-   "description": "If 0, block grades not in expected_items",
-   "fieldname": "allow_unplanned_grades",
-   "fieldtype": "Check",
-   "label": "Allow Unplanned Grades"
-  },
-  {
-   "default": "1",
-   "description": "Block save if reason missing",
-   "fieldname": "require_reason_on_deviation",
-   "fieldtype": "Check",
-   "label": "Require Reason on Deviation"
-  },
-  {
-   "fieldname": "column_break_gates",
-   "fieldtype": "Column Break"
+   "label": "Defaults"
   },
   {
    "default": "1",

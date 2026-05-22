@@ -50,6 +50,9 @@
   "indicated_variance",
   "indicated_variance_percent",
   "indicated_variance_ok",
+  "section_break_grade_deviation",
+  "grade_deviation_ok",
+  "grade_deviation_summary",
   "section_break_weighing_lock",
   "weighing_session",
   "weighing_scale",
@@ -68,8 +71,6 @@
   "weighing_scale_change_reason",
   "section_break_container_aggregates",
   "container_count",
-  "deviation_container_count",
-  "has_unapproved_deviation",
   "section_break_verification_override",
   "verification_overridden",
   "verification_override_at",
@@ -400,6 +401,27 @@
    "description": "Auto-calculated: indicated variance within threshold"
   },
   {
+   "collapsible": 1,
+   "fieldname": "section_break_grade_deviation",
+   "fieldtype": "Section Break",
+   "label": "Grade Mix Deviation"
+  },
+  {
+   "default": "1",
+   "description": "Auto-calculated: 1 if the SET of grades delivered matches the SET in expected_items (binary, no kg threshold — kg-level checks are covered by indicated_variance). Set to 0 if any unexpected grade was weighed or any expected grade has zero bags. Bypassed by Verification Override.",
+   "fieldname": "grade_deviation_ok",
+   "fieldtype": "Check",
+   "label": "Grade Deviation OK",
+   "read_only": 1
+  },
+  {
+   "description": "Auto-calculated: bilingual summary of mix differences (Unplanned grades / Missing grades). Empty when grade_deviation_ok = 1.",
+   "fieldname": "grade_deviation_summary",
+   "fieldtype": "Long Text",
+   "label": "Grade Deviation Summary",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_weighing_lock",
    "fieldtype": "Section Break",
    "label": "Weighing Lock"
@@ -505,19 +527,6 @@
    "fieldname": "container_count",
    "fieldtype": "Int",
    "label": "Container Count",
-   "read_only": 1
-  },
-  {
-   "fieldname": "deviation_container_count",
-   "fieldtype": "Int",
-   "label": "Deviation Container Count",
-   "read_only": 1
-  },
-  {
-   "default": "0",
-   "fieldname": "has_unapproved_deviation",
-   "fieldtype": "Check",
-   "label": "Has Unapproved Deviation",
    "read_only": 1
   },
   {
@@ -669,11 +678,18 @@
  "calendar_end_date": "dropoff_scheduled_end",
  "links": [
   {
-   "link_doctype": "Scrap Weight",
+   "group": "Weighing",
+   "link_doctype": "Scrap Weight Container",
    "link_fieldname": "dropoff"
   },
   {
+   "group": "Weighing",
    "link_doctype": "Truck Weight",
+   "link_fieldname": "dropoff"
+  },
+  {
+   "group": "Customer Receipt",
+   "link_doctype": "Scrap Weight",
    "link_fieldname": "dropoff"
   }
  ],

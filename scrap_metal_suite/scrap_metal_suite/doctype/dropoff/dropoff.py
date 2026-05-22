@@ -28,6 +28,7 @@ class Dropoff(Document):
         self.name = supplier_daily_name("DO", self.supplier, on_date=on_date)
 
     def validate(self):
+        self.validate_at_least_one_order()    # Wave 9 — no walk-ins
         self.validate_single_supplier()       # Edge Case 13.3
         self.validate_no_duplicate_orders()   # Edge Case 13.12
         self.validate_expected_items_match_orders()  # Phase 8C
@@ -44,6 +45,7 @@ class Dropoff(Document):
         self.calculate_net_weight()
         self.sync_actual_items()
         self.calculate_totals()
+        self.calculate_grade_deviation()        # NEW: Wave 9 — replaces per-container deviation
         self.auto_transition_status()           # NEW: Phase 8A
         self.calculate_verification_status()    # NEW: Phase 8A
         self.allocate_weights_if_completed()    # UPDATED: Phase 8A
@@ -59,6 +61,26 @@ class Dropoff(Document):
     # =========================================================================
     # VALIDATIONS (Edge Cases from Part 13)
     # =========================================================================
+
+    def validate_at_least_one_order(self):
+        """Wave 9: every Dropoff is bound to at least one POS Order.
+
+        There are no walk-in suppliers in this business — if a truck shows up
+        without an existing Price Lock, the office creates one on the spot
+        before scheduling the Dropoff. Empty `orders` would mean the upstream
+        chain (PL → POS Order → Dropoff) was bypassed, which historically led
+        to dropoffs that couldn't be settled. See
+        docs/DROPOFF_CONTAINER_REDESIGN.md §14.18.
+        """
+        if not self.orders:
+            frappe.throw(
+                _(
+                    "A Dropoff must be linked to at least one POS Order. "
+                    "Create a Price Lock first (it auto-creates the POS Order), "
+                    "then add it to this Dropoff's Linked Orders table."
+                ),
+                title=_("POS Order Required"),
+            )
 
     def validate_single_supplier(self):
         """
@@ -273,10 +295,15 @@ class Dropoff(Document):
             if has_gross or has_tare or has_scrap:
                 self.status = "In Progress"
 
-        # In Progress → Completed: when all weights done
+        # In Progress → Completed: weights done AND a submitted Scrap Weight
+        # receipt exists (i.e. operator has clicked Finish Container Weighing).
+        # Wave 11: the SW gate prevents auto-promotion after `reopen_dropoff`
+        # cancels the receipt — the dropoff stays In Progress until the
+        # operator explicitly re-finishes + re-completes.
         if self.status == "In Progress":
             if has_gross and has_tare and has_scrap:
-                self.status = "Completed"
+                if frappe.db.exists("Scrap Weight", {"dropoff": self.name, "docstatus": 1}):
+                    self.status = "Completed"
 
     def calculate_verification_status(self):
         """
@@ -302,7 +329,7 @@ class Dropoff(Document):
 
         if not (has_gross and has_tare and has_scrap):
             self.verification_status = "Pending"
-        elif self.truck_variance_ok and self.indicated_variance_ok:
+        elif self.truck_variance_ok and self.indicated_variance_ok and self.grade_deviation_ok:
             self.verification_status = "Verified"
         else:
             self.verification_status = "Needs Review"
@@ -337,15 +364,17 @@ class Dropoff(Document):
           the container in place rather than creating new docs.
 
         Populates:
-        - self.item_summary: per-grade aggregation (weight, container_count,
-          deviation_count, is_expected)
+        - self.item_summary: per-grade aggregation (weight, container_count, is_expected)
         - self.total_actual_weight: sum of Active container net_weight
-        - self.container_count, deviation_container_count, has_unapproved_deviation
+        - self.container_count
 
-        NOTE: self.actual_items is now DEPRECATED and intentionally left empty.
-        The flat per-row table is no longer needed; per-container detail is queried
-        directly from `Scrap Weight Container`. Field is kept for one release for
-        backward-compat with downstream consumers.
+        NOTE: self.actual_items is DEPRECATED and intentionally left empty.
+
+        Grade-mix deviation (Wave 9): the per-container `is_deviation` /
+        `deviation_*` flags moved to `calculate_grade_deviation()` at the
+        Dropoff level. The operator no longer marks individual bags as
+        deviations during weighing — the deviation is an aggregate fact
+        compared at completion.
         """
         if not self.name:
             return
@@ -359,7 +388,6 @@ class Dropoff(Document):
 
         summary = {}
         total = 0.0
-        deviation_count = 0
 
         for ct in containers:
             net = flt(ct.get("net_weight"))
@@ -373,25 +401,10 @@ class Dropoff(Document):
                     "item_name": ct.get("item_name"),
                     "weight": 0.0,
                     "count": 0,
-                    "deviation_count": 0,
                     "is_expected": code in expected_codes,
                 }
             summary[code]["weight"] += net
             summary[code]["count"] += 1
-            if ct.get("is_deviation"):
-                summary[code]["deviation_count"] += 1
-                deviation_count += 1
-
-        # Pending-approval check: any Active deviation without an approver.
-        has_unapproved = frappe.db.exists(
-            "Scrap Weight Container",
-            {
-                "dropoff": self.name,
-                "status": "Active",
-                "is_deviation": 1,
-                "deviation_approved_by": ["is", "not set"],
-            },
-        )
 
         for code, data in summary.items():
             self.append("item_summary", {
@@ -399,14 +412,75 @@ class Dropoff(Document):
                 "item_name": data["item_name"],
                 "total_weight": data["weight"],
                 "container_count": data["count"],
-                "deviation_count": data["deviation_count"],
                 "is_expected": 1 if data["is_expected"] else 0,
             })
 
         self.total_actual_weight = total
         self.container_count = len(containers)
-        self.deviation_container_count = deviation_count
-        self.has_unapproved_deviation = 1 if has_unapproved else 0
+
+    def calculate_grade_deviation(self):
+        """Compare expected vs actual grade *composition*; binary check.
+
+        Grade-mix deviation lives at the Dropoff level (Wave 9 — see
+        docs/DROPOFF_CONTAINER_REDESIGN.md §14.17). The operator records bags
+        as plain measurements; the system surfaces "the supplier brought
+        different grades than promised" only when reconciling at completion.
+
+        This check is about COMPOSITION (which grades, not how much). The
+        kg-level reconciliation is already handled by `indicated_variance`
+        (total promised vs total actual) and `truck_variance` (truck net vs
+        scrap total) — both with their own thresholds.
+
+        A grade-mix deviation is recorded when:
+        - any actual grade is NOT in expected_items (Unplanned), OR
+        - any expected grade has ZERO containers delivered (Missing).
+
+        Per-grade kg shortfalls (e.g. expected 1000 kg of A, got 950 kg of A)
+        are NOT flagged here — that's an indicated_variance concern. The
+        binary unit of deviation is "a bag of an unexpected grade" or "an
+        expected grade entirely absent."
+
+        Walk-in / unscheduled dropoffs (no `expected_items`) cannot deviate by
+        definition — `grade_deviation_ok` stays 1.
+        """
+        expected = {row.item for row in self.expected_items if row.item}
+
+        if not expected:
+            self.grade_deviation_ok = 1
+            self.grade_deviation_summary = ""
+            return
+
+        # Index actual containers by grade — keep the bag count for the summary
+        # since the user's deviation unit is the bag, not the kilogram.
+        actual: dict[str, dict] = {}
+        for row in self.item_summary:
+            if not row.item:
+                continue
+            actual[row.item] = {
+                "item_name": row.item_name,
+                "container_count": int(row.container_count or 0),
+            }
+
+        deviation = False
+        lines: list[str] = []
+
+        # Unplanned grades (actual but not expected)
+        for code in sorted(set(actual) - expected):
+            deviation = True
+            item_name = actual[code]["item_name"] or code
+            count = actual[code]["container_count"]
+            lines.append(
+                f"{item_name}: ไม่ได้คาด • Unplanned ({count} bag{'s' if count != 1 else ''})"
+            )
+
+        # Missing grades (expected but zero actual containers)
+        for code in sorted(expected - set(actual)):
+            deviation = True
+            item_name = frappe.db.get_value("Item", code, "item_name") or code
+            lines.append(f"{item_name}: ขาดส่ง • Missing")
+
+        self.grade_deviation_ok = 0 if deviation else 1
+        self.grade_deviation_summary = "\n".join(lines)
 
     def calculate_totals(self):
         """Calculate total truck weight and total scrap weight for variance check.
@@ -678,20 +752,32 @@ class Dropoff(Document):
                 "net_weight",
                 "is_deviation",
                 "deviation_approved_by",
-                "container_no",
             ],
-            order_by="container_no asc",
+            order_by="creation asc",
         )
 
     def _validate_container_lock(self, session):
         """Validate that a container can be added under the given POS Session.
 
-        Called by the API before insert. Two checks:
+        Called by the API before insert. Three checks:
+        0. The Dropoff must be in a state that accepts new weighing. Completed
+           and Cancelled dropoffs reject all new containers — to correct an
+           individual bag the operator uses Reweigh on the bag itself, which
+           handles the void+new pattern.
         1. If a session is already locked, reject any other session.
         2. If a scale is locked, the incoming session's scale must match it.
         """
         if not session:
             return
+
+        if self.status in ("Completed", "Cancelled"):
+            frappe.throw(
+                _(
+                    "Dropoff {0} is {1} — no new bags can be added. "
+                    "To correct a bag, open it and click Reweigh."
+                ).format(self.name, self.status),
+                title=_("Dropoff Closed"),
+            )
 
         if self.weighing_session and self.weighing_session != session:
             frappe.throw(

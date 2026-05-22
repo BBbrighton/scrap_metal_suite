@@ -69,22 +69,9 @@ frappe.ui.form.on("Scrap Weight Container", {
 				);
 			});
 
-			// Print Thermal
-			frm.add_custom_button(
-				__("Print Thermal"),
-				() => {
-					const url =
-						"/printview?doctype=Scrap%20Weight%20Container" +
-						"&name=" +
-						encodeURIComponent(frm.doc.name) +
-						"&format=Scrap%20Weight%20Container%20Thermal" +
-						"&no_letterhead=1";
-					window.open(url, "_blank");
-				},
-				__("Print")
-			);
-
-			// Print Sticker
+			// Print Sticker (the container has no thermal — the per-Dropoff
+			// thermal receipt is on the Scrap Weight document, not on the
+			// container; see DROPOFF_CONTAINER_REDESIGN.md §14.14).
 			frm.add_custom_button(
 				__("Print Sticker"),
 				() => {
@@ -100,31 +87,8 @@ frappe.ui.form.on("Scrap Weight Container", {
 			);
 		}
 
-		// Approve Deviation — visible when deviation exists and is not yet approved
-		if (frm.doc.is_deviation && !frm.doc.deviation_approved_by) {
-			frm.add_custom_button(__("Approve Deviation"), () => {
-				frappe.prompt(
-					[
-						{
-							fieldname: "reason",
-							label: __("Reason (optional)"),
-							fieldtype: "Small Text",
-						},
-					],
-					(values) => {
-						frappe.call({
-							method: "scrap_metal_suite.api.v1.dropoff.approve_container_deviation",
-							args: {
-								container: frm.doc.name,
-								reason: values.reason || "",
-							},
-							callback: () => frm.reload_doc(),
-						});
-					},
-					__("Approve Deviation"),
-					__("Approve")
-				);
-			});
-		}
+		// Grade-mix deviation moved to the Dropoff level (Wave 9). Containers
+		// are pure measurement records; deviation reconciliation happens once
+		// at completion, on the Dropoff form.
 	},
 });

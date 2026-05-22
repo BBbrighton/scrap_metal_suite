@@ -21,6 +21,8 @@ import re
 
 import pytest
 
+from .conftest import KEEP_DATA
+
 
 SEED_METHOD = "scrap_metal_suite.ui_test.fixtures.seed_pos_truck_scenario"
 
@@ -34,10 +36,13 @@ def _parse_seed(stdout):
 
 @pytest.fixture
 def seeded(seeder):
-    """Seed the DB and yield the test context. Cleanup runs at end."""
+    """Seed the DB and yield the test context. Teardown cleans up unless
+    SMT_UI_KEEP_DATA=1 is set (in which case the seeded data is left in the
+    DB for manual inspection)."""
     payload = _parse_seed(seeder(SEED_METHOD))
     yield payload
-    seeder("scrap_metal_suite.ui_test.fixtures.cleanup_ui_test_data")
+    if not KEEP_DATA:
+        seeder("scrap_metal_suite.ui_test.fixtures.cleanup_ui_test_data")
 
 
 def test_add_container_happy_path(authed_page, seeded, base_url):
@@ -137,16 +142,98 @@ def test_add_container_happy_path(authed_page, seeded, base_url):
         f"Expected weight 246.7 in container list; got:\n{list_text}"
     )
 
-    # Print iframes should have been injected — one thermal + one sticker.
-    # Wait briefly for the iframe load events to fire and `request` listener
-    # to populate.
+    # Wave 9+: only the per-bag sticker prints on add_container. The
+    # per-Dropoff thermal receipt (`ใบคิวสองภาษา`) is generated separately
+    # when the operator hits Finish Container Weighing — not on every bag.
     page.wait_for_timeout(500)
 
-    thermal = [u for u in print_urls if "Thermal" in u]
     sticker = [u for u in print_urls if "Sticker" in u]
-    assert thermal, f"No thermal print iframe detected. All print URLs:\n{print_urls}"
     assert sticker, f"No sticker print iframe detected. All print URLs:\n{print_urls}"
 
-    # URLs should reference the new container's name (CTN-...)
-    assert re.search(r"CTN-\d{4}-\d+", thermal[0]), thermal[0]
+    # URL should reference the new container's name (CTN-...)
     assert re.search(r"CTN-\d{4}-\d+", sticker[0]), sticker[0]
+
+
+def test_wave11_surface(authed_page, seeded, base_url):
+    """Wave 11 surface check — exercises the new features without doing a
+    full save+print cycle:
+
+      1. Unified scanner detector resolves URL + bare-ID inputs to the right
+         doctype.
+      2. Three-pane terminal renders all three panels.
+      3. Both pane resizers exist + are interactive (LEFT/MIDDLE + MIDDLE/RIGHT).
+      4. Inline weighing card has the Take Photo button (Wave 11 #3) and it
+         enables only after a grade is picked.
+    """
+    page = authed_page
+    ctx = seeded
+
+    page.goto(
+        f"{base_url}/pos/terminal?session={ctx['session']}",
+        wait_until="networkidle",
+    )
+    page.wait_for_function("typeof window.CONTAINER_UI !== 'undefined'", timeout=15000)
+    # POS_SCANNER is a top-level `const` (not assigned to window) — it's
+    # accessible by bare name from `evaluate` callbacks but `window.POS_SCANNER`
+    # is undefined. Wait by bare-name lookup via the script-scope binding.
+    page.wait_for_function("typeof POS_SCANNER !== 'undefined'", timeout=5000)
+
+    # 1. Unified scanner detector — verify each input shape lands the right route.
+    cases = [
+        ("https://demo.example.com/app/dropoff/DO-2026-001", "Dropoff", "DO-2026-001"),
+        ("/app/scrap-weight-container/CTN-2026-00007", "Scrap Weight Container", "CTN-2026-00007"),
+        ("DO-TEST-260501-42", "Dropoff", "DO-TEST-260501-42"),
+        ("CTN-2026-00099", "Scrap Weight Container", "CTN-2026-00099"),
+        ("DROP-12345", "Dropoff", "DROP-12345"),
+        ("unknown-bare-id", None, "unknown-bare-id"),
+    ]
+    for raw, expected_dt, expected_name in cases:
+        result = page.evaluate("(raw) => POS_SCANNER.detectDoctype(raw)", raw)
+        assert result.get("doctype") == expected_dt, (
+            f"detectDoctype({raw!r}) doctype={result.get('doctype')!r}, "
+            f"expected {expected_dt!r}"
+        )
+        assert result.get("name") == expected_name, (
+            f"detectDoctype({raw!r}) name={result.get('name')!r}, "
+            f"expected {expected_name!r}"
+        )
+
+    # 2. Three panes render.
+    page.wait_for_selector("#posTerminal .panel-items", state="visible", timeout=3000)
+    page.wait_for_selector("#posTerminal .panel-transaction", state="visible", timeout=3000)
+    page.wait_for_selector("#posTerminal .panel-journal", state="visible", timeout=3000)
+
+    # 3. Both resizers are present and interactive.
+    for handle_id in ("panelResizer", "panelResizerJournal"):
+        cursor = page.eval_on_selector(
+            f"#{handle_id}",
+            "el => getComputedStyle(el).cursor",
+        )
+        assert cursor == "col-resize", f"#{handle_id} cursor={cursor!r}, expected col-resize"
+
+    # 4. Take Photo button — disabled until a grade is picked, enabled after.
+    page.evaluate(
+        """({name, supplier}) => {
+            window.selectDropoff(name, '', '_TEST_UI_UI-1234', supplier, 'Scheduled');
+        }""",
+        {"name": ctx["dropoff"], "supplier": ctx["supplier"]},
+    )
+    page.wait_for_selector("#containerWeighCard", state="visible", timeout=5000)
+
+    photo_btn = page.locator("#btnContainerTakePhoto")
+    assert photo_btn.count() == 1, "Take Photo button not in DOM"
+    assert photo_btn.is_disabled(), "Take Photo button should be disabled before grade pick"
+
+    page.evaluate(
+        "([code, name]) => window.CONTAINER_UI.setActiveGrade(code, name)",
+        [ctx["item_a"], ctx["item_a"]],
+    )
+    page.wait_for_function(
+        "() => !document.getElementById('btnContainerTakePhoto').disabled",
+        timeout=3000,
+    )
+    assert not photo_btn.is_disabled(), "Take Photo button should enable after grade pick"
+
+    # Pill starts hidden (no buffered photos).
+    pill = page.locator("#containerPhotoCountPill")
+    assert pill.is_hidden(), "Photo count pill should be hidden when buffer is empty"

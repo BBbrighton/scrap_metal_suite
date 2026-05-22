@@ -164,6 +164,39 @@ const POS_SCANNER = (function() {
          */
         isActive: function() {
             return html5QrCode !== null;
+        },
+
+        /**
+         * Detect which doctype a scanned/typed value refers to.
+         * Returns { doctype, name } where doctype is 'Dropoff',
+         * 'Scrap Weight Container', or null (caller should fall back).
+         *
+         * Detection order:
+         *   1. URL path /app/dropoff/<name> or /app/scrap-weight-container/<name>
+         *   2. Bare ID prefix: DO- or DROP- → Dropoff; CTN- → Container
+         *   3. Otherwise: doctype null, name = trimmed input
+         */
+        detectDoctype: function(rawValue) {
+            if (rawValue == null) return { doctype: null, name: rawValue };
+            var url_patterns = [
+                { pattern: '/app/dropoff/', doctype: 'Dropoff' },
+                { pattern: '/app/scrap-weight-container/', doctype: 'Scrap Weight Container' }
+            ];
+            for (var i = 0; i < url_patterns.length; i++) {
+                var p = url_patterns[i];
+                if (rawValue.indexOf(p.pattern) !== -1) {
+                    var name = this.parseQRValue(rawValue, [p.pattern]);
+                    return { doctype: p.doctype, name: name };
+                }
+            }
+            var trimmed = String(rawValue).trim();
+            if (/^(DO-|DROP-)/i.test(trimmed)) {
+                return { doctype: 'Dropoff', name: trimmed };
+            }
+            if (/^CTN-/i.test(trimmed)) {
+                return { doctype: 'Scrap Weight Container', name: trimmed };
+            }
+            return { doctype: null, name: trimmed };
         }
     };
 })();

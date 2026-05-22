@@ -895,8 +895,8 @@ def save_weight_photo(parent_doctype, parent_doc, photo_url, weight_type=None,
     check_pos_operator()
 
     # Validate parent_doctype
-    if parent_doctype not in ["Scrap Weight", "Truck Weight"]:
-        frappe.throw(_("parent_doctype must be 'Scrap Weight' or 'Truck Weight'"))
+    if parent_doctype not in ["Scrap Weight", "Truck Weight", "Scrap Weight Container"]:
+        frappe.throw(_("parent_doctype must be 'Scrap Weight', 'Truck Weight', or 'Scrap Weight Container'"))
 
     # Validate parent_doc exists
     if not frappe.db.exists(parent_doctype, parent_doc):
@@ -948,8 +948,8 @@ def get_weight_photos(parent_doctype, parent_doc):
     """
     check_pos_operator()
 
-    if parent_doctype not in ["Scrap Weight", "Truck Weight"]:
-        frappe.throw(_("parent_doctype must be 'Scrap Weight' or 'Truck Weight'"))
+    if parent_doctype not in ["Scrap Weight", "Truck Weight", "Scrap Weight Container"]:
+        frappe.throw(_("parent_doctype must be 'Scrap Weight', 'Truck Weight', or 'Scrap Weight Container'"))
 
     if not frappe.db.exists(parent_doctype, parent_doc):
         return []
@@ -979,8 +979,8 @@ def delete_weight_photo(parent_doctype, parent_doc, photo_name):
     """
     check_pos_operator()
 
-    if parent_doctype not in ["Scrap Weight", "Truck Weight"]:
-        frappe.throw(_("parent_doctype must be 'Scrap Weight' or 'Truck Weight'"))
+    if parent_doctype not in ["Scrap Weight", "Truck Weight", "Scrap Weight Container"]:
+        frappe.throw(_("parent_doctype must be 'Scrap Weight', 'Truck Weight', or 'Scrap Weight Container'"))
 
     if not frappe.db.exists(parent_doctype, parent_doc):
         frappe.throw(_("{0} '{1}' not found").format(parent_doctype, parent_doc))
@@ -1069,8 +1069,7 @@ def _coerce_bool(value):
 
 @frappe.whitelist()
 def add_container(dropoff, session, item_code, net_weight, container_type,
-                  entry_method="Manual Entry", deviation_reason=None,
-                  deviation_type=None, remarks=None):
+                  entry_method="Manual Entry", remarks=None):
     """
     Add a Scrap Weight Container to a Dropoff (the main weighing action).
 
@@ -1078,9 +1077,12 @@ def add_container(dropoff, session, item_code, net_weight, container_type,
     Scheduled → In Progress (handled by `Dropoff._acquire_container_lock`).
     Subsequent calls validate the lock and reuse the bound scale.
 
-    Returns: dict with container, container_no, item_code, item_name,
-             net_weight, is_deviation, dropoff_status, dropoff_total,
-             container_count, print_urls.
+    Per Wave 9 (DROPOFF_CONTAINER_REDESIGN.md §14.17), the container is a
+    pure measurement record. Grade-mix deviations are computed at the Dropoff
+    level by `Dropoff.calculate_grade_deviation()` on save.
+
+    Returns: dict with container, item_code, item_name, net_weight,
+             dropoff_status, dropoff_total, container_count, print_urls.
     """
     check_pos_operator()
 
@@ -1107,12 +1109,6 @@ def add_container(dropoff, session, item_code, net_weight, container_type,
 
     # Acquire (or no-op refresh) the lock; controller mutates in-memory only.
     dropoff_doc._acquire_container_lock(session, scale)
-
-    # Detect deviation against the dropoff's expected items.
-    expected_codes = {
-        row.item for row in dropoff_doc.expected_items if row.item
-    }
-    is_deviation = item_code not in expected_codes
 
     # Validate scale capacity (mirror the existing record_scrap_weight check).
     try:
@@ -1143,13 +1139,11 @@ def add_container(dropoff, session, item_code, net_weight, container_type,
         "container_type": container_type,
         "net_weight": flt(net_weight_f),
         "entry_method": entry_method,
-        "deviation_reason": deviation_reason or None,
-        "deviation_type": deviation_type or None,
         "remarks": sanitized_remarks,
     })
     container.insert()
 
-    # Save the dropoff so sync_actual_items / lock fields persist.
+    # Save the dropoff so sync_actual_items / lock fields / grade-deviation persist.
     dropoff_doc.save()
 
     print_urls = _build_container_print_urls(session, container.name)
@@ -1157,15 +1151,14 @@ def add_container(dropoff, session, item_code, net_weight, container_type,
     return {
         "success": True,
         "container": container.name,
-        "container_no": container.container_no,
         "item_code": container.item_code,
         # NOTE: item_name is canonical — never translated.
         "item_name": container.item_name,
         "net_weight": container.net_weight,
-        "is_deviation": container.is_deviation,
         "dropoff_status": dropoff_doc.status,
         "dropoff_total": dropoff_doc.total_actual_weight,
         "container_count": dropoff_doc.container_count,
+        "grade_deviation_ok": dropoff_doc.grade_deviation_ok,
         "print_urls": print_urls,
     }
 
@@ -1173,25 +1166,90 @@ def add_container(dropoff, session, item_code, net_weight, container_type,
 @frappe.whitelist()
 def reweigh_container(container, net_weight, reason, entry_method="Manual Entry"):
     """
-    Reweigh an existing container in place. Appends a Reweigh row to the
-    container's weight history; updates the dropoff aggregation.
+    Reweigh an existing container.
+
+    Wave 10 model: containers are immutable. A "reweigh" is structurally a
+    void-of-old + insert-of-new. The new container carries a back-link via
+    `reweighed_from`. Whether the new one is tagged `is_reweight=1` depends
+    on Scrap Weight state at the moment of the reweigh:
+
+    - If the parent Dropoff has a SUBMITTED Scrap Weight at this moment, the
+      old receipt is invalidated (cancelled here) and the new container is
+      tagged `is_reweight=1`. Operator must click "Finish Container Weighing"
+      again to issue an amended receipt — possibly after a batch of reweighs.
+    - If no submitted Scrap Weight exists yet, the void is just a
+      pre-submission CORRECTION; the new container has `is_reweight=0` and
+      no receipt-side effects.
+
+    Returns: dict with the NEW container name, weight, is_reweight,
+    sticker print URL, and (for transparency) which old SW was cancelled.
     """
     check_pos_operator()
 
-    container_doc = frappe.get_doc("Scrap Weight Container", container)
-    container_doc.record_reweigh(flt(net_weight), reason, entry_method)
+    old = frappe.get_doc("Scrap Weight Container", container)
+
+    # Snapshot fields needed to recreate the container in the new doc.
+    payload = {
+        "doctype": "Scrap Weight Container",
+        "dropoff": old.dropoff,
+        "session": old.session,
+        "scale": old.scale,
+        "operator": frappe.session.user,
+        "item_code": old.item_code,
+        "container_type": old.container_type,
+        "net_weight": flt(net_weight),
+        "entry_method": entry_method,
+        "reweighed_from": old.name,
+    }
+
+    # Look for a currently-submitted Scrap Weight on this Dropoff. If present,
+    # cancel it (Wave 10 cancel-on-first-reweigh semantics) and mark the new
+    # container as a true reweight. The "why" lives on the voided container's
+    # voided_reason — `amend_reason` on the next (amended) SW is composed
+    # from the void chain at re-finish time.
+    cancelled_sw = None
+    active_sw = frappe.db.get_value(
+        "Scrap Weight",
+        {"dropoff": old.dropoff, "docstatus": 1},
+        "name",
+    )
+    if active_sw:
+        sw_doc = frappe.get_doc("Scrap Weight", active_sw)
+        sw_doc.cancel()
+        cancelled_sw = sw_doc.name
+        payload["is_reweight"] = 1
+    else:
+        payload["is_reweight"] = 0
+
+    # Void the old container, then insert the new one.
+    void_reason = (
+        f"Reweigh: {reason}" if reason
+        else "Reweigh — operator-initiated correction"
+    )
+    old.record_void(void_reason)
+
+    new_doc = frappe.get_doc(payload)
+    new_doc.insert(ignore_permissions=True)
 
     # Re-aggregate parent dropoff totals.
-    dropoff_doc = frappe.get_doc("Dropoff", container_doc.dropoff)
+    dropoff_doc = frappe.get_doc("Dropoff", new_doc.dropoff)
     dropoff_doc.save()
 
-    print_urls = _build_container_print_urls(container_doc.session, container_doc.name)
+    # Mark old as superseded by the new (for audit drill-down).
+    frappe.db.set_value(
+        "Scrap Weight Container", old.name, "superseded_by", new_doc.name,
+        update_modified=False,
+    )
+
+    print_urls = _build_container_print_urls(new_doc.session, new_doc.name)
 
     return {
         "success": True,
-        "container": container_doc.name,
-        "net_weight": container_doc.net_weight,
-        "is_reweighed": container_doc.is_reweighed,
+        "container": new_doc.name,
+        "voided_container": old.name,
+        "net_weight": new_doc.net_weight,
+        "is_reweight": new_doc.is_reweight,
+        "cancelled_scrap_weight": cancelled_sw,
         "dropoff_total": dropoff_doc.total_actual_weight,
         "print_urls": print_urls,
     }
@@ -1200,11 +1258,30 @@ def reweigh_container(container, net_weight, reason, entry_method="Manual Entry"
 @frappe.whitelist()
 def void_container(container, reason, superseded_by=None):
     """
-    Mark a single container as Voided. Non-destructive (history preserved).
+    Mark a single container as Voided. Non-destructive (kept in DB for audit).
+
+    Wave 10: if the parent Dropoff has a SUBMITTED Scrap Weight, voiding a
+    container invalidates that receipt — the system auto-cancels it. The
+    operator can keep voiding/reweighing additional bags; a fresh receipt is
+    only issued when they next click "Finish Container Weighing".
+
+    Returns the cancelled Scrap Weight name (if any) for transparency.
     """
     check_pos_operator()
 
     container_doc = frappe.get_doc("Scrap Weight Container", container)
+
+    cancelled_sw = None
+    active_sw = frappe.db.get_value(
+        "Scrap Weight",
+        {"dropoff": container_doc.dropoff, "docstatus": 1},
+        "name",
+    )
+    if active_sw:
+        sw_doc = frappe.get_doc("Scrap Weight", active_sw)
+        sw_doc.cancel()
+        cancelled_sw = sw_doc.name
+
     container_doc.record_void(reason, superseded_by)
 
     dropoff_doc = frappe.get_doc("Dropoff", container_doc.dropoff)
@@ -1214,6 +1291,7 @@ def void_container(container, reason, superseded_by=None):
         "success": True,
         "container": container_doc.name,
         "status": "Voided",
+        "cancelled_scrap_weight": cancelled_sw,
         "dropoff_total": dropoff_doc.total_actual_weight,
     }
 
@@ -1235,7 +1313,7 @@ def get_container(name):
 @frappe.whitelist()
 def list_containers(dropoff, include_voided=False):
     """
-    List containers for a dropoff, sorted by container_no ascending.
+    List containers for a dropoff, sorted chronologically by creation.
 
     Args:
         dropoff: Dropoff document name
@@ -1253,12 +1331,31 @@ def list_containers(dropoff, include_voided=False):
         "Scrap Weight Container",
         filters=filters,
         fields=[
-            "name", "container_no", "item_code", "item_name", "container_type",
-            "net_weight", "status", "is_deviation", "deviation_approved_by",
-            "creation", "operator",
+            "name", "item_code", "item_name", "container_type",
+            "net_weight", "status", "creation", "operator",
         ],
-        order_by="container_no asc",
+        order_by="creation asc",
     )
+
+    # Wave 11: surface per-container photo counts so the journal can render a
+    # camera-icon hint without a second round-trip per row.
+    if rows:
+        names = [r["name"] for r in rows]
+        counts = frappe.db.sql(
+            """
+            SELECT parent, COUNT(*) AS n
+            FROM `tabWeight Photo`
+            WHERE parenttype = 'Scrap Weight Container'
+              AND parent IN %(names)s
+            GROUP BY parent
+            """,
+            {"names": names},
+            as_dict=True,
+        )
+        count_by_name = {c["parent"]: int(c["n"]) for c in counts}
+        for r in rows:
+            r["photo_count"] = count_by_name.get(r["name"], 0)
+
     return rows
 
 
@@ -1365,8 +1462,15 @@ def complete_dropoff(dropoff):
     """
     Finalise a dropoff. Validates:
       - status is In Progress (Paused → throw, must resume first)
-      - no unapproved deviations
-      - truck weights present (gross + tare + net)
+
+    Wave 9 (DROPOFF_CONTAINER_REDESIGN.md §14.17): truck weighing and bag
+    weighing are run by different operators on different stations on different
+    schedules — a truck typically arrives in the morning, container weighing
+    runs through the afternoon, and either side may finish first. Either
+    operator can mark the dropoff Completed from their station; missing data
+    on the other side surfaces via `verification_status = "Pending"` (or
+    "Needs Review" if the data IS there but variance/grade checks fail).
+    Manager resolves with `verify_dropoff` override.
 
     Status → Completed. Verification status is recomputed by the controller.
     """
@@ -1382,12 +1486,6 @@ def complete_dropoff(dropoff):
             _("Cannot complete: status is {0}").format(doc.status)
         )
 
-    if doc.has_unapproved_deviation:
-        frappe.throw(_("Cannot complete: there are unapproved deviations"))
-
-    if not (doc.gross_weight and doc.tare_weight and doc.net_weight):
-        frappe.throw(_("Cannot complete: truck weights (gross, tare, net) are required"))
-
     doc.status = "Completed"
     doc.save()
 
@@ -1395,29 +1493,217 @@ def complete_dropoff(dropoff):
         "success": True,
         "status": "Completed",
         "verification_status": doc.verification_status,
+        "grade_deviation_ok": doc.grade_deviation_ok,
+        "grade_deviation_summary": doc.grade_deviation_summary,
     }
 
 
 @frappe.whitelist()
-def approve_container_deviation(container, reason=None):
-    """
-    Approve a flagged deviation on a single container. No role guard yet —
-    audit-only. Re-aggregates the parent dropoff so the
-    `has_unapproved_deviation` flag clears.
+def get_latest_scrap_weight(dropoff):
+    """Return the most recently SUBMITTED Scrap Weight for this Dropoff.
+
+    Used by the terminal's "Reprint last ticket" button. After Wave 11's
+    reopen flow cancels the prior SW and re-finish issues a fresh
+    `is_amended=1` SW, the cached `state.lastScrapWeight` in the browser
+    points at the cancelled doc — printing it throws "Not allowed to print
+    cancelled documents". This endpoint always points at the active receipt.
+
+    Returns: { name, is_amended, amended_from, total_weight, print_url } or
+    None when no submitted SW exists yet (operator hasn't finished weighing).
     """
     check_pos_operator()
 
-    container_doc = frappe.get_doc("Scrap Weight Container", container)
-    container_doc.approve_deviation(reason)
+    sw = frappe.db.get_value(
+        "Scrap Weight",
+        {"dropoff": dropoff, "docstatus": 1},
+        ["name", "is_amended", "amended_from", "total_weight"],
+        order_by="creation desc",
+        as_dict=True,
+    )
+    if not sw:
+        return None
 
-    dropoff_doc = frappe.get_doc("Dropoff", container_doc.dropoff)
-    dropoff_doc.save()
+    sw["print_url"] = (
+        f"/printview?doctype=Scrap%20Weight&name={sw['name']}"
+        f"&format=Scrap%20Weight%20Thermal&no_letterhead=1"
+    )
+    return sw
+
+
+@frappe.whitelist()
+def reopen_dropoff(dropoff, reason):
+    """Wave 11 — flip a Completed dropoff back to In Progress so additional
+    bags can be added (operator caught a missing bag after Complete, etc.).
+
+    Cancels any submitted Scrap Weight receipt — a fresh `is_amended=1`
+    receipt is issued the next time the operator runs finish_weighing_session.
+    The auto_transition_status gate (controller) prevents the Dropoff from
+    immediately re-promoting to Completed: it requires a submitted SW, which
+    we just cancelled.
+
+    Allowed source statuses: Completed, Verified, Needs Review.
+    Reason is required for audit.
+    """
+    check_pos_operator()
+
+    reason = (reason or "").strip()
+    if not reason:
+        frappe.throw(_("Reason required to reopen a Dropoff"))
+
+    doc = frappe.get_doc("Dropoff", dropoff)
+    if doc.status not in ("Completed", "Verified", "Needs Review"):
+        frappe.throw(
+            _("Cannot reopen: status is {0}. Reopen is only valid for Completed / Verified / Needs Review.").format(doc.status)
+        )
+
+    cancelled_sw = None
+    active_sw = frappe.db.get_value(
+        "Scrap Weight",
+        {"dropoff": dropoff, "docstatus": 1},
+        "name",
+    )
+    if active_sw:
+        sw_doc = frappe.get_doc("Scrap Weight", active_sw)
+        sw_doc.cancel()
+        cancelled_sw = sw_doc.name
+
+    # Release the session lock the same way pause_weighing does — the
+    # operator who reopens may not be on the original session, and the
+    # first add_container after reopen will acquire the lock cleanly.
+    # weighing_scale is intentionally retained (same scale is expected).
+    released_session = doc.weighing_session
+    doc.status = "In Progress"
+    doc.weighing_session = None
+    doc.save()
 
     return {
         "success": True,
-        "container": container_doc.name,
-        "approved_by": container_doc.deviation_approved_by,
-        "approved_at": container_doc.deviation_approved_at,
+        "status": "In Progress",
+        "cancelled_scrap_weight": cancelled_sw,
+        "released_session": released_session,
+        "reason": reason,
+    }
+
+
+@frappe.whitelist()
+def finish_weighing_session(dropoff):
+    """
+    Wave 10 — "Finish Container Weighing" button on the small-scale terminal.
+
+    Generates (or amends) the Scrap Weight receipt for this Dropoff:
+
+    - First-finish: aggregates Active containers into a fresh Scrap Weight,
+      submits it. Stamps each container's `scrap_weight` field with the new
+      receipt's name.
+    - Re-finish after reweigh(s): the prior receipt was already cancelled by
+      `reweigh_container` / `void_container`. This call generates a fresh
+      receipt with `is_amended=1` and `amended_from` set to the most recently
+      cancelled one. The Active containers (post-reweigh state) are stamped
+      with the new receipt name.
+
+    Returns: dict with the Scrap Weight name, total weight, container count,
+    is_amended flag, and the print URL for the thermal receipt.
+
+    Pre-conditions:
+    - Dropoff must have at least one Active container.
+    - Dropoff status must be In Progress, Paused, or Completed (NOT Cancelled
+      or Draft).
+    """
+    check_pos_operator()
+
+    dropoff_doc = frappe.get_doc("Dropoff", dropoff)
+    if dropoff_doc.status in ("Cancelled", "Draft"):
+        frappe.throw(
+            _("Cannot finish weighing: Dropoff status is {0}.").format(dropoff_doc.status)
+        )
+
+    # Aggregate Active containers by grade.
+    active = frappe.get_all(
+        "Scrap Weight Container",
+        filters={"dropoff": dropoff, "status": "Active"},
+        fields=["name", "item_code", "item_name", "net_weight"],
+    )
+    if not active:
+        frappe.throw(
+            _("Cannot finish weighing: no active containers on this Dropoff.")
+        )
+
+    grade_agg: dict[str, dict] = {}
+    for ct in active:
+        code = ct.item_code
+        if not code:
+            continue
+        if code not in grade_agg:
+            grade_agg[code] = {
+                "item_name": ct.item_name,
+                "container_count": 0,
+                "weight": 0.0,
+            }
+        grade_agg[code]["container_count"] += 1
+        grade_agg[code]["weight"] += flt(ct.net_weight)
+
+    # Find the most recently cancelled Scrap Weight on this Dropoff (if any),
+    # so we can chain `amended_from` and stamp `is_amended=1`. Compose the
+    # human-readable amend_reason from the void chain since the previous
+    # receipt was cancelled — operators see "Reweighed: CTN-123 (dirty floor),
+    # CTN-124 (re-tare)" in the receipt's audit section.
+    latest_cancelled = frappe.db.get_value(
+        "Scrap Weight",
+        {"dropoff": dropoff, "docstatus": 2},
+        ["name", "modified"],
+        order_by="modified desc",
+        as_dict=True,
+    )
+
+    amend_reason = None
+    if latest_cancelled:
+        voided_since = frappe.get_all(
+            "Scrap Weight Container",
+            filters={
+                "dropoff": dropoff,
+                "status": "Voided",
+                "voided_at": [">=", latest_cancelled["modified"]],
+            },
+            fields=["name", "voided_reason"],
+            order_by="voided_at asc",
+        )
+        if voided_since:
+            parts = [
+                f"{c['name']} ({c['voided_reason']})" if c.get("voided_reason") else c["name"]
+                for c in voided_since
+            ]
+            amend_reason = "Reweighed: " + ", ".join(parts)
+
+    sw = frappe.get_doc({
+        "doctype": "Scrap Weight",
+        "dropoff": dropoff,
+        "is_amended": 1 if latest_cancelled else 0,
+        "amended_from": latest_cancelled["name"] if latest_cancelled else None,
+        "amend_reason": amend_reason,
+    })
+    for code, data in grade_agg.items():
+        sw.append("items", {
+            "item_code": code,
+            "item_name": data["item_name"],
+            "container_count": data["container_count"],
+            "weight": data["weight"],
+        })
+    sw.insert(ignore_permissions=True)
+    sw.submit()
+
+    print_url = (
+        f"/printview?doctype=Scrap%20Weight&name={sw.name}"
+        f"&format=Scrap%20Weight%20Thermal&no_letterhead=1"
+    )
+
+    return {
+        "success": True,
+        "scrap_weight": sw.name,
+        "total_weight": sw.total_weight,
+        "container_count": sw.total_container_count,
+        "is_amended": bool(sw.is_amended),
+        "amended_from": sw.amended_from,
+        "print_url": print_url,
     }
 
 
@@ -1427,6 +1713,11 @@ def verify_dropoff(dropoff, override_reason=None):
     Manually mark a dropoff as Verified. Idempotent if already Verified;
     requires `override_reason` if currently Needs Review (controller throws).
     No role guard yet — audit-only.
+
+    The same override path covers all three reasons a dropoff can be Needs
+    Review: truck variance breach, indicated variance breach, and grade-mix
+    deviation. The controller recomputes verification_status; this endpoint
+    just sets verification_overridden=1 with the reason.
     """
     check_pos_operator()
 

@@ -1,7 +1,33 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wsl bash -c \"rm /home/brighton/frappe-bench/apps/scrap_metal_suite/fix_collapsible_css.py\")"
+      "Read(//wsl.localhost/Ubuntu/**)",
+      "Read(//home/brighton/**)",
+      "Edit(//wsl.localhost/Ubuntu/**)",
+      "Edit(//home/brighton/**)",
+      "Write(//wsl.localhost/Ubuntu/**)",
+      "Write(//home/brighton/**)",
+      "Bash(wsl:*)",
+      "Bash(wsl.exe:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)",
+      "Bash(echo:*)",
+      "Bash(pwd)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git stash:*)",
+      "Bash(git add:*)"
     ]
   }
 }

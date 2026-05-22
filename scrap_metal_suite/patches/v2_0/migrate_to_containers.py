@@ -24,7 +24,7 @@ Algorithm (per Dropoff)
        * operator = SW.owner
        * item_code, item_name copied verbatim (item_name is canonical Thai —
          never translated; see docs/BILINGUAL_GUIDE.md §2)
-       * container_no = sequential within dropoff (1..N)
+       * (container_no removed in Wave 11 — chronological ordering by creation)
        * container_type = "Bag" (legacy data didn't track type — Bag is the
          documented default)
        * net_weight = flt(SWI.weight)
@@ -182,7 +182,6 @@ def execute():
                         "item_code": item.get("item_code"),
                         # item_name is canonical Thai; never translated.
                         "item_name": item.get("item_name"),
-                        "container_no": idx,
                         "container_type": "Bag",
                         "net_weight": flt(item.get("weight")),
                         "entry_method": "Manual Entry",

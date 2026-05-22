@@ -147,11 +147,36 @@ def _open_admin_session(profile, scale):
 # Public seed methods (callable via `bench execute`)
 # ---------------------------------------------------------------------------
 
+def _ensure_price_lock_with_order(supplier, items_with_prices):
+    """Submit a PL → POS Order chain for the seeded supplier.
+
+    Wave 9 forbids walk-in dropoffs, so every Dropoff fixture must link to a
+    POS Order. The PL's `on_submit` hook auto-creates the POS Order. Returns
+    `(price_lock_name, pos_order_name)`.
+    `items_with_prices` is a list of `(item_code, qty_kg, rate)` tuples.
+    """
+    pl = frappe.get_doc({
+        "doctype": "SMT Price Lock",
+        "supplier": supplier,
+        "po_date": now_datetime(),
+        "items": [
+            {"item_code": code, "po_qty": qty, "po_rate": rate}
+            for code, qty, rate in items_with_prices
+        ],
+    })
+    pl.insert(ignore_permissions=True)
+    pl.submit()
+    po_name = frappe.db.get_value("POS Order", {"smt_price_lock": pl.name}, "name")
+    if not po_name:
+        frappe.throw(f"Auto POS Order not created for SMT Price Lock {pl.name}")
+    return pl.name, po_name
+
+
 def seed_pos_truck_scenario():
     """Seed for `test_pos_truck.py::test_add_container_happy_path`.
 
-    Creates: 2 items, 1 supplier, 1 scale, 1 profile, 1 open POS Session
-    (Administrator), 1 Dropoff (Scheduled, with 2 expected items).
+    Creates a full PL → POS Order → Dropoff chain (Wave 9 invariant: no
+    walk-ins) + items, supplier, scale, profile, open Administrator session.
     Returns JSON with the created names.
     """
     cleanup_ui_test_data()
@@ -163,6 +188,14 @@ def seed_pos_truck_scenario():
     profile = _ensure_pos_profile([item_a, item_b])
     session = _open_admin_session(profile, scale)
 
+    pl_name, po_name = _ensure_price_lock_with_order(
+        supplier,
+        [
+            (item_a, 500, 250.0),
+            (item_b, 300, 180.0),
+        ],
+    )
+
     dropoff = frappe.get_doc({
         "doctype": "Dropoff",
         "dropoff_scheduled_start": now_datetime(),
@@ -172,6 +205,7 @@ def seed_pos_truck_scenario():
         "status": "Scheduled",
         "truck_variance_threshold_percent": 100.0,
         "indicated_variance_threshold_percent": 100.0,
+        "orders": [{"pos_order": po_name}],
     })
     dropoff.append("expected_items", {"item": item_a, "indicated_weight": 500})
     dropoff.append("expected_items", {"item": item_b, "indicated_weight": 300})
@@ -186,6 +220,8 @@ def seed_pos_truck_scenario():
         "profile": profile,
         "item_a": item_a,
         "item_b": item_b,
+        "price_lock": pl_name,
+        "pos_order": po_name,
     }
     print("SEED_RESULT:" + json.dumps(payload))
     return payload
@@ -217,6 +253,12 @@ def seed_desk_dropoff_needs_review():
     profile = _ensure_pos_profile([item_a])
     session = _open_admin_session(profile, scale)
 
+    # Wave 9 invariant: every Dropoff binds to at least one POS Order.
+    _, po_name = _ensure_price_lock_with_order(
+        supplier,
+        [(item_a, 500, 250.0)],
+    )
+
     dropoff = frappe.get_doc({
         "doctype": "Dropoff",
         "dropoff_scheduled_start": now_datetime(),
@@ -226,6 +268,7 @@ def seed_desk_dropoff_needs_review():
         "status": "Scheduled",
         "truck_variance_threshold_percent": 0.1,
         "indicated_variance_threshold_percent": 0.1,
+        "orders": [{"pos_order": po_name}],
     })
     dropoff.append("expected_items", {"item": item_a, "indicated_weight": 500})
     dropoff.insert(ignore_permissions=True)
@@ -289,6 +332,45 @@ def cleanup_ui_test_data():
             )
         except Exception as e:
             print(f"Cleanup skipped Dropoff/{name}: {e}")
+
+    # 2a. Test POS Orders + SMT Price Locks (Wave 9 chain). Filter by supplier
+    # carrying our prefix; cancel before delete.
+    test_suppliers = [
+        s.name for s in frappe.db.get_all(
+            "Supplier",
+            filters={"supplier_name": ["like", f"%{TEST_PREFIX}%"]},
+            fields=["name"],
+        )
+    ]
+    if test_suppliers:
+        for po in frappe.db.get_all(
+            "POS Order",
+            filters={"supplier": ["in", test_suppliers]},
+            fields=["name", "docstatus"],
+        ):
+            try:
+                if int(po.docstatus or 0) == 1:
+                    frappe.get_doc("POS Order", po.name).cancel()
+                frappe.delete_doc(
+                    "POS Order", po.name,
+                    force=True, ignore_permissions=True, delete_permanently=True,
+                )
+            except Exception as e:
+                print(f"Cleanup skipped POS Order/{po.name}: {e}")
+        for pl in frappe.db.get_all(
+            "SMT Price Lock",
+            filters={"supplier": ["in", test_suppliers]},
+            fields=["name", "docstatus"],
+        ):
+            try:
+                if int(pl.docstatus or 0) == 1:
+                    frappe.get_doc("SMT Price Lock", pl.name).cancel()
+                frappe.delete_doc(
+                    "SMT Price Lock", pl.name,
+                    force=True, ignore_permissions=True, delete_permanently=True,
+                )
+            except Exception as e:
+                print(f"Cleanup skipped SMT Price Lock/{pl.name}: {e}")
 
     # 3. Open Administrator sessions — close via document API (no
     #    direct DB writes), then delete.

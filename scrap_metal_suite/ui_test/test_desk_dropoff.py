@@ -13,6 +13,8 @@ import json
 
 import pytest
 
+from .conftest import KEEP_DATA
+
 
 SEED_METHOD = "scrap_metal_suite.ui_test.fixtures.seed_desk_dropoff_needs_review"
 
@@ -28,7 +30,8 @@ def _parse_seed(stdout):
 def seeded(seeder):
     payload = _parse_seed(seeder(SEED_METHOD))
     yield payload
-    seeder("scrap_metal_suite.ui_test.fixtures.cleanup_ui_test_data")
+    if not KEEP_DATA:
+        seeder("scrap_metal_suite.ui_test.fixtures.cleanup_ui_test_data")
 
 
 def test_mark_verified_override(authed_page, seeded, base_url):

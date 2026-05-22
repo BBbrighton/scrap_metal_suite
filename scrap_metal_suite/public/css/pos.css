@@ -266,6 +266,96 @@
     flex-direction: column;
 }
 
+/* Wave 11 — RIGHT pane: containers journal (the "what's been weighed" view).
+   Sits to the right of .panel-transaction with its own resizer in between.
+   Pane is fully scrollable so the operator can see all weighed bags without
+   crowding the middle weigh card. */
+.panel-journal {
+    width: 380px;
+    background: #0f172a;
+    border-left: 1px solid #334155;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.panel-journal .journal-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #334155;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #111827;
+    font-size: 13px;
+    flex: 0 0 auto;
+}
+
+.panel-journal .journal-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+.panel-journal .journal-title .container-count-badge {
+    background: #1e3a8a;
+    color: #fff;
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.panel-journal .container-total-weight {
+    color: #4ade80;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.panel-journal .container-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.panel-journal .container-empty-state {
+    padding: 24px 16px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+/* Light-theme overrides for the journal pane. */
+.pos-terminal.light-theme .panel-journal {
+    background: #f8fafc;
+    border-left-color: #e2e8f0;
+}
+.pos-terminal.light-theme .panel-journal .journal-header {
+    background: #ffffff;
+    border-bottom-color: #e2e8f0;
+}
+.pos-terminal.light-theme .panel-journal .journal-title {
+    color: #334155;
+}
+.pos-terminal.light-theme .panel-journal .journal-title .container-count-badge {
+    background: #1976d2;
+}
+.pos-terminal.light-theme .panel-journal .container-total-weight {
+    color: #15803d;
+}
+.pos-terminal.light-theme .panel-journal .container-empty-state {
+    color: #64748b;
+}
+
+/* Stack the journal under the middle pane on narrower screens. */
+@media (max-width: 1280px) {
+    .panel-journal,
+    #panelResizerJournal {
+        display: none;
+    }
+}
+
 /* Draggable divider between .panel-items and .panel-transaction */
 .panel-resizer {
     width: 6px;
@@ -7094,6 +7184,109 @@ button.category-tab.from-order-tab.active {
     padding-top: 10px;
     border-top: 1px dashed var(--card-border, #374151);
 }
+
+/* Wave 11 — banner shown in MIDDLE pane when Dropoff is Completed/Cancelled.
+   Replaces the inline weighing card so the operator can't accidentally try
+   to add bags. Reopen button (in the action bar above) restores normal
+   weighing. */
+.dropoff-completed-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px 20px;
+    margin: 12px 0;
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px dashed rgba(34, 197, 94, 0.35);
+    border-radius: 8px;
+    text-align: center;
+}
+.dropoff-completed-icon {
+    font-size: 36px;
+    color: #4ade80;
+    line-height: 1;
+}
+.dropoff-completed-text {
+    color: #cbd5e1;
+    font-size: 14px;
+    max-width: 320px;
+}
+.pos-terminal.light-theme .dropoff-completed-banner {
+    background: #f0fdf4;
+    border-color: #86efac;
+}
+.pos-terminal.light-theme .dropoff-completed-icon {
+    color: #15803d;
+}
+.pos-terminal.light-theme .dropoff-completed-text {
+    color: #334155;
+}
+
+/* Journal pane in "completed" state — dim the rows so the operator
+   visually clocks that the dropoff is closed but can still inspect /
+   reprint / void specific bags. */
+.panel-journal-completed .container-row {
+    opacity: 0.6;
+}
+
+/* Wave 11 — secondary action row (Take Photo) below the Save row. */
+.weigh-photo-row {
+    display: flex;
+    justify-content: flex-end;
+    padding: 6px 0;
+}
+.weigh-photo-row .btn-pos {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.photo-count-pill {
+    background: rgba(96, 165, 250, 0.18);
+    color: #60a5fa;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+.pos-terminal.light-theme .photo-count-pill {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+/* Wave 11 — flash effect on the journal row matching a scanned CTN.
+   Triggered by highlightContainerRow() after a CTN scan loads the parent
+   Dropoff. Decays back to the default row look in ~2.4s. */
+.container-row-highlight {
+    animation: container-row-flash 2.4s ease-out;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.55);
+}
+@keyframes container-row-flash {
+    0%   { background: rgba(96, 165, 250, 0.35); }
+    100% { background: var(--card-bg, #1f2937); }
+}
+.pos-terminal.light-theme .container-row-highlight {
+    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.55);
+}
+.pos-terminal.light-theme .container-row-highlight {
+    animation-name: container-row-flash-light;
+}
+@keyframes container-row-flash-light {
+    0%   { background: rgba(29, 78, 216, 0.20); }
+    100% { background: #ffffff; }
+}
+
+/* Camera-icon badge inside journal rows when a container has photos. */
+.container-row-photo {
+    flex: 0 0 auto;
+    color: #60a5fa;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.pos-terminal.light-theme .container-row-photo { color: #1d4ed8; }
+
 .weigh-type-group { flex: 0 0 140px; }
 .weigh-type-group .form-select {
     width: 100%;
@@ -7129,20 +7322,40 @@ button.category-tab.from-order-tab.active {
     flex: 1;
     min-width: 0;
 }
-.container-row-no {
-    flex: 0 0 28px;
-    text-align: center;
-    color: var(--text-muted, #9ca3af);
-    font-size: 12px;
-    font-weight: 600;
-}
 .container-row-name {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    line-height: 1.2;
+}
+.container-row-name-text {
     color: var(--text-primary, #f9fafb);
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
+}
+/* Wave 11 — show the canonical container ID (CTN-YYMM-#####) under the
+   item name. This is the bag's only stable identifier — operators match it
+   against the QR-printed sticker. The old per-row running number was
+   dropped along with the schema field. */
+.container-row-id {
+    color: #64748b;
+    font-size: 10.5px;
+    font-weight: 400;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    letter-spacing: 0.02em;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+.pos-terminal.light-theme .container-row-id {
+    color: #94a3b8;
 }
 .container-row-type {
     flex: 0 0 50px;
@@ -7233,4 +7446,106 @@ button.category-tab.from-order-tab.active {
     background: #f9fafb;
     border-color: #d1d5db;
     color: #111827;
+}
+
+/* Wave 11 — status pill badges (Active/Reweighed/Voided) inside container rows.
+   These were referenced from JS but had no CSS, so they rendered as bare
+   text and broke the dark-theme look of the journal pane. */
+.badge-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+    flex: 0 0 auto;
+}
+.badge-status.status-active {
+    background: rgba(34, 197, 94, 0.16);
+    color: #4ade80;
+}
+.badge-status.status-reweighed {
+    background: rgba(59, 130, 246, 0.18);
+    color: #60a5fa;
+}
+.badge-status.status-voided {
+    background: rgba(239, 68, 68, 0.18);
+    color: #f87171;
+}
+.pos-terminal.light-theme .badge-status.status-active {
+    background: #dcfce7;
+    color: #15803d;
+}
+.pos-terminal.light-theme .badge-status.status-reweighed {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+.pos-terminal.light-theme .badge-status.status-voided {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+/* Tighten journal-pane row colors per theme — the generic .container-row
+   rule uses `var(--card-bg, #1f2937)` which is fine in dark mode but the
+   light-theme override only sets `background`/`border-color`. Spell out the
+   text colors here so the row text doesn't inherit the dark `--text-primary`
+   fallback when light-theme is active. */
+.panel-journal .container-row {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+}
+.panel-journal .container-row .container-row-type {
+    color: #94a3b8;
+}
+.panel-journal .container-row .container-row-name-text {
+    color: #f9fafb;
+}
+.panel-journal .container-row .container-row-id {
+    color: #64748b;
+}
+.panel-journal .container-row .container-row-weight {
+    color: #4ade80;
+}
+.pos-terminal.light-theme .panel-journal .container-row {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    color: #1e293b;
+}
+.pos-terminal.light-theme .panel-journal .container-row .container-row-type {
+    color: #64748b;
+}
+.pos-terminal.light-theme .panel-journal .container-row .container-row-name-text {
+    color: #1e293b;
+}
+.pos-terminal.light-theme .panel-journal .container-row .container-row-id {
+    color: #94a3b8;
+}
+.pos-terminal.light-theme .panel-journal .container-row .container-row-weight {
+    color: #15803d;
+}
+
+/* Voided block + summary disclosure inside journal pane. */
+.panel-journal .container-voided-block {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: #475569;
+    color: #94a3b8;
+}
+.panel-journal .container-voided-block summary {
+    cursor: pointer;
+    padding: 4px 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+}
+.pos-terminal.light-theme .panel-journal .container-voided-block {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #64748b;
+}
+.pos-terminal.light-theme .panel-journal .container-voided-block summary {
+    color: #64748b;
 }

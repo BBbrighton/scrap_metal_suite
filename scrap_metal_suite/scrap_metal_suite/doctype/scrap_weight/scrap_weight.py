@@ -4,68 +4,110 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, nowtime
+from frappe.utils import flt, now_datetime, today
+
+from scrap_metal_suite.overrides.naming import supplier_daily_name
 
 
 class ScrapWeight(Document):
     """
-    Scrap Weight DocType Controller
+    Scrap Weight Controller — the customer-facing receipt for a Dropoff.
 
-    Implements validations from DROPOFF_ARCHITECTURE.md Part 13 (Edge Cases)
+    Wave 10 redesign (DROPOFF_CONTAINER_REDESIGN.md §14.19):
+    - Submittable; immutable after submit.
+    - One submitted Scrap Weight per Dropoff at any time. If a reweigh
+      happens post-submit, the existing receipt is cancelled and a fresh one
+      is generated when the operator clicks "Finish Container Weighing"
+      again. New one carries `is_amended=1` and a back-link via
+      Frappe's `amended_from`.
+    - Items child = per-grade aggregation (one row per item_code) snapshotted
+      at submit time. Containers held by this receipt are queryable via
+      `Scrap Weight Container.scrap_weight = self.name` (stamped at submit).
+    - Pre-Wave-10 fields (posting_time, session, operator, pos_profile,
+      scale, entry_method, photos, is_reweight) were per-event metadata for
+      the old non-submittable model and have been removed.
+
+    Use the API `finish_weighing_session` (in api/v1/dropoff.py) to generate
+    or amend a Scrap Weight — don't insert directly from frontend code.
     """
 
+    def autoname(self):
+        # SW-{supplier_short}-YYMMDD-#  — matches the Dropoff family naming.
+        # Use the supplier from the linked Dropoff (set via fetch_from on save,
+        # but not yet present on insert; resolve directly).
+        if not self.dropoff:
+            frappe.throw(_("Dropoff is required to generate a Scrap Weight ID."))
+        supplier = frappe.db.get_value("Dropoff", self.dropoff, "supplier")
+        on_date = frappe.db.get_value("Dropoff", self.dropoff, "dropoff_scheduled_start")
+        self.name = supplier_daily_name("SW", supplier, on_date=on_date)
+
     def before_insert(self):
-        """Set defaults before inserting."""
-        if not self.posting_time:
-            self.posting_time = nowtime()
-
-        # Auto-fill from session
-        if self.session:
-            session = frappe.get_doc("POS Session", self.session)
-            self.operator = session.operator
-            self.pos_profile = session.pos_profile
-
+        if not self.posting_date:
+            self.posting_date = today()
+        if not self.generated_by:
+            self.generated_by = frappe.session.user
+        if not self.generated_at:
+            self.generated_at = now_datetime()
 
     def validate(self):
-        """Validate and calculate totals."""
-        self.calculate_totals()
+        self._validate_one_active_per_dropoff()
+        self._calculate_totals()
 
-    def calculate_totals(self):
-        """Calculate total weight from items."""
-        self.total_weight = 0
+    def _validate_one_active_per_dropoff(self):
+        """Enforce: at most one Submitted Scrap Weight per Dropoff at a time.
 
-        for item in self.items:
-            self.total_weight += flt(item.weight)
-
-    def on_update(self):
-        """Update linked Drop-off totals."""
-        if self.dropoff:
-            self.update_dropoff_totals()
-
-    def on_trash(self):
-        """Update linked Drop-off when this record is deleted."""
-        if self.dropoff:
-            self.update_dropoff_totals()
-
-    def before_cancel(self):
+        Cancelled receipts (docstatus=2) are kept in the DB for the audit
+        chain, so the constraint is on docstatus=1 only.
         """
-        Edge Case 13.13: Prevent deletion if linked to Completed drop-off.
-        Phase 8A: Changed from "Closed" to "Completed".
-        """
-        if self.dropoff:
-            dropoff_status = frappe.db.get_value("Dropoff", self.dropoff, "status")
-            if dropoff_status == "Completed":
-                frappe.throw(
-                    _("Cannot delete Scrap Weight linked to a Completed Drop-off. Cancel the Drop-off first.")
+        if not self.dropoff:
+            return
+        existing = frappe.db.get_all(
+            "Scrap Weight",
+            filters={
+                "dropoff": self.dropoff,
+                "docstatus": 1,
+                "name": ["!=", self.name or ""],
+            },
+            pluck="name",
+        )
+        if existing:
+            frappe.throw(
+                _("Dropoff {0} already has a submitted Scrap Weight ({1}). "
+                  "Cancel it before issuing a new one.").format(
+                    self.dropoff, ", ".join(existing),
                 )
+            )
 
-    def update_dropoff_totals(self):
-        """Recalculate total_scrap_weight on the linked Drop-off."""
-        try:
-            dropoff = frappe.get_doc("Dropoff", self.dropoff)
-            dropoff.calculate_totals()
-            dropoff.flags.ignore_validate = True
-            dropoff.save(ignore_permissions=True)
-        except Exception:
-            # Drop-off might not exist yet during creation
-            pass
+    def _calculate_totals(self):
+        total = 0.0
+        bag_count = 0
+        for row in self.items:
+            total += flt(row.weight)
+            bag_count += int(row.container_count or 0)
+        self.total_weight = total
+        self.total_container_count = bag_count
+
+    def on_submit(self):
+        """Stamp the link on every Active container belonging to this Dropoff
+        so the receipt's `containers` queryset is reproducible after the fact.
+        """
+        active_containers = frappe.get_all(
+            "Scrap Weight Container",
+            filters={"dropoff": self.dropoff, "status": "Active"},
+            pluck="name",
+        )
+        for ct in active_containers:
+            frappe.db.set_value(
+                "Scrap Weight Container", ct, "scrap_weight", self.name,
+                update_modified=False,
+            )
+
+    def on_cancel(self):
+        """When this receipt is cancelled (because of a reweigh, typically),
+        do NOT clear the `scrap_weight` link on its containers. The link
+        records 'this container was part of receipt SW-X' which remains true
+        even if the receipt is now cancelled. The amended receipt stamps its
+        own containers when it submits.
+        """
+        # Intentional no-op — preserve the audit trail on containers.
+        return

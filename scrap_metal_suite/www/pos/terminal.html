@@ -181,13 +181,8 @@
             {% if use_container_model %}
             <!-- Container Panel (Container Redesign — design doc §9.1) -->
             <div class="container-panel dropoff-card" id="containerPanel" style="display:none;">
-                <div class="container-panel-header">
-                    <span class="container-panel-title">
-                        <span data-i18n="container_count">Containers</span>
-                        <span class="container-count-badge" id="containerCountBadge">0</span>
-                    </span>
-                    <span class="container-total-weight" id="containerTotalWeight">0.00 Kg</span>
-                </div>
+                <!-- Wave 11: count badge + total weight moved to RIGHT pane (panel-journal).
+                     This wrapper now holds only the inline weighing card and action bar. -->
 
                 <!-- Inline weighing card — replaces the legacy "+ Add Container" modal.
                      Operator clicks an item in the left panel to set Active Grade,
@@ -214,8 +209,6 @@
                             <span class="live-weight-stable" id="weighLiveStable" style="display:none;" data-i18n="stable">stable</span>
                             <span class="weigh-scale-disconnected" id="weighScaleDisconnected" data-i18n="manualEntry">Manual entry</span>
                         </div>
-                        <button type="button" class="btn-pos btn-secondary btn-sm" id="btnTare"
-                                onclick="CONTAINER_UI.tare()" data-i18n="tare">Tare</button>
                     </div>
 
                     <!-- Manual override / weight input -->
@@ -248,26 +241,14 @@
                         </button>
                     </div>
 
-                    <!-- Deviation Section (shown only if grade not in expected_items) -->
-                    <div class="deviation-section" id="containerDeviationSection" style="display:none;">
-                        <div class="deviation-warning">
-                            <span class="warning-icon">&#9888;</span>
-                            <span data-i18n="deviation_warning">Grade differs from expected</span>
-                        </div>
-                        <div class="form-group">
-                            <label data-i18n="prompt_deviation_type">Deviation type</label>
-                            <select id="containerDeviationType" class="form-select">
-                                <option value="">--</option>
-                                <option value="Downgrade" data-i18n="downgrade">Downgrade</option>
-                                <option value="Upgrade" data-i18n="upgrade">Upgrade</option>
-                                <option value="Substitution" data-i18n="substitution">Substitution</option>
-                                <option value="Unplanned-Add" data-i18n="unplanned_add">Unplanned-Add</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label data-i18n="prompt_deviation_reason">Reason for deviation</label>
-                            <textarea id="containerDeviationReason" class="form-textarea" rows="2"></textarea>
-                        </div>
+                    <!-- Wave 11 — Take Photo (buffers photos until Save & Print attaches them
+                         to the new Container). Disabled until a grade is picked, same as Save. -->
+                    <div class="weigh-photo-row">
+                        <button class="btn-pos btn-secondary btn-sm" id="btnContainerTakePhoto"
+                                onclick="CONTAINER_UI.openPhotoModal()" disabled type="button">
+                            &#128247; <span data-i18n="action_take_photo">Take Photo</span>
+                            <span class="photo-count-pill" id="containerPhotoCountPill" style="display:none;">0</span>
+                        </button>
                     </div>
 
                     <!-- Optional Remarks -->
@@ -277,6 +258,10 @@
                     </div>
                 </div>
 
+                <!-- Wave 11: the bottom Scan button was removed — the top
+                     dropoff-search input now accepts CTN-* scans (routed
+                     to the container action chooser) and the camera Scan
+                     button next to it covers the QR case. -->
                 <div class="container-action-bar">
                     <button class="btn-pos btn-secondary btn-sm" id="btnPauseDropoff" onclick="openPauseModal()" style="display:none;">
                         &#9208; <span data-i18n="action_pause">Pause</span>
@@ -287,13 +272,22 @@
                     <button class="btn-pos btn-success btn-sm" id="btnCompleteContainerDropoff" onclick="confirmCompleteContainerDropoff()" style="display:none;">
                         &#10004; <span data-i18n="action_complete">Complete</span>
                     </button>
-                    <button class="btn-pos btn-secondary btn-sm" onclick="openContainerScanner()">
-                        &#128247; <span data-i18n="action_scan">Scan</span>
+                    <!-- Wave 11: Reopen lets the operator add more bags to a
+                         Completed Dropoff. Cancels the active Scrap Weight
+                         receipt; a fresh amended one is issued on next finish. -->
+                    <button class="btn-pos btn-secondary btn-sm" id="btnReopenDropoff" onclick="reopenDropoffContainer()" style="display:none;">
+                        &#8634; <span data-i18n="action_reopen">Reopen</span>
                     </button>
                 </div>
-                <div class="container-list" id="containerList">
-                    <div class="container-empty-state" id="containerEmptyState">
-                        <p data-i18n="container_empty_hint">No containers yet — click an item to start weighing</p>
+
+                <!-- Wave 11: shown when Dropoff is Completed/Cancelled — replaces
+                     the weighing card so the operator can't accidentally try to
+                     add bags to a closed Dropoff. Reopen button is in the
+                     action bar above. -->
+                <div id="dropoffCompletedBanner" class="dropoff-completed-banner" style="display:none;">
+                    <div class="dropoff-completed-icon">&#10004;</div>
+                    <div class="dropoff-completed-text" data-i18n="dropoff_completed_banner">
+                        Drop-off completed. Click Reopen above to add more bags.
                     </div>
                 </div>
             </div>
@@ -342,6 +336,28 @@
             </div>
             {% endif %}
         </div>
+
+        {% if use_container_model %}
+        <!-- Wave 11 — Resizer between MIDDLE (weigh card) and RIGHT (journal) panes -->
+        <div class="panel-resizer" id="panelResizerJournal" role="separator" aria-orientation="vertical" title="Drag to resize"></div>
+
+        <!-- RIGHT pane — containers journal (the "what's been weighed" reference,
+             kept visible while the operator weighs in the middle pane). -->
+        <div class="panel panel-journal" id="panelJournal">
+            <div class="journal-header">
+                <span class="journal-title">
+                    <span data-i18n="container_count">Containers</span>
+                    <span class="container-count-badge" id="containerCountBadge">0</span>
+                </span>
+                <span class="container-total-weight" id="containerTotalWeight">0.00 Kg</span>
+            </div>
+            <div class="container-list" id="containerList">
+                <div class="container-empty-state" id="containerEmptyState">
+                    <p data-i18n="container_empty_hint">No containers yet — click an item to start weighing</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Weight Input Modal -->
@@ -727,7 +743,7 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label><span data-i18n="container_no">Container No</span></label>
+                    <label><span data-i18n="container">Container</span></label>
                     <div class="form-readonly" id="reweighContainerLabel">--</div>
                 </div>
                 <div class="form-group">
@@ -763,7 +779,7 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label><span data-i18n="container_no">Container No</span></label>
+                    <label><span data-i18n="container">Container</span></label>
                     <div class="form-readonly" id="voidContainerLabel">--</div>
                 </div>
                 <div class="form-group">
@@ -798,29 +814,6 @@
         </div>
     </div>
 
-    <!-- Approve Deviation Modal -->
-    <div class="modal" id="approveDeviationModal" style="display:none;">
-        <div class="modal-content modal-medium">
-            <div class="modal-header">
-                <h3 data-i18n="action_approve_deviation">Approve Deviation</h3>
-                <button class="modal-close" onclick="closeApproveDeviationModal()">&#10005;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label data-i18n="container_no">Container No</label>
-                    <div class="form-readonly" id="approveDeviationLabel">--</div>
-                </div>
-                <div class="form-group">
-                    <label data-i18n="prompt_deviation_reason">Reason for deviation</label>
-                    <textarea id="approveDeviationReason" class="form-textarea" rows="2"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-pos btn-secondary" onclick="closeApproveDeviationModal()" data-i18n="cancel">Cancel</button>
-                <button class="btn-pos btn-primary" onclick="confirmApproveDeviation()" data-i18n="action_approve_deviation">Approve</button>
-            </div>
-        </div>
-    </div>
     {% endif %}
     {% endif %}
 </div>
@@ -871,12 +864,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         langIconId: 'langIcon'
     });
 
-    // Draggable pane divider (min 320px, max 50% viewport, persists in localStorage)
+    // Draggable pane dividers (each resizer adjusts the pane to its right;
+    // the LEFT items pane is flex:1 and absorbs the space changes).
+    // Min 320px, max 50% viewport, double-click clears inline width to fall
+    // back to the CSS default (460px transaction, 380px journal).
     if (window.POS_RESIZER) {
         POS_RESIZER.init({
             rightSelector: '#posTerminal .panel-transaction',
             resizerSelector: '#posTerminal #panelResizer',
             storageKey: 'sms.pos.terminal.rightPaneWidth'
+        });
+        POS_RESIZER.init({
+            rightSelector: '#posTerminal .panel-journal',
+            resizerSelector: '#posTerminal #panelResizerJournal',
+            storageKey: 'sms.pos.terminal.journalPaneWidth'
         });
     }
 
@@ -913,10 +914,66 @@ async function disconnectScale() {
     }
 }
 
+// Wave 11 — after a CTN scan loads the parent Dropoff, briefly flash the
+// matching journal row so the operator can spot it among many bags. Polls
+// for the row to appear (loadContainers is async) up to ~3s, then flashes.
+function highlightContainerRow(containerName) {
+    if (!containerName) return;
+    const start = Date.now();
+    const tick = function () {
+        const row = document.querySelector(
+            '.container-row[data-name="' + CSS.escape(containerName) + '"]'
+        );
+        if (row) {
+            row.classList.add('container-row-highlight');
+            try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
+            setTimeout(function () {
+                row.classList.remove('container-row-highlight');
+            }, 2400);
+            return;
+        }
+        if (Date.now() - start < 3000) setTimeout(tick, 150);
+    };
+    tick();
+}
+
 // ===== Scanner Functions (delegate to POS_SCANNER) =====
-function openScanner() { POS_SCANNER.open(searchAndSelectDropoff); }
+// Wave 11: unified scanner — one detector routes Dropoff QRs to the dropoff
+// loader and Container QRs to the per-container action chooser. Both the
+// top-of-page Scan button and the container action-bar Scan button funnel
+// through unifiedScanHandler.
+function openScanner() { POS_SCANNER.open(unifiedScanHandler); }
 function closeScanner() { POS_SCANNER.close(); }
-function submitManualDropoff() { POS_SCANNER.submitManual(searchAndSelectDropoff); }
+function submitManualDropoff() { POS_SCANNER.submitManual(unifiedScanHandler); }
+
+async function unifiedScanHandler(raw) {
+    const detected = POS_SCANNER.detectDoctype(raw);
+    if (detected.doctype === 'Scrap Weight Container') {
+        // Wave 11 — CTN scan loads the parent Dropoff (full context) and
+        // highlights the matching row in the journal. Mirrors the
+        // dropoff-search-bar CTN flow so all CTN entry points behave the
+        // same.
+        try {
+            const cRes = await callAPI(
+                'scrap_metal_suite.api.v1.dropoff.get_container',
+                { name: detected.name }
+            );
+            const c = cRes && cRes.message;
+            if (!c || !c.dropoff) {
+                frappe.msgprint(t('error') + ': ' + detected.name);
+                return;
+            }
+            await searchAndSelectDropoff(c.dropoff);
+            highlightContainerRow(c.name);
+        } catch (err) {
+            console.error('CTN scan → dropoff load error:', err);
+            frappe.msgprint(t('error'));
+        }
+        return;
+    }
+    // Dropoff or unknown → dropoff selector path (back-compat).
+    await searchAndSelectDropoff(raw);
+}
 
 async function searchAndSelectDropoff(query) {
     const parsedQuery = POS_SCANNER.parseQRValue(query, ['/app/dropoff/']);
@@ -1034,6 +1091,61 @@ function handleDropoffSearchKeydown(event) {
 async function searchDropoff(query) {
     clearTimeout(searchTimeout);
     const resultsDiv = document.getElementById('dropoffResults');
+
+    // Wave 11 — if a Container ID was scanned/typed/pasted into the dropoff
+    // search bar, fetch the container's parent Dropoff and load that whole
+    // document (so the operator sees the weigh card + full journal with all
+    // bags). After the dropoff loads, briefly highlight the specific bag's
+    // row in the journal so the operator can identify it. The 300ms debounce
+    // below ensures we don't fire on partial typing.
+    const detected = POS_SCANNER.detectDoctype(query);
+    if (detected.doctype === 'Scrap Weight Container') {
+        searchTimeout = setTimeout(async function () {
+            const stillContainer = POS_SCANNER.detectDoctype(
+                (document.getElementById('dropoffSearch') || {}).value || ''
+            ).doctype === 'Scrap Weight Container';
+            if (!stillContainer) return;
+            const input = document.getElementById('dropoffSearch');
+            if (input) input.value = '';
+            clearDropoffSearchResults();
+            try {
+                const cRes = await callAPI(
+                    'scrap_metal_suite.api.v1.dropoff.get_container',
+                    { name: detected.name }
+                );
+                const c = cRes && cRes.message;
+                if (!c || !c.dropoff) {
+                    frappe.msgprint(t('error') + ': ' + detected.name);
+                    return;
+                }
+                // Look up the parent Dropoff via the same path the dropoff
+                // search uses, so selectDropoff gets the full payload.
+                const dRes = await callAPI(
+                    'scrap_metal_suite.api.v1.dropoff.lookup_dropoff',
+                    { query: c.dropoff }
+                );
+                const o = dRes && dRes.message && dRes.message[0];
+                if (!o) {
+                    frappe.msgprint(t('dropoffNotFound') + ': ' + c.dropoff);
+                    return;
+                }
+                selectDropoff(
+                    o.name,
+                    o.dropoff_scheduled_start || '',
+                    o.license_plate || '',
+                    o.supplier_name || '',
+                    o.status || 'Draft'
+                );
+                // Brief flash on the matching journal row once it renders.
+                highlightContainerRow(c.name);
+            } catch (err) {
+                console.error('CTN scan → dropoff load error:', err);
+                frappe.msgprint(t('error'));
+            }
+        }, 300);
+        return;
+    }
+
     const parsedQuery = POS_SCANNER.parseQRValue(query, ['/app/dropoff/']);
 
     if (parsedQuery.length < 2) {
@@ -1689,6 +1801,8 @@ function addPhotoAndContinue() {
         state.capturedPhotos.push(state.currentPhotoData);
         state.currentPhotoData = null;
         updatePhotoThumbnails();
+        // Wave 11 — keep the inline weighing card's photo pill in sync.
+        if (window.CONTAINER_UI && CONTAINER_UI.refreshPhotoPill) CONTAINER_UI.refreshPhotoPill();
 
         // Reset camera view for next photo
         const capturedImg = document.getElementById('capturedPhoto');
@@ -1710,6 +1824,8 @@ function addPhotoAndClose() {
         state.currentPhotoData = null;
     }
     closePhotoCapture();
+    // Wave 11 — keep the inline weighing card's photo pill in sync.
+    if (window.CONTAINER_UI && CONTAINER_UI.refreshPhotoPill) CONTAINER_UI.refreshPhotoPill();
     const count = state.capturedPhotos.length;
     if (count > 0) {
         frappe.show_alert({ message: count + ' ' + t('photosReady'), indicator: 'green' }, 2);
@@ -2051,12 +2167,45 @@ function printScrapWeight(scrapWeightName) {
     document.body.appendChild(iframe);
 }
 
-function reprintLastScrapWeight() {
-    const name = state.lastScrapWeight || state.existingScrapWeight;
-    if (name) {
-        printScrapWeight(name);
-    } else {
-        frappe.show_alert({message: t('noRecentWeight') || 'No weight ticket to reprint. Select a dropoff first.', indicator: 'orange'}, 3);
+async function reprintLastScrapWeight() {
+    // Wave 11 — always fetch the LATEST submitted Scrap Weight for the
+    // current dropoff. The cached `state.lastScrapWeight` may point at a
+    // cancelled doc (after reopen + re-finish), and printing a cancelled
+    // doc throws "Not allowed to print cancelled documents".
+    const dropoffName = state.dropoff && state.dropoff.name;
+    if (!dropoffName) {
+        frappe.show_alert({
+            message: t('noRecentWeight') || 'Select a dropoff first.',
+            indicator: 'orange',
+        }, 3);
+        return;
+    }
+    try {
+        const res = await callAPI(
+            'scrap_metal_suite.api.v1.dropoff.get_latest_scrap_weight',
+            { dropoff: dropoffName }
+        );
+        const sw = res && res.message;
+        if (!sw || !sw.name) {
+            frappe.show_alert({
+                message: t('noRecentWeight') || 'No active receipt yet — finish weighing first.',
+                indicator: 'orange',
+            }, 3);
+            return;
+        }
+        printScrapWeight(sw.name);
+    } catch (err) {
+        console.error('reprint error:', err);
+        // Fall back to the cached name only if the API failed (e.g. offline).
+        const cached = state.lastScrapWeight || state.existingScrapWeight;
+        if (cached) {
+            printScrapWeight(cached);
+        } else {
+            frappe.show_alert({
+                message: t('noRecentWeight') || 'No weight ticket to reprint.',
+                indicator: 'orange',
+            }, 3);
+        }
     }
 }
 
@@ -2895,16 +3044,39 @@ window.CONTAINER_UI = (function () {
         const btnPause = document.getElementById('btnPauseDropoff');
         const btnResume = document.getElementById('btnResumeDropoff');
         const btnComplete = document.getElementById('btnCompleteContainerDropoff');
+        const btnReopen = document.getElementById('btnReopenDropoff');
+        const weighCard = document.getElementById('containerWeighCard');
+        const completedBanner = document.getElementById('dropoffCompletedBanner');
+        const journal = document.getElementById('panelJournal');
 
         const inProgress = isInProgress();
         const paused = isPaused();
         const scheduled = dropoff.status === 'Scheduled';
+        const completed = isCompleted();
+        const cancelled = dropoff.status === 'Cancelled';
+        // Reopen is allowed for any "closed" status the API accepts.
+        const closed = completed || cancelled
+                    || dropoff.status === 'Verified'
+                    || dropoff.status === 'Needs Review';
 
         // Add Container: shown when In Progress / Scheduled (will auto-acquire lock); hidden when Paused/Completed.
         if (btnAdd) btnAdd.style.display = (inProgress || scheduled) ? 'inline-flex' : 'none';
         if (btnPause) btnPause.style.display = inProgress ? 'inline-flex' : 'none';
         if (btnResume) btnResume.style.display = paused ? 'inline-flex' : 'none';
         if (btnComplete) btnComplete.style.display = inProgress ? 'inline-flex' : 'none';
+        if (btnReopen) btnReopen.style.display = closed ? 'inline-flex' : 'none';
+
+        // Wave 11 — clear the container panes when the Dropoff is closed.
+        // The weigh card hides (so operator can't try to save against a
+        // Completed Dropoff and hit the immutability throw) and the journal
+        // pane swaps to a "completed" empty state. Reopen button restores
+        // normal weighing.
+        if (weighCard) weighCard.style.display = closed ? 'none' : 'block';
+        if (completedBanner) completedBanner.style.display = closed ? 'flex' : 'none';
+        // Journal: keep visible but mark with a class so renderContainerList
+        // can swap to a "Drop-off completed" empty state (rows still load
+        // for reference; CSS dims them).
+        if (journal) journal.classList.toggle('panel-journal-completed', closed);
     }
 
     function refreshHeaderTotals() {
@@ -2920,14 +3092,6 @@ window.CONTAINER_UI = (function () {
         return '<span class="badge-status status-active">' + t('status_active') + '</span>';
     }
 
-    function deviationBadge(c) {
-        if (!c.is_deviation) return '';
-        if (c.deviation_approved_by) {
-            return '<span class="badge-status badge-deviation-approved" title="' + t('deviation_approved_by') + ': ' + (c.deviation_approved_by || '') + '">'
-                + t('deviation') + ' &#10004;</span>';
-        }
-        return '<span class="badge-status badge-deviation">' + t('deviation_approval_required') + '</span>';
-    }
 
     function escapeHtml(s) {
         if (s == null) return '';
@@ -2941,8 +3105,10 @@ window.CONTAINER_UI = (function () {
         if (!listEl) return;
 
         const all = containerState.containers.slice();
-        // Active first (sorted by container_no), Voided collapsed at bottom
-        const active = all.filter(c => c.status !== 'Voided').sort((a, b) => (a.container_no || '').localeCompare(b.container_no || ''));
+        // Active first, sorted chronologically by creation time (Wave 11
+        // dropped container_no; the API now returns rows in creation order).
+        const active = all.filter(c => c.status !== 'Voided')
+            .sort((a, b) => String(a.creation || '').localeCompare(String(b.creation || '')));
         const voided = containerState.voidedContainers.slice();
 
         if (!active.length && !voided.length) {
@@ -2958,23 +3124,26 @@ window.CONTAINER_UI = (function () {
             // NOTE: item_name is canonical — never run it through t().
             const w = (parseFloat(c.net_weight) || 0).toFixed(2);
             const safeName = escapeHtml(c.name);
-            const approveBtn = (c.is_deviation && !c.deviation_approved_by)
-                ? ('<button class="btn-pos btn-warning btn-xs" onclick="CONTAINER_UI.openApproveDeviation(\'' + safeName + '\')">' + t('action_approve_deviation') + '</button>')
-                : '';
             const ctypeKey = String(c.container_type || '').toLowerCase();
             const ctypeLabel = (ctypeKey ? (t(ctypeKey) || c.container_type) : '') || '';
+            const photoCount = parseInt(c.photo_count || 0, 10);
+            const photoIcon = photoCount > 0
+                ? '<span class="container-row-photo" title="' + photoCount + ' ' + (t('photo_count_label') || 'photos') + '">&#128247;&nbsp;' + photoCount + '</span>'
+                : '';
             html += '<div class="container-row" data-name="' + safeName + '">'
                 +   '<div class="container-row-main">'
-                +     '<span class="container-row-no">' + escapeHtml(c.container_no || '') + '</span>'
-                +     '<span class="container-row-name">' + escapeHtml(c.item_name || c.item_code || '') + '</span>'
+                +     '<span class="container-row-name">'
+                +       '<span class="container-row-name-text">' + escapeHtml(c.item_name || c.item_code || '') + '</span>'
+                +       '<span class="container-row-id">' + escapeHtml(c.name) + '</span>'
+                +     '</span>'
                 +     '<span class="container-row-type">' + escapeHtml(ctypeLabel) + '</span>'
                 +     '<span class="container-row-weight">' + w + ' Kg</span>'
-                +     statusBadge(c) + deviationBadge(c)
+                +     photoIcon
+                +     statusBadge(c)
                 +   '</div>'
                 +   '<div class="container-row-actions">'
                 +     '<button class="btn-pos btn-secondary btn-xs" onclick="CONTAINER_UI.openReweigh(\'' + safeName + '\')">' + t('action_reweigh') + '</button>'
                 +     '<button class="btn-pos btn-secondary btn-xs" onclick="CONTAINER_UI.printOne(\'' + safeName + '\', \'sticker\')">' + t('action_print_sticker') + '</button>'
-                +     approveBtn
                 +     '<button class="btn-pos btn-danger btn-xs" onclick="CONTAINER_UI.openVoid(\'' + safeName + '\')">' + t('action_void') + '</button>'
                 +   '</div>'
                 + '</div>';
@@ -2985,8 +3154,10 @@ window.CONTAINER_UI = (function () {
             voided.forEach(c => {
                 const w = (parseFloat(c.net_weight) || 0).toFixed(2);
                 html += '<div class="container-row container-row-voided">'
-                    +   '<span class="container-row-no">' + escapeHtml(c.container_no || '') + '</span>'
-                    +   '<span class="container-row-name">' + escapeHtml(c.item_name || c.item_code || '') + '</span>'
+                    +   '<span class="container-row-name">'
+                    +     '<span class="container-row-name-text">' + escapeHtml(c.item_name || c.item_code || '') + '</span>'
+                    +     '<span class="container-row-id">' + escapeHtml(c.name) + '</span>'
+                    +   '</span>'
                     +   '<span class="container-row-weight">' + w + ' Kg</span>'
                     +   statusBadge(c)
                     + '</div>';
@@ -3057,6 +3228,25 @@ window.CONTAINER_UI = (function () {
         clearActiveGradeImpl();
         const panel = document.getElementById('containerPanel');
         if (panel) panel.style.display = 'none';
+
+        // Wave 11 — also clear the RIGHT pane (journal) DOM and reset
+        // the header count/weight badges. Without this, removing the
+        // current dropoff (X button or post-Complete clear) leaves the
+        // journal showing rows from the previous Dropoff.
+        const listEl = document.getElementById('containerList');
+        if (listEl) {
+            listEl.querySelectorAll('.container-row, .container-voided-block')
+                .forEach(r => r.remove());
+        }
+        const emptyEl = document.getElementById('containerEmptyState');
+        if (emptyEl) emptyEl.style.display = 'block';
+        const countBadge = document.getElementById('containerCountBadge');
+        if (countBadge) countBadge.textContent = '0';
+        const totalEl = document.getElementById('containerTotalWeight');
+        if (totalEl) totalEl.textContent = '0.00 Kg';
+        // Reset photo buffer pill on the inline card.
+        if (window.state) state.capturedPhotos = [];
+        refreshPhotoPill();
     }
 
     // ---- Inline weighing card (replaces the legacy add-container modal) ----
@@ -3076,15 +3266,13 @@ window.CONTAINER_UI = (function () {
         const ok = !!containerState.activeGrade && !!containerState.dropoff
                    && !isNaN(w) && w > 0;
         btn.disabled = !ok;
-    }
 
-    function refreshDeviationSection() {
-        const section = document.getElementById('containerDeviationSection');
-        if (!section) return;
-        const code = containerState.activeGrade ? containerState.activeGrade.code : '';
-        const expected = containerState.dropoff && containerState.dropoff.expected_items;
-        const isDeviation = code && expected && expected.size > 0 && !expected.has(code);
-        section.style.display = isDeviation ? 'block' : 'none';
+        // Wave 11 — Photos button enables as soon as a grade is picked
+        // (operator may take photos before reading the weight).
+        const photoBtn = document.getElementById('btnContainerTakePhoto');
+        if (photoBtn) {
+            photoBtn.disabled = !(!!containerState.activeGrade && !!containerState.dropoff);
+        }
     }
 
     function setActiveGradeImpl(itemCode, itemName) {
@@ -3109,7 +3297,6 @@ window.CONTAINER_UI = (function () {
                 btn.getAttribute('data-item-code') === itemCode);
         });
 
-        refreshDeviationSection();
         refreshSaveButton();
     }
 
@@ -3121,7 +3308,6 @@ window.CONTAINER_UI = (function () {
         if (pill) pill.style.display = 'none';
         document.querySelectorAll('.item-btn.active-grade')
             .forEach(b => b.classList.remove('active-grade'));
-        refreshDeviationSection();
         refreshSaveButton();
     }
 
@@ -3154,38 +3340,87 @@ window.CONTAINER_UI = (function () {
         }
     }
 
-    function tareImpl() {
-        // Zero the displayed live value at the current reading. If no live
-        // stream is active, just clear the manual input so the operator can
-        // start fresh.
-        if (window.state && state.isScaleConnected && state.liveWeight != null) {
-            containerState.tareOffset = state.liveWeight;
-            const liveVal = document.getElementById('weighLiveValue');
-            if (liveVal) liveVal.textContent = '0.00';
-        }
-        const inputEl = document.getElementById('containerNetWeight');
-        if (inputEl) inputEl.value = '';
-        containerState.manualWeightOverride = false;
-        containerState.weightFromScale = false;
-        refreshSaveButton();
-    }
-
     function resetWeighCard() {
         clearActiveGradeImpl();
         const inputEl = document.getElementById('containerNetWeight');
         const remarksEl = document.getElementById('containerRemarks');
-        const devTypeEl = document.getElementById('containerDeviationType');
-        const devReasonEl = document.getElementById('containerDeviationReason');
         const typeEl = document.getElementById('containerType');
         if (inputEl) inputEl.value = '';
         if (remarksEl) remarksEl.value = '';
-        if (devTypeEl) devTypeEl.value = '';
-        if (devReasonEl) devReasonEl.value = '';
         if (typeEl) typeEl.value = 'Bag';
         containerState.manualWeightOverride = false;
         containerState.weightFromScale = false;
         containerState.tareOffset = 0;
+        // Wave 11 — clear any photos buffered for the just-saved bag.
+        if (window.state) state.capturedPhotos = [];
+        refreshPhotoPill();
         refreshSaveButton();
+    }
+
+    // Wave 11 — Photo capture (buffer-then-attach pattern, matches the legacy
+    // Scrap Weight flow and the Truck Scale flow). Photos are captured into
+    // window.state.capturedPhotos via the global photoModal, then uploaded and
+    // attached to the new Container after add_container succeeds.
+    function refreshPhotoPill() {
+        const pill = document.getElementById('containerPhotoCountPill');
+        if (!pill) return;
+        const n = (window.state && state.capturedPhotos) ? state.capturedPhotos.length : 0;
+        pill.textContent = n;
+        pill.style.display = n > 0 ? 'inline-block' : 'none';
+    }
+
+    function openPhotoModalImpl() {
+        if (!containerState.activeGrade) {
+            frappe.msgprint(t('select_grade_from_items') || 'Select a grade first');
+            return;
+        }
+        if (typeof window.openPhotoCapture !== 'function') {
+            frappe.msgprint(t('cameraNotAvailable') || 'Camera not available');
+            return;
+        }
+        // No parent doc yet — clear any "existing photos" sidebar in the modal.
+        if (window.state) {
+            state.existingPhotos = [];
+            state.capturedPhotos = state.capturedPhotos || [];
+        }
+        window.openPhotoCapture();
+    }
+
+    async function attachContainerPhotos(containerName, photos) {
+        if (!containerName || !photos || !photos.length) return { attached: 0, failed: 0 };
+        let attached = 0;
+        let failed = 0;
+        for (let i = 0; i < photos.length; i++) {
+            try {
+                const blob = await (await fetch(photos[i])).blob();
+                const fd = new FormData();
+                fd.append('file', blob, 'container_photo_' + containerName + '_' + (i + 1) + '_' + Date.now() + '.jpg');
+                fd.append('is_private', '0');
+                const upRes = await fetch('/api/method/upload_file', {
+                    method: 'POST',
+                    headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },
+                    body: fd,
+                });
+                const upJson = await upRes.json();
+                if (!(upJson && upJson.message && upJson.message.file_url)) {
+                    failed += 1;
+                    continue;
+                }
+                await api('scrap_metal_suite.api.v1.dropoff.save_weight_photo', {
+                    parent_doctype: 'Scrap Weight Container',
+                    parent_doc: containerName,
+                    photo_url: upJson.message.file_url,
+                    weight_type: 'Scrap',
+                    dropoff: containerState.dropoff && containerState.dropoff.name,
+                    session: window.state ? state.session : null,
+                });
+                attached += 1;
+            } catch (err) {
+                console.error('attachContainerPhotos error:', err);
+                failed += 1;
+            }
+        }
+        return { attached: attached, failed: failed };
     }
 
     async function saveActiveContainerImpl() {
@@ -3205,10 +3440,6 @@ window.CONTAINER_UI = (function () {
         const netWeight = weightEl ? parseFloat(weightEl.value) : NaN;
         const remarksEl = document.getElementById('containerRemarks');
         const remarks = remarksEl ? (remarksEl.value || '').trim() : '';
-        const devTypeEl = document.getElementById('containerDeviationType');
-        const devReasonEl = document.getElementById('containerDeviationReason');
-        const deviationType = devTypeEl ? (devTypeEl.value || '').trim() : '';
-        const deviationReason = devReasonEl ? (devReasonEl.value || '').trim() : '';
 
         if (!containerType) {
             frappe.msgprint(t('container_type'));
@@ -3218,12 +3449,8 @@ window.CONTAINER_UI = (function () {
             frappe.msgprint(t('error_weight_invalid') || 'Invalid weight');
             return;
         }
-        const expected = dropoff.expected_items;
-        const isDeviation = expected && expected.size > 0 && !expected.has(itemCode);
-        if (isDeviation && (!deviationType || !deviationReason)) {
-            frappe.msgprint(t('error_reason_required') || 'Reason required');
-            return;
-        }
+        // Grade-mix deviation is computed at the Dropoff level (Wave 9);
+        // the operator no longer flags individual bags as deviations.
 
         try {
             const res = await api('scrap_metal_suite.api.v1.dropoff.add_container', {
@@ -3233,8 +3460,6 @@ window.CONTAINER_UI = (function () {
                 net_weight: netWeight,
                 container_type: containerType,
                 entry_method: containerState.weightFromScale ? 'Scale' : 'Manual Entry',
-                deviation_reason: deviationReason || null,
-                deviation_type: deviationType || null,
                 remarks: remarks || null,
             });
 
@@ -3252,6 +3477,26 @@ window.CONTAINER_UI = (function () {
 
             // Always auto-print on Save & Print.
             fireBothPrints(msg.print_urls);
+
+            // Wave 11 — attach any buffered photos to the new container, then
+            // clear the buffer in resetWeighCard. Snapshot the buffer here so
+            // a concurrent reset in resetWeighCard can't race with the upload.
+            const bufferedPhotos = (window.state && state.capturedPhotos) ? state.capturedPhotos.slice() : [];
+            if (bufferedPhotos.length && msg.container) {
+                const result = await attachContainerPhotos(msg.container, bufferedPhotos);
+                if (result.attached > 0) {
+                    frappe.show_alert({
+                        message: result.attached + ' ' + (t('photos_attached') || 'photos attached'),
+                        indicator: 'green',
+                    }, 2);
+                }
+                if (result.failed > 0) {
+                    frappe.show_alert({
+                        message: result.failed + ' ' + (t('photos_attach_failed') || 'photo attach failed'),
+                        indicator: 'orange',
+                    }, 4);
+                }
+            }
 
             // Reset card for the next bag, refresh the list.
             resetWeighCard();
@@ -3282,7 +3527,7 @@ window.CONTAINER_UI = (function () {
         if (inputEl) inputEl.focus();
     }
     function closeAddContainerModalImpl() { /* no-op */ }
-    function onContainerGradeChangeImpl() { refreshDeviationSection(); }
+    function onContainerGradeChangeImpl() { /* no-op — deviation moved to Dropoff level */ }
     async function saveContainerImpl(_autoPrint) { return saveActiveContainerImpl(); }
 
     // ---- Reweigh modal ----
@@ -3290,7 +3535,7 @@ window.CONTAINER_UI = (function () {
         const c = containerState.containers.find(x => x.name === containerName);
         if (!c) return;
         containerState.currentRowAction = { action: 'reweigh', container: containerName };
-        document.getElementById('reweighContainerLabel').textContent = c.container_no || containerName;
+        document.getElementById('reweighContainerLabel').textContent = c.name || containerName;
         document.getElementById('reweighCurrentWeight').textContent = (parseFloat(c.net_weight) || 0).toFixed(2) + ' Kg';
         document.getElementById('reweighNewWeight').value = '';
         document.getElementById('reweighReason').value = '';
@@ -3342,7 +3587,7 @@ window.CONTAINER_UI = (function () {
         const c = containerState.containers.find(x => x.name === containerName);
         if (!c) return;
         containerState.currentRowAction = { action: 'void', container: containerName };
-        document.getElementById('voidContainerLabel').textContent = c.container_no || containerName;
+        document.getElementById('voidContainerLabel').textContent = c.name || containerName;
         document.getElementById('voidReason').value = '';
         document.getElementById('voidContainerModal').style.display = 'flex';
     }
@@ -3428,59 +3673,94 @@ window.CONTAINER_UI = (function () {
         }
     }
 
-    // ---- Complete ----
-    async function confirmCompleteImpl() {
+    // ---- Complete (Wave 10: "Finish Container Weighing") ----
+    // Two-step server action:
+    //   1. finish_weighing_session → generates / amends the Scrap Weight
+    //      receipt for this Dropoff, returns print_url for the thermal.
+    //   2. complete_dropoff → marks the Dropoff Completed (independent of
+    //      truck weighing; truck side has its own completion path).
+    // The thermal print fires automatically on success; operator hands the
+    // paper to the supplier.
+    // Wave 11 — flip a Completed Dropoff back to In Progress so additional
+    // bags can be added. Cancels the active Scrap Weight; the next finish
+    // produces an `is_amended=1` receipt.
+    async function reopenDropoffImpl() {
         if (!containerState.dropoff) return;
-        if (!confirm(t('action_complete') + '?')) return;
+        const reason = window.prompt(
+            (t('prompt_reopen_reason') || 'Reason to reopen this dropoff:'),
+            ''
+        );
+        if (!reason || !reason.trim()) return;
         try {
-            const res = await api('scrap_metal_suite.api.v1.dropoff.complete_dropoff', {
+            const res = await api('scrap_metal_suite.api.v1.dropoff.reopen_dropoff', {
                 dropoff: containerState.dropoff.name,
+                reason: reason.trim(),
             });
             const msg = res && res.message;
-            if (msg && msg.success) {
-                containerState.dropoff.status = 'Completed';
-                refreshActionBar();
-                frappe.show_alert({ message: t('status_completed'), indicator: 'green' }, 5);
-                loadContainers();
+            if (!msg || !msg.success) {
+                frappe.msgprint(t('error'));
+                return;
             }
+            containerState.dropoff.status = 'In Progress';
+            refreshActionBar();
+            const note = msg.cancelled_scrap_weight
+                ? (t('dropoff_reopened_cancel') || 'Dropoff reopened — receipt {0} cancelled, fresh receipt will be issued on next finish').replace('{0}', msg.cancelled_scrap_weight)
+                : (t('dropoff_reopened') || 'Dropoff reopened');
+            frappe.show_alert({ message: note, indicator: 'orange' }, 5);
+            loadContainers();
         } catch (err) {
-            console.error('complete_dropoff error:', err);
-            // Likely "unapproved deviations" or "truck weights required" message — surface it.
+            console.error('reopen error:', err);
             frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message || 'Failed' });
         }
     }
 
-    // ---- Approve deviation ----
-    function openApproveDeviationImpl(containerName) {
-        const c = containerState.containers.find(x => x.name === containerName);
-        if (!c) return;
-        containerState.currentRowAction = { action: 'approve', container: containerName };
-        document.getElementById('approveDeviationLabel').textContent = c.container_no || containerName;
-        document.getElementById('approveDeviationReason').value = '';
-        document.getElementById('approveDeviationModal').style.display = 'flex';
-    }
-    function closeApproveDeviationImpl() {
-        document.getElementById('approveDeviationModal').style.display = 'none';
-        containerState.currentRowAction = null;
-    }
-    async function confirmApproveDeviationImpl() {
-        const action = containerState.currentRowAction;
-        if (!action) return;
-        const reason = (document.getElementById('approveDeviationReason').value || '').trim();
+    async function confirmCompleteImpl() {
+        if (!containerState.dropoff) return;
+        if (!confirm(t('action_complete') + '?')) return;
         try {
-            const res = await api('scrap_metal_suite.api.v1.dropoff.approve_container_deviation', {
-                container: action.container,
-                reason: reason || null,
+            // Step 1 — finish weighing session, generate Scrap Weight receipt.
+            const finishRes = await api('scrap_metal_suite.api.v1.dropoff.finish_weighing_session', {
+                dropoff: containerState.dropoff.name,
             });
-            const msg = res && res.message;
-            if (msg && msg.success) {
-                closeApproveDeviationImpl();
-                frappe.show_alert({ message: t('action_approve_deviation'), indicator: 'green' }, 3);
-                loadContainers();
+            const finishMsg = finishRes && finishRes.message;
+            if (finishMsg && finishMsg.success) {
+                if (finishMsg.print_url) {
+                    printContainer(finishMsg.print_url);
+                }
+                const note = finishMsg.is_amended
+                    ? t('scrap_weight_amended') || ('Amended receipt: ' + finishMsg.scrap_weight)
+                    : t('scrap_weight_issued') || ('Receipt issued: ' + finishMsg.scrap_weight);
+                frappe.show_alert({ message: note, indicator: 'green' }, 4);
+            }
+
+            // Step 2 — complete the Dropoff.
+            const compRes = await api('scrap_metal_suite.api.v1.dropoff.complete_dropoff', {
+                dropoff: containerState.dropoff.name,
+            });
+            const compMsg = compRes && compRes.message;
+            if (compMsg && compMsg.success) {
+                frappe.show_alert({ message: t('status_completed'), indicator: 'green' }, 5);
+                // Wave 11 — Complete is a "session-ending" event. Clear the
+                // workspace and return to the dropoff-search state, ready
+                // for the next truck. (Loading a previously-Completed dropoff
+                // by ID still shows its historical containers — that's a
+                // separate read-only flow handled by selectDropoff →
+                // loadContainers, not affected by this clear.)
+                if (typeof window.clearDropoff === 'function') {
+                    window.clearDropoff();
+                } else {
+                    containerState.dropoff.status = 'Completed';
+                    refreshActionBar();
+                    loadContainers();
+                }
             }
         } catch (err) {
-            console.error('approve_container_deviation error:', err);
-            frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message });
+            console.error('complete error:', err);
+            // Wave 9: completion no longer blocks on missing truck weights —
+            // truck and bag weighing run on independent stations / schedules.
+            // Missing data surfaces via verification_status = "Pending" /
+            // "Needs Review" and is resolved by manager override.
+            frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message || 'Failed' });
         }
     }
 
@@ -3494,38 +3774,55 @@ window.CONTAINER_UI = (function () {
         printContainer(url);
     }
 
+    // ---- Open the action chooser for a known container name ----
+    // Extracted so the unified scanner (Wave 11) can call it directly after
+    // the doctype detector resolves a CTN-* value.
+    async function openContainerActionsImpl(name) {
+        if (!name) return;
+        try {
+            const res = await api('scrap_metal_suite.api.v1.dropoff.get_container', { name: name });
+            const c = res && res.message;
+            if (!c) {
+                frappe.msgprint(t('error') + ': ' + name);
+                return;
+            }
+            const actions = [
+                { label: t('action_reweigh'), fn: () => openReweighImpl(c.name) },
+                { label: t('action_print_sticker'), fn: () => printOneImpl(c.name) },
+                { label: t('action_void'), fn: () => openVoidImpl(c.name) },
+            ];
+            const choice = window.prompt(
+                c.name + ' (' + (c.item_name || c.item_code) + ', ' + (parseFloat(c.net_weight) || 0).toFixed(2) + ' Kg)\n' +
+                actions.map((a, i) => (i + 1) + ') ' + a.label).join('\n')
+            );
+            const idx = parseInt(choice, 10);
+            if (idx >= 1 && idx <= actions.length) actions[idx - 1].fn();
+        } catch (err) {
+            console.error('get_container error:', err);
+            frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message });
+        }
+    }
+
     // ---- Scan QR ----
+    // Wave 11: this button opens the same unified scanner as the top-of-page
+    // Scan button. The detector routes Dropoff QRs to searchAndSelectDropoff
+    // and Container QRs to openContainerActionsImpl above.
     function openScannerImpl() {
         if (!window.POS_SCANNER) {
             frappe.msgprint(t('action_scan'));
             return;
         }
-        POS_SCANNER.open(async function (raw) {
-            const parsed = POS_SCANNER.parseQRValue(raw, ['/app/scrap-weight-container/']);
-            try {
-                const res = await api('scrap_metal_suite.api.v1.dropoff.get_container', { name: parsed });
-                const c = res && res.message;
-                if (!c) {
-                    frappe.msgprint(t('error') + ': ' + parsed);
-                    return;
+        const handler = (typeof window.unifiedScanHandler === 'function')
+            ? window.unifiedScanHandler
+            : function (raw) {
+                const detected = POS_SCANNER.detectDoctype(raw);
+                if (detected.doctype === 'Scrap Weight Container') {
+                    openContainerActionsImpl(detected.name);
+                } else if (typeof window.searchAndSelectDropoff === 'function') {
+                    window.searchAndSelectDropoff(raw);
                 }
-                // Surface a quick action chooser.
-                const actions = [
-                    { label: t('action_reweigh'), fn: () => openReweighImpl(c.name) },
-                    { label: t('action_print_sticker'), fn: () => printOneImpl(c.name) },
-                    { label: t('action_void'), fn: () => openVoidImpl(c.name) },
-                ];
-                const choice = window.prompt(
-                    (c.container_no || c.name) + ' (' + (c.item_name || c.item_code) + ', ' + (parseFloat(c.net_weight) || 0).toFixed(2) + ' Kg)\n' +
-                    actions.map((a, i) => (i + 1) + ') ' + a.label).join('\n')
-                );
-                const idx = parseInt(choice, 10);
-                if (idx >= 1 && idx <= actions.length) actions[idx - 1].fn();
-            } catch (err) {
-                console.error('get_container error:', err);
-                frappe.msgprint({ title: t('error'), indicator: 'red', message: err.message });
-            }
-        });
+            };
+        POS_SCANNER.open(handler);
     }
 
     return {
@@ -3540,7 +3837,6 @@ window.CONTAINER_UI = (function () {
         saveActiveContainer: saveActiveContainerImpl,
         onLiveWeight: onLiveWeightImpl,
         onWeightInput: onWeightInputImpl,
-        tare: tareImpl,
 
         // Back-compat shims for the removed Add Container modal
         openAddContainerModal: openAddContainerModalImpl,
@@ -3561,13 +3857,13 @@ window.CONTAINER_UI = (function () {
         confirmPause: confirmPauseImpl,
         resumeDropoff: resumeDropoffImpl,
         confirmComplete: confirmCompleteImpl,
-
-        openApproveDeviation: openApproveDeviationImpl,
-        closeApproveDeviation: closeApproveDeviationImpl,
-        confirmApproveDeviation: confirmApproveDeviationImpl,
+        reopenDropoff: reopenDropoffImpl,
 
         printOne: printOneImpl,
         openScanner: openScannerImpl,
+        openContainerActions: openContainerActionsImpl,
+        openPhotoModal: openPhotoModalImpl,
+        refreshPhotoPill: refreshPhotoPill,
     };
 })();
 
@@ -3591,11 +3887,8 @@ function confirmPause() { CONTAINER_UI.confirmPause(); }
 function resumeDropoffContainer() { CONTAINER_UI.resumeDropoff(); }
 function confirmCompleteContainerDropoff() { CONTAINER_UI.confirmComplete(); }
 
-function openApproveDeviationModal(containerName) { CONTAINER_UI.openApproveDeviation(containerName); }
-function closeApproveDeviationModal() { CONTAINER_UI.closeApproveDeviation(); }
-function confirmApproveDeviation() { CONTAINER_UI.confirmApproveDeviation(); }
-
 function openContainerScanner() { CONTAINER_UI.openScanner(); }
+function reopenDropoffContainer() { CONTAINER_UI.reopenDropoff(); }
 {% endif %}
 </script>
 

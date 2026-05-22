@@ -8,7 +8,6 @@
   "column_break_1",
   "total_weight",
   "container_count",
-  "deviation_count",
   "is_expected"
  ],
  "fields": [
@@ -45,12 +44,6 @@
    "label": "Container Count",
    "read_only": 1,
    "description": "Number of times this item was weighed"
-  },
-  {
-   "fieldname": "deviation_count",
-   "fieldtype": "Int",
-   "label": "Deviation Count",
-   "read_only": 1
   },
   {
    "default": "0",

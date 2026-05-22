@@ -63,75 +63,13 @@ frappe.ui.form.on('Dropoff', {
             }, group);
         }
 
-        // Switch Scale (audit-only) — In Progress / Scheduled / Paused
-        if (['In Progress', 'Scheduled', 'Paused'].includes(status)) {
-            frm.add_custom_button(__('Switch Scale'), () => {
-                frappe.prompt(
-                    [
-                        {
-                            fieldname: 'new_scale',
-                            label: __('New Scale'),
-                            fieldtype: 'Link',
-                            options: 'Scale',
-                            reqd: 1,
-                        },
-                        {
-                            fieldname: 'reason',
-                            label: __('Reason'),
-                            fieldtype: 'Small Text',
-                            reqd: 1,
-                        },
-                    ],
-                    (v) => {
-                        frappe.call({
-                            method: 'scrap_metal_suite.api.v1.dropoff.switch_scale',
-                            args: {
-                                dropoff: frm.doc.name,
-                                new_scale: v.new_scale,
-                                reason: v.reason,
-                            },
-                            callback: () => frm.reload_doc(),
-                        });
-                    },
-                    __('Switch Scale'),
-                    __('Confirm')
-                );
-            }, group);
-        }
-
-        // Reassign Session (audit-only) — any status
-        frm.add_custom_button(__('Reassign Session'), () => {
-            frappe.prompt(
-                [
-                    {
-                        fieldname: 'new_session',
-                        label: __('New POS Session'),
-                        fieldtype: 'Link',
-                        options: 'POS Session',
-                        reqd: 1,
-                    },
-                    {
-                        fieldname: 'reason',
-                        label: __('Reason'),
-                        fieldtype: 'Small Text',
-                        reqd: 1,
-                    },
-                ],
-                (v) => {
-                    frappe.call({
-                        method: 'scrap_metal_suite.api.v1.dropoff.reassign_dropoff',
-                        args: {
-                            dropoff: frm.doc.name,
-                            new_session: v.new_session,
-                            reason: v.reason,
-                        },
-                        callback: () => frm.reload_doc(),
-                    });
-                },
-                __('Reassign Session'),
-                __('Confirm')
-            );
-        }, group);
+        // Switch Scale and Reassign Session: removed from the desk UI per the
+        // "one scale, one session per dropoff" invariant. Mid-dropoff scale
+        // swaps and session handovers are out of scope; if a real disruption
+        // happens, the operator should void the dropoff and start fresh.
+        // The underlying API endpoints (`switch_scale`, `reassign_dropoff`)
+        // are kept for emergency console use by sysadmins, but no operator
+        // path leads to them.
 
         // Mark Verified (Override) — Needs Review
         if (frm.doc.verification_status === 'Needs Review' && !frm.doc.verification_overridden) {

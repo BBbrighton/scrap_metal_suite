@@ -27,6 +27,10 @@ BASE_URL = os.environ.get("SMT_UI_BASE_URL", "http://localhost:8000")
 ADMIN_USER = os.environ.get("SMT_UI_ADMIN_USER", "Administrator")
 ADMIN_PWD = os.environ.get("SMT_UI_ADMIN_PWD", "admin")
 HEADLESS = os.environ.get("SMT_UI_HEADLESS", "0") != "0"
+# Set SMT_UI_KEEP_DATA=1 to skip the teardown cleanup so seeded data
+# (Dropoff, containers, session, supplier, scale, profile, PL, PO) is
+# left in the DB after the test run for manual inspection.
+KEEP_DATA = os.environ.get("SMT_UI_KEEP_DATA", "0") != "0"
 
 
 # ---------------------------------------------------------------------------

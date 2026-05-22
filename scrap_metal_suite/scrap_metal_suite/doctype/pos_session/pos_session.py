@@ -64,11 +64,47 @@ class POSSession(Document):
     def on_update(self):
         """Handle scale release when session is closed"""
         if self.status == "Closed" and self.scale:
-            # Check if scale is still marked as in use by this session
-            in_use_by = frappe.db.get_value("Scale", self.scale, "in_use_by_session")
-            if in_use_by == self.name:
-                # Use get_doc for activity tracking
-                scale_doc = frappe.get_doc("Scale", self.scale)
-                scale_doc.in_use = 0
-                scale_doc.in_use_by_session = None
-                scale_doc.save()
+            self._release_scale_lock()
+
+    def on_trash(self):
+        """Release any scale lock pointing at this session.
+
+        Without this hook, a session deleted via `frappe.delete_doc(force=True)`
+        (e.g. test cleanup) leaves the linked Scale with `in_use=1,
+        in_use_by_session=<deleted name>` — a stuck lock that the next
+        operator can't clear without a manual SQL fix. We sweep ALL scales
+        pointing at this session, not just `self.scale`, in case a prior
+        switch_scale moved the lock to a different scale.
+        """
+        for scale_name in frappe.get_all(
+            "Scale",
+            filters={"in_use_by_session": self.name},
+            pluck="name",
+        ):
+            try:
+                # Direct DB write — at on_trash time, get_doc + save round-trip
+                # may fail because parent in-progress deletes can race with
+                # related-doc lookups. The scale's audit trail isn't critical
+                # for a session-cleanup release.
+                frappe.db.set_value(
+                    "Scale", scale_name,
+                    {"in_use": 0, "in_use_by_session": None},
+                    update_modified=False,
+                )
+            except Exception as e:
+                # Don't block the trash on a side-effect failure.
+                frappe.log_error(
+                    f"Failed to release scale {scale_name} on POS Session {self.name} trash: {e}",
+                    "POS Session on_trash scale release",
+                )
+
+    def _release_scale_lock(self):
+        """Clear the in_use lock on the linked scale if it still points here."""
+        if not self.scale:
+            return
+        in_use_by = frappe.db.get_value("Scale", self.scale, "in_use_by_session")
+        if in_use_by == self.name:
+            scale_doc = frappe.get_doc("Scale", self.scale)
+            scale_doc.in_use = 0
+            scale_doc.in_use_by_session = None
+            scale_doc.save()

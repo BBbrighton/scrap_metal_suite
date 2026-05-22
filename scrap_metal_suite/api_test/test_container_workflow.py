@@ -5,10 +5,17 @@
 #
 # Tests the full container weighing loop documented in
 # docs/DROPOFF_CONTAINER_REDESIGN.md §11.2:
-#   open POS Session → add 5 containers across 3 grades → reweigh one →
-#   pause → resume on a NEW session (same scale) → add another container →
-#   complete → assert per-grade aggregation lives in `item_summary` and the
-#   deprecated `actual_items` table is empty.
+#   submit Price Lock → auto POS Order is created → schedule Dropoff linked
+#   to that POS Order → open POS Session → add 5 containers across 3 grades →
+#   reweigh one → pause → resume on a NEW session (same scale) → add another
+#   container → complete → assert per-grade aggregation lives in
+#   `item_summary` and the deprecated `actual_items` table is empty.
+#
+# The flow always begins with a Price Lock — there are no walk-in suppliers
+# in this business (a PL is created on-the-spot if needed; see
+# docs/DROPOFF_CONTAINER_REDESIGN.md §14.18). Tests that bypassed the upstream
+# PL→PO chain by stuffing `expected_items` directly were rewritten to mirror
+# the production path.
 #
 # Item names are CANONICAL THAI (BILINGUAL_GUIDE.md §2). This file never
 # wraps `item_name` in `_()` and never compares to an English equivalent.
@@ -98,11 +105,41 @@ def cleanup_test_data():
         )
     frappe.db.commit()
 
+    # Cancel any submitted Price Locks for our test supplier first — submitted
+    # docs can't be deleted directly. Each PL has a paired POS Order
+    # (auto-created on PL submit) which must be cancelled before its parent.
+    for pl_name in frappe.get_all(
+        "SMT Price Lock",
+        filters={"supplier": ["like", f"%{TEST_PREFIX}%"]},
+        pluck="name",
+    ):
+        try:
+            for po_name in frappe.get_all(
+                "POS Order", filters={"smt_price_lock": pl_name}, pluck="name"
+            ):
+                if frappe.db.get_value("POS Order", po_name, "docstatus") == 1:
+                    frappe.db.set_value(
+                        "POS Order", po_name, "status", "Pending",
+                        update_modified=False,
+                    )
+                    po_doc = frappe.get_doc("POS Order", po_name)
+                    po_doc.cancel()
+                frappe.delete_doc("POS Order", po_name, force=True, ignore_permissions=True)
+
+            pl_doc = frappe.get_doc("SMT Price Lock", pl_name)
+            if pl_doc.docstatus == 1:
+                pl_doc.cancel()
+            frappe.delete_doc("SMT Price Lock", pl_name, force=True, ignore_permissions=True)
+        except Exception:
+            pass
+
     # Delete in dependency order.
     for dt, filt in [
         ("Scrap Weight Container", {"name": ["like", "CTN-%"]}),
         ("Dropoff", {"license_plate": ["like", f"%{TEST_PREFIX}%"]}),
         ("POS Session", {"operator": TEST_OPERATOR}),
+        # Orphan POS Orders from suppliers we're about to delete.
+        ("POS Order", {"supplier": ["like", f"%{TEST_PREFIX}%"]}),
         ("Supplier", {"supplier_name": ["like", f"%{TEST_PREFIX}%"]}),
         ("POS Profile Scrap", {"profile_name": ["like", f"%{TEST_PREFIX}%"]}),
         ("Scale", {"scale_name": ["like", f"%{TEST_PREFIX}%"]}),
@@ -255,7 +292,41 @@ def open_pos_session(profile, scale, operator):
     return doc.name
 
 
-def make_dropoff(supplier, expected):
+def make_price_lock(supplier, items):
+    """Submit an SMT Price Lock and return (price_lock_name, pos_order_name).
+
+    `items` is a list of (item_code, qty_kg, rate) tuples. The submit triggers
+    automatic POS Order creation via the PL controller's on_submit hook;
+    we read the auto-created PO back from the link.
+    """
+    pl = frappe.get_doc({
+        "doctype": "SMT Price Lock",
+        "supplier": supplier,
+        "po_date": now_datetime(),
+        "items": [
+            {"item_code": c, "po_qty": q, "po_rate": r}
+            for c, q, r in items
+        ],
+    })
+    pl.insert(ignore_permissions=True)
+    pl.submit()
+
+    po_name = frappe.db.get_value("POS Order", {"smt_price_lock": pl.name}, "name")
+    if not po_name:
+        frappe.throw(f"Auto POS Order not created for SMT Price Lock {pl.name}")
+    return pl.name, po_name
+
+
+def make_dropoff(supplier, expected, pos_order_name):
+    """Schedule a Dropoff bound to a POS Order.
+
+    `expected` is the list of (item_code, indicated_kg) tuples that gets
+    written into Dropoff.expected_items. In production this is populated by
+    the office when scheduling; tests pass it explicitly to keep the test
+    data deterministic. The Dropoff is also linked to the upstream POS Order
+    via the `orders` child table — every Dropoff has at least one PO link
+    (no walk-ins).
+    """
     doc = frappe.get_doc({
         "doctype": "Dropoff",
         "dropoff_scheduled_start": now_datetime(),
@@ -263,10 +334,14 @@ def make_dropoff(supplier, expected):
         "license_plate": f"{TEST_PREFIX}WF-001",
         "supplier": supplier,
         "status": "Scheduled",
-        # Permissive variance thresholds so complete_dropoff isn't gated by
-        # the truck/scrap variance check (we test that elsewhere).
-        "truck_variance_threshold_percent": 100.0,
-        "indicated_variance_threshold_percent": 100.0,
+        # Realistic thresholds (matching production defaults, post Wave 7 fix).
+        # The reweigh in step 5 introduces a ~2.5% truck-vs-scrap variance which
+        # exceeds 0.1%, so the dropoff naturally lands in Needs Review at
+        # completion — exactly the production behavior. Manager would then
+        # resolve via verify_dropoff override.
+        "truck_variance_threshold_percent": 0.1,
+        "indicated_variance_threshold_percent": 0.1,
+        "orders": [{"pos_order": pos_order_name}],
     })
     for code, indicated in expected:
         doc.append("expected_items", {"item": code, "indicated_weight": flt(indicated)})
@@ -278,7 +353,7 @@ def make_dropoff(supplier, expected):
 # Main runner
 # ============================================================
 
-def run(cleanup_first=True):
+def run(cleanup_first=True, cleanup_after=True):
     """Run the container workflow integration test."""
     print("\n" + "=" * 70)
     print("SCRAP METAL SUITE — CONTAINER WORKFLOW INTEGRATION TEST")
@@ -310,17 +385,30 @@ def run(cleanup_first=True):
             results.add("setup_master_data", False, e)
             return results.summary()
 
-        # ----- Step 1: Fresh dropoff with 3 expected items -----
+        # ----- Step 1a: Submit a Price Lock (the upstream commitment) -----
+        try:
+            pl_name, po_name = make_price_lock(supplier, [
+                (item_a, 1500, 250.0),
+                (item_b, 800, 180.0),
+                (item_c, 400, 120.0),
+            ])
+            print(f"  ✓ Submitted Price Lock {pl_name} → auto POS Order {po_name}")
+            results.add("step01a_submit_price_lock", True)
+        except Exception as e:
+            results.add("step01a_submit_price_lock", False, e)
+            return results.summary()
+
+        # ----- Step 1b: Schedule a Dropoff bound to that POS Order -----
         try:
             dropoff = make_dropoff(supplier, [
                 (item_a, 1500),
                 (item_b, 800),
                 (item_c, 400),
-            ])
-            print(f"  ✓ Created Dropoff {dropoff.name} with 3 expected items")
-            results.add("step01_create_dropoff", True)
+            ], pos_order_name=po_name)
+            print(f"  ✓ Created Dropoff {dropoff.name} linked to {po_name} with 3 expected items")
+            results.add("step01b_create_dropoff", True)
         except Exception as e:
-            results.add("step01_create_dropoff", False, e)
+            results.add("step01b_create_dropoff", False, e)
             return results.summary()
 
         # ----- Step 2: Open POS Session as operator -----
@@ -478,9 +566,27 @@ def run(cleanup_first=True):
         finally:
             frappe.set_user("Administrator")
 
-        # ----- Step 9: complete_dropoff -----
+        # ----- Step 9: finish_weighing_session (Wave 10 — generates Scrap Weight receipt) -----
         try:
-            # complete_dropoff requires gross/tare/net truck weights.
+            frappe.set_user(TEST_OPERATOR)
+            res = dropoff_api.finish_weighing_session(dropoff=dropoff.name)
+            sw_name = res["scrap_weight"]
+            sw = frappe.get_doc("Scrap Weight", sw_name)
+            assert sw.docstatus == 1, f"Scrap Weight not submitted: {sw.docstatus}"
+            assert sw.dropoff == dropoff.name
+            assert sw.total_container_count == 6, f"expected 6 bags, got {sw.total_container_count}"
+            assert len(sw.items) == 3, f"expected 3 grade rows, got {len(sw.items)}"
+            print(f"  ✓ finish_weighing_session: SW={sw_name}, total={sw.total_weight}kg, bags={sw.total_container_count}, items={len(sw.items)}")
+            results.add("step09_finish_weighing_session", True)
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            results.add("step09_finish_weighing_session", False, e)
+        finally:
+            frappe.set_user("Administrator")
+
+        # ----- Step 10: complete_dropoff -----
+        try:
+            # Truck weights for verification reconciliation (independent of bag side).
             do = frappe.get_doc("Dropoff", dropoff.name)
             do.gross_weight = 3500
             do.tare_weight = 2400
@@ -494,14 +600,14 @@ def run(cleanup_first=True):
             assert do.status == "Completed"
             print(f"  ✓ complete_dropoff: status={do.status}, "
                   f"verification_status={do.verification_status}")
-            results.add("step09_complete", True)
+            results.add("step10_complete", True)
         except Exception as e:
             import traceback; traceback.print_exc()
-            results.add("step09_complete", False, e)
+            results.add("step10_complete", False, e)
         finally:
             frappe.set_user("Administrator")
 
-        # ----- Step 10: actual_items DEPRECATED (empty), item_summary populated -----
+        # ----- Step 11: actual_items DEPRECATED (empty), item_summary populated -----
         try:
             do = frappe.get_doc("Dropoff", dropoff.name)
             # Deprecated table: should be empty in the container model.
@@ -530,22 +636,25 @@ def run(cleanup_first=True):
                 )
             print(f"  ✓ actual_items empty (deprecated); item_summary aggregates "
                   f"{len(do.item_summary)} grades correctly")
-            results.add("step10_aggregation_shape", True)
+            results.add("step11_aggregation_shape", True)
         except Exception as e:
-            results.add("step10_aggregation_shape", False, e)
+            results.add("step11_aggregation_shape", False, e)
 
     except Exception as e:
         print(f"\n!!! FATAL: {e}")
         import traceback; traceback.print_exc()
         results.add("fatal", False, e)
     finally:
-        # ----- Step 11: cleanup -----
-        try:
-            frappe.set_user("Administrator")
-            cleanup_test_data()
-            print("  ✓ Cleanup done")
-        except Exception as e:
-            print(f"  ! Cleanup error (non-fatal): {e}")
+        # ----- Step 11: cleanup (optional) -----
+        if cleanup_after:
+            try:
+                frappe.set_user("Administrator")
+                cleanup_test_data()
+                print("  ✓ Cleanup done")
+            except Exception as e:
+                print(f"  ! Cleanup error (non-fatal): {e}")
+        else:
+            print("  • Cleanup skipped — fixtures retained in the DB for inspection")
         frappe.set_user(original_user or "Administrator")
 
     return results.summary()

@@ -17,7 +17,6 @@
         edit_container: 'Edit Container',
         void_container: 'Void Container',
         weight_history: 'Weight History',
-        container_no: 'Container No',
         container_type: 'Container Type',
         container_count: 'Containers',
         bag: 'Bag',
@@ -61,7 +60,6 @@
         action_complete: 'Complete',
         action_switch_scale: 'Switch Scale',
         action_reassign: 'Reassign Session',
-        action_approve_deviation: 'Approve Deviation',
         action_mark_verified: 'Mark Verified',
         action_override_verification: 'Override Verification',
         action_void: 'Void',
@@ -69,21 +67,33 @@
         action_print_sticker: 'Print Sticker',
         action_print_all_stickers: 'Print All (Stickers)',
         action_reprint: 'Reprint',
+        action_take_photo: 'Take Photo',
+        action_reopen: 'Reopen',
 
-        // Deviations
-        deviation: 'Deviation',
-        deviation_warning: 'Grade differs from expected',
-        downgrade: 'Downgrade',
-        upgrade: 'Upgrade',
-        substitution: 'Substitution',
-        unplanned_add: 'Unplanned-Add',
-        deviation_approval_required: 'Approval Required',
-        deviation_approved_by: 'Approved by',
+        // Photos (Wave 11)
+        photo_count_label: 'Photos',
+        photos_attached: 'Photos attached',
+        photos_attach_failed: 'Failed to attach some photos',
+
+        // Reopen flow (Wave 11)
+        prompt_reopen_reason: 'Reason to reopen this dropoff:',
+        dropoff_reopened: 'Dropoff reopened',
+        dropoff_reopened_cancel: 'Dropoff reopened — receipt {0} cancelled, fresh receipt will be issued on next finish',
+        dropoff_completed_banner: 'Drop-off completed. Click Reopen above to add more bags.',
+        journal_empty_completed: 'Drop-off closed — Reopen to add or modify bags.',
+        noRecentWeight: 'No active receipt yet — finish weighing first.',
+
+        // Verification
         override_reason: 'Override Reason',
 
+        // Wave 10
+        scrap_weight_issued: 'Receipt issued',
+        scrap_weight_amended: 'Receipt amended (reweigh)',
+
+        // Wave 11 (three-pane terminal)
+        container_empty_hint: 'No containers yet — click an item to start weighing',
+
         // Prompts
-        prompt_deviation_reason: 'Reason for deviation',
-        prompt_deviation_type: 'Deviation type',
         prompt_reweigh_reason: 'Reason for reweigh',
         prompt_pause_reason: 'Reason for pause',
         prompt_void_reason: 'Reason for voiding',
@@ -115,7 +125,6 @@
         edit_container: 'แก้ไขภาชนะ',
         void_container: 'ยกเลิกภาชนะ',
         weight_history: 'ประวัติการชั่ง',
-        container_no: 'ภาชนะที่',
         container_type: 'ประเภทภาชนะ',
         container_count: 'ภาชนะ',
         bag: 'ถุง',
@@ -159,7 +168,6 @@
         action_complete: 'เสร็จสิ้น',
         action_switch_scale: 'เปลี่ยนตราชั่ง',
         action_reassign: 'เปลี่ยนเซสชัน',
-        action_approve_deviation: 'อนุมัติความเบี่ยงเบน',
         action_mark_verified: 'ยืนยันการตรวจสอบ',
         action_override_verification: 'ข้ามการตรวจสอบ',
         action_void: 'ยกเลิก',
@@ -167,21 +175,33 @@
         action_print_sticker: 'พิมพ์สติ๊กเกอร์',
         action_print_all_stickers: 'พิมพ์สติ๊กเกอร์ทั้งหมด',
         action_reprint: 'พิมพ์ซ้ำ',
+        action_take_photo: 'ถ่ายรูป',
+        action_reopen: 'เปิดใหม่',
 
-        // Deviations
-        deviation: 'ความเบี่ยงเบน',
-        deviation_warning: 'เกรดต่างจากที่คาดไว้',
-        downgrade: 'ลดเกรด',
-        upgrade: 'เพิ่มเกรด',
-        substitution: 'ทดแทน',
-        unplanned_add: 'เพิ่มนอกแผน',
-        deviation_approval_required: 'ต้องขออนุมัติ',
-        deviation_approved_by: 'อนุมัติโดย',
+        // Photos (Wave 11)
+        photo_count_label: 'รูป',
+        photos_attached: 'แนบรูปแล้ว',
+        photos_attach_failed: 'แนบรูปบางรูปล้มเหลว',
+
+        // Reopen flow (Wave 11)
+        prompt_reopen_reason: 'เหตุผลในการเปิดใบนี้ใหม่:',
+        dropoff_reopened: 'เปิดใบดร็อปออฟใหม่แล้ว',
+        dropoff_reopened_cancel: 'เปิดใบดร็อปออฟใหม่ — ใบชั่ง {0} ถูกยกเลิก จะออกใบใหม่เมื่อกดเสร็จสิ้นการชั่งครั้งถัดไป',
+        dropoff_completed_banner: 'ใบดร็อปออฟเสร็จสิ้นแล้ว กดเปิดใหม่ด้านบนเพื่อเพิ่มถุง',
+        journal_empty_completed: 'ใบดร็อปออฟปิดแล้ว กดเปิดใหม่เพื่อเพิ่มหรือแก้ไขถุง',
+        noRecentWeight: 'ยังไม่มีใบชั่ง — กดเสร็จสิ้นการชั่งก่อน',
+
+        // Verification
         override_reason: 'เหตุผลในการข้าม',
 
+        // Wave 10
+        scrap_weight_issued: 'ออกใบชั่ง',
+        scrap_weight_amended: 'ออกใบชั่งฉบับแก้ไข (ชั่งซ้ำ)',
+
+        // Wave 11 (three-pane terminal)
+        container_empty_hint: 'ยังไม่มีภาชนะ — เลือกเกรดจากรายการสินค้าเพื่อเริ่มชั่ง',
+
         // Prompts
-        prompt_deviation_reason: 'เหตุผลของความเบี่ยงเบน',
-        prompt_deviation_type: 'ประเภทความเบี่ยงเบน',
         prompt_reweigh_reason: 'เหตุผลในการชั่งใหม่',
         prompt_pause_reason: 'เหตุผลในการหยุด',
         prompt_void_reason: 'เหตุผลในการยกเลิก',
