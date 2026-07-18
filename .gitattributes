@@ -1,0 +1,4 @@
+# This repo lives in WSL. Normalize text files to LF in both the repo and the
+# working tree so Windows editors/sync tools cannot reintroduce CRLF line-ending
+# churn (see docs/DROPOFF_CONTAINER_REDESIGN.md). Binary files auto-detected.
+* text=auto eol=lf

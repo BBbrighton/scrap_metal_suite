@@ -227,6 +227,56 @@ def seed_pos_truck_scenario():
     return payload
 
 
+def seed_demo_masters():
+    """Seed ONLY master data + an open Administrator session for the headed
+    full-flow DEMO (test_demo_full_flow). The Price Lock, POS Order and Dropoff
+    are created LIVE in the browser so a human can watch them originate."""
+    cleanup_ui_test_data()
+
+    item_a = _ensure_item(THAI_ITEM_PRIMARY)
+    item_b = _ensure_item(THAI_ITEM_SECONDARY)
+    supplier = _ensure_supplier()
+    scale = _ensure_scale()
+    profile = _ensure_pos_profile([item_a, item_b])
+    session = _open_admin_session(profile, scale)
+    frappe.db.commit()
+
+    payload = {
+        "supplier": supplier, "scale": scale, "profile": profile,
+        "session": session, "item_a": item_a, "item_b": item_b,
+    }
+    print("SEED_RESULT:" + json.dumps(payload))
+    return payload
+
+
+def demo_finish_and_complete(dropoff):
+    """Server-side finish + complete + verify for the headed demo.
+
+    The custom /pos/terminal page has no desk `frappe.db`/`frappe.call` client
+    API, so these settle-the-paperwork actions run via bench after the human has
+    watched the bags being weighed live in the browser.
+    """
+    from scrap_metal_suite.api.v1 import dropoff as dapi
+
+    dapi.finish_weighing_session(dropoff=dropoff)
+    do = frappe.get_doc("Dropoff", dropoff)
+    do.gross_weight = 3500
+    do.tare_weight = 2400
+    do.save(ignore_permissions=True)
+    frappe.db.commit()
+
+    dapi.complete_dropoff(dropoff=dropoff)
+    do = frappe.get_doc("Dropoff", dropoff)
+    if do.verification_status == "Needs Review":
+        dapi.verify_dropoff(dropoff=dropoff, override_reason="Variance reviewed and accepted (demo)")
+    frappe.db.commit()
+
+    do = frappe.get_doc("Dropoff", dropoff)
+    payload = {"status": do.status, "verification_status": do.verification_status}
+    print("SEED_RESULT:" + json.dumps(payload))
+    return payload
+
+
 def seed_desk_dropoff_needs_review():
     """Seed for `test_desk_dropoff.py::test_mark_verified_override`.
 
