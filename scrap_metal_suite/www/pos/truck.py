@@ -64,6 +64,12 @@ def get_context(context):
     profile = frappe.get_doc("POS Profile Scrap", session.pos_profile)
     context.profile = profile
 
+    # CCTV transport. Set on the cloud site, where the server cannot reach the
+    # camera LAN, so the terminal talks to the on-site capture agent instead:
+    #   bench --site <site> set-config camera_agent_url "http://127.0.0.1:8787"
+    # Left unset in dev / on-prem, where the backend fetches the camera itself.
+    context.camera_agent_url = frappe.conf.get("camera_agent_url") or ""
+
     return context
 
 
