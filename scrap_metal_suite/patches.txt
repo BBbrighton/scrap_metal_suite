@@ -7,3 +7,5 @@
 scrap_metal_suite.patches.v2_0.migrate_to_containers
 scrap_metal_suite.patches.v2_0.backfill_container_snapshot_fields
 scrap_metal_suite.patches.v2_0.fix_variance_threshold_defaults
+scrap_metal_suite.patches.v2_0.backfill_settled_value
+scrap_metal_suite.patches.v2_0.backfill_pos_order_status

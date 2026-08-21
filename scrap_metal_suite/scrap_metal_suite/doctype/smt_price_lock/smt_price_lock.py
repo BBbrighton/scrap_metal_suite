@@ -117,7 +117,19 @@ class SMTPriceLock(Document):
 		self.recompute_status()
 
 	def recompute_status(self):
-		"""Recompute PO status based on settlement state of all items."""
+		"""Recompute PO status and settled value from the settlement ledger.
+
+		`update_settled_qty` mutates `settled_qty` with a raw SQL UPDATE (for
+		atomicity), which never triggers `validate()` — and `calculate_totals`
+		is the only thing that recomputes `total_settled_value`. The result was
+		that status advanced to "Fully Settled" while the value stayed at its
+		last-validated figure, which for every live record was 0.00. That field
+		prints on ใบยืนยันราคา, so suppliers were handed a settlement document
+		reading 0.00 against real settled weight.
+
+		`reload()` above has already refreshed the item rows from the database,
+		so recomputing here uses the post-UPDATE truth.
+		"""
 		self.reload()
 		all_settled = all(flt(r.remaining_qty, 3) <= 0 for r in self.items)
 		any_settled = any(flt(r.settled_qty, 3) > 0 for r in self.items)
@@ -129,4 +141,12 @@ class SMTPriceLock(Document):
 		else:
 			status = "Open"
 
-		self.db_set({"status": status, "status_date": now_datetime()})
+		settled_value = flt(
+			sum(flt(r.settled_qty) * flt(r.po_rate) for r in self.items), 2
+		)
+
+		self.db_set({
+			"status": status,
+			"status_date": now_datetime(),
+			"total_settled_value": settled_value,
+		})
