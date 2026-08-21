@@ -160,22 +160,88 @@ def create_test_user(email, first_name, roles):
     return user
 
 
+def assert_blocked_by(results, name, exc, must_contain):
+    """Record a 'correctly blocked' pass ONLY if the error is the expected one.
+
+    A bare `except ValidationError: results.add(name, True)` will happily accept
+    an error from anywhere — including a broken fixture — and report the test as
+    passing. That is exactly what happened here: when Wave 9 made the Dropoff
+    fixture throw "POS Order Required", four negative tests caught that instead
+    of the condition they were written to check, and reported green. The suite
+    looked 28/37 healthy while its most important guards were inert.
+
+    `must_contain` is a substring (or list of substrings, any one matching) that
+    only the intended failure would produce.
+    """
+    text = str(exc)
+    needles = [must_contain] if isinstance(must_contain, str) else list(must_contain)
+    if any(n.lower() in text.lower() for n in needles):
+        print(f"  ✓ {name} correctly blocked: {text[:80]}")
+        results.add(name, True)
+    else:
+        results.add(
+            name, False,
+            f"blocked, but by the WRONG error — expected one of {needles}, got: {text[:160]}",
+        )
+
+
+def _price_lock_with_order(supplier, items):
+    """Submit a Price Lock and return the POS Order its on_submit creates.
+
+    Wave 9 (`Dropoff.validate_at_least_one_order`) forbids walk-in drop-offs, so
+    every Dropoff fixture must link to a POS Order. Mirrors
+    `ui_test/fixtures.py::_ensure_price_lock_with_order`.
+
+    `items` is a list of `(item_code, weight)` tuples; the lock is raised for at
+    least the weight being delivered so allocation tests are not blocked by an
+    unrelated over-allocation guard.
+    """
+    pl = frappe.get_doc({
+        "doctype": "SMT Price Lock",
+        "supplier": supplier,
+        "po_date": today(),
+        "items": [
+            {"item_code": code, "po_qty": max(weight, 1), "po_rate": 1}
+            for code, weight in items
+        ],
+    })
+    pl.insert(ignore_permissions=True)
+    pl.submit()
+    po_name = frappe.db.get_value("POS Order", {"smt_price_lock": pl.name}, "name")
+    if not po_name:
+        frappe.throw(f"Auto POS Order not created for SMT Price Lock {pl.name}")
+    return pl.name, po_name
+
+
 def create_test_dropoff_final(supplier, items, status="Unsettled"):
     """Create a Dropoff Final with good items for testing.
     items: list of (item_code, weight) tuples
 
-    Creates a Draft Dropoff (minimal, no orders — bypasses most validation),
-    then sets it to Completed via db_set. Then creates a Dropoff Final with
-    status=Unsettled (which skips the auto_complete_if_done and aggregate hooks).
-    Since no Production Sorting records exist for this Dropoff, the
-    aggregate_from_sortings hook returns early without clearing good_items.
+    Builds the full Wave 9 chain: Price Lock → POS Order → Dropoff → Dropoff
+    Final. The Dropoff is then forced to Completed via db_set.
+
+    This helper used to create a bare Dropoff with no linked orders, on the
+    stated assumption that it "bypasses most validation". Wave 9 added
+    `validate_at_least_one_order`, which made that throw "POS Order Required" —
+    and because the helper is used by most of this suite, that single failure
+    cascaded into 5 failures, 4 skips, and 4 tests that PASSED FOR THE WRONG
+    REASON (they caught the fixture's ValidationError and reported it as the
+    condition they were meant to be testing).
     """
-    # Create Dropoff as Draft — minimal fields, no orders
+    _, po_name = _price_lock_with_order(supplier, items)
+
+    # Wave 9: link the order, and mirror its items into expected_items —
+    # `validate_expected_items_match_orders` checks both directions.
     dropoff = frappe.get_doc({
         "doctype": "Dropoff",
         "supplier": supplier,
         "status": "Draft",
         "license_plate": f"{TEST_PREFIX}TRUCK",
+        "dropoff_scheduled_start": now_datetime(),
+        "orders": [{"pos_order": po_name}],
+        "expected_items": [
+            {"item": code, "indicated_weight": weight} for code, weight in items
+        ],
     })
     dropoff.insert(ignore_permissions=True)
     # Force status to Completed via db_set (bypasses validate)
@@ -855,8 +921,7 @@ def test_270_over_allocation_blocked(results, ctx):
         pof.insert(ignore_permissions=True)
         results.add("over_allocation_blocked", False, "Should have thrown validation error")
     except frappe.exceptions.ValidationError as e:
-        print(f"  ✓ Over-allocation correctly blocked: {str(e)[:80]}")
-        results.add("over_allocation_blocked", True)
+        assert_blocked_by(results, "over_allocation_blocked", e, ["exceeds", "over-allocation", "remaining"])
     except Exception as e:
         results.add("over_allocation_blocked", False, e)
 
@@ -901,8 +966,7 @@ def test_280_cross_supplier_blocked(results, ctx):
         pof.insert(ignore_permissions=True)
         results.add("cross_supplier_blocked", False, "Should have thrown")
     except frappe.exceptions.ValidationError as e:
-        print(f"  ✓ Cross-supplier correctly blocked: {str(e)[:80]}")
-        results.add("cross_supplier_blocked", True)
+        assert_blocked_by(results, "cross_supplier_blocked", e, "belongs to supplier")
     except Exception as e:
         results.add("cross_supplier_blocked", False, e)
 
@@ -925,8 +989,7 @@ def test_290_po_cancel_with_settlement(results, ctx):
         else:
             results.skip("po_cancel_blocked", f"PO status is {po.status}, not settled")
     except frappe.exceptions.ValidationError as e:
-        print(f"  ✓ Cancel correctly blocked: {str(e)[:80]}")
-        results.add("po_cancel_blocked", True)
+        assert_blocked_by(results, "po_cancel_blocked", e, ["settled quantity", "Cannot cancel"])
     except Exception as e:
         results.add("po_cancel_blocked", False, e)
 
@@ -1071,8 +1134,10 @@ def test_320_dropoff_coverage(results, ctx):
         pof.insert(ignore_permissions=True)
         results.add("dropoff_coverage_required", False, "Should have thrown — aluminum not allocated")
     except frappe.exceptions.ValidationError as e:
-        print(f"  ✓ Incomplete allocation correctly blocked: {str(e)[:80]}")
-        results.add("dropoff_coverage_required", True)
+        assert_blocked_by(
+            results, "dropoff_coverage_required", e,
+            ["has ", "not allocated", "coverage"],
+        )
     except Exception as e:
         results.add("dropoff_coverage_required", False, e)
 
@@ -1142,8 +1207,7 @@ def test_340_expired_po_blocked(results, ctx):
         pof.insert(ignore_permissions=True)
         results.add("expired_po_blocked", False, "Should have thrown")
     except frappe.exceptions.ValidationError as e:
-        print(f"  ✓ Expired PO correctly blocked: {str(e)[:80]}")
-        results.add("expired_po_blocked", True)
+        assert_blocked_by(results, "expired_po_blocked", e, "Expired")
     except Exception as e:
         results.add("expired_po_blocked", False, e)
 
