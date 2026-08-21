@@ -926,7 +926,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #374151;
+    background: #334155;
     color: #fff;
     padding: 4px 12px;
     border-radius: 20px;
@@ -937,7 +937,7 @@
 }
 
 .scale-badge:hover {
-    background: #4b5563;
+    background: #475569;
 }
 
 .scale-status-indicator { font-size: 0.7rem; margin-left: 4px; }
@@ -956,8 +956,8 @@
     top: 100%;
     left: 0;
     margin-top: 8px;
-    background: #1f2937;
-    border: 1px solid #374151;
+    background: #1e293b;
+    border: 1px solid #334155;
     border-radius: 8px;
     min-width: 200px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
@@ -967,8 +967,8 @@
 
 .scale-menu-header {
     padding: 10px 14px;
-    background: #374151;
-    border-bottom: 1px solid #4b5563;
+    background: #334155;
+    border-bottom: 1px solid #475569;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -986,7 +986,7 @@
     padding: 12px 14px;
     background: transparent;
     border: none;
-    color: #e5e7eb;
+    color: #e2e8f0;
     font-size: 0.85rem;
     cursor: pointer;
     text-align: left;
@@ -994,7 +994,7 @@
 }
 
 .scale-menu-item:hover {
-    background: #374151;
+    background: #334155;
 }
 
 /* Weight mode toggle */
@@ -1098,7 +1098,7 @@
 /* Inline scale button on same row as weight input */
 .btn-scale-toggle {
     padding: 6px 12px;
-    background: #374151;
+    background: #334155;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 6px;
     color: #94a3b8;
@@ -1109,7 +1109,7 @@
 }
 
 .btn-scale-toggle:hover {
-    background: #4b5563;
+    background: #475569;
     color: #fff;
 }
 

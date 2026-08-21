@@ -285,7 +285,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #111827;
+    background: #0f172a;
     font-size: 13px;
     flex: 0 0 auto;
 }
@@ -1951,7 +1951,7 @@ body.resizing-panes video {
     min-width: 50px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--t-text, #e2e8f0);
+    color: var(--pos-t-text, #e2e8f0);
 }
 
 .camera-slider-group {
@@ -1966,7 +1966,7 @@ body.resizing-panes video {
     height: 6px;
     -webkit-appearance: none;
     appearance: none;
-    background: var(--t-border, #334155);
+    background: var(--pos-t-border, #334155);
     border-radius: 3px;
     outline: none;
 }
@@ -1977,7 +1977,7 @@ body.resizing-panes video {
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background: var(--t-accent, #3b82f6);
+    background: var(--pos-t-accent, #3b82f6);
     cursor: pointer;
     border: 2px solid #fff;
 }
@@ -1986,9 +1986,9 @@ body.resizing-panes video {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    border: 1px solid var(--t-border, #334155);
-    background: var(--t-card, #1e293b);
-    color: var(--t-text, #e2e8f0);
+    border: 1px solid var(--pos-t-border, #334155);
+    background: var(--pos-t-card, #1e293b);
+    color: var(--pos-t-text, #e2e8f0);
     font-size: 18px;
     font-weight: bold;
     cursor: pointer;
@@ -1999,7 +1999,7 @@ body.resizing-panes video {
 }
 
 .btn-cam:active {
-    background: var(--t-accent, #3b82f6);
+    background: var(--pos-t-accent, #3b82f6);
     color: #fff;
 }
 
@@ -2008,14 +2008,14 @@ body.resizing-panes video {
     text-align: center;
     font-size: 14px;
     font-weight: 600;
-    color: var(--t-text, #e2e8f0);
+    color: var(--pos-t-text, #e2e8f0);
 }
 
 .camera-control-badge {
     font-size: 11px;
     padding: 2px 8px;
     border-radius: 10px;
-    background: var(--t-accent, #3b82f6);
+    background: var(--pos-t-accent, #3b82f6);
     color: #fff;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -2024,13 +2024,13 @@ body.resizing-panes video {
 /* Light theme overrides */
 .pos-terminal.light-theme .camera-control-row label,
 .pos-terminal.light-theme .camera-control-value {
-    color: var(--t-text, #1e293b);
+    color: var(--pos-t-text, #1e293b);
 }
 
 .pos-terminal.light-theme .btn-cam {
-    background: var(--t-card, #fff);
-    border-color: var(--t-border, #e2e8f0);
-    color: var(--t-text, #1e293b);
+    background: var(--pos-t-card, #fff);
+    border-color: var(--pos-t-border, #e2e8f0);
+    color: var(--pos-t-text, #1e293b);
 }
 
 /* Camera container - handle digital zoom overflow */
@@ -5636,7 +5636,7 @@ button.category-tab.from-order-tab.active {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #374151;
+    background: #334155;
     color: #fff;
     padding: 4px 12px;
     border-radius: 20px;
@@ -5647,7 +5647,7 @@ button.category-tab.from-order-tab.active {
 }
 
 .scale-badge:hover {
-    background: #4b5563;
+    background: #475569;
 }
 
 .scale-status-indicator {
@@ -5679,8 +5679,8 @@ button.category-tab.from-order-tab.active {
     top: 100%;
     left: 0;
     margin-top: 8px;
-    background: #1f2937;
-    border: 1px solid #374151;
+    background: #1e293b;
+    border: 1px solid #334155;
     border-radius: 8px;
     min-width: 200px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
@@ -5690,8 +5690,8 @@ button.category-tab.from-order-tab.active {
 
 .scale-menu-header {
     padding: 10px 14px;
-    background: #374151;
-    border-bottom: 1px solid #4b5563;
+    background: #334155;
+    border-bottom: 1px solid #475569;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -5714,7 +5714,7 @@ button.category-tab.from-order-tab.active {
     padding: 12px 14px;
     background: transparent;
     border: none;
-    color: #e5e7eb;
+    color: #e2e8f0;
     font-size: 0.85rem;
     cursor: pointer;
     text-align: left;
@@ -5722,11 +5722,11 @@ button.category-tab.from-order-tab.active {
 }
 
 .scale-menu-item:hover {
-    background: #374151;
+    background: #334155;
 }
 
 .scale-menu-item:active {
-    background: #4b5563;
+    background: #475569;
 }
 
 /* Light theme scale menu */
@@ -6341,7 +6341,9 @@ button.category-tab.from-order-tab.active {
     background: #0f172a;
     border: 1px solid #334155;
     border-radius: 6px;
-    color: #fff;
+    /* slate-200, matching .weight-input-large / .form-select — was #fff, which
+       read brighter than every other field value on the same card. */
+    color: #e2e8f0;
     font-size: 0.95rem;
     resize: vertical;
     min-height: 60px;
@@ -7049,13 +7051,30 @@ button.category-tab.from-order-tab.active {
    Container Redesign — terminal.html inline weighing card + container list
    ============================================================================= */
 
-/* -- Inline weighing card -- */
+/* Remarks sits in a generic .form-group, whose label is 0.9rem — noticeably
+   larger than the card's own .weigh-input-label (12px) on Grade / Net Weight /
+   Container Type. Scope the alignment to this card so other .form-group uses
+   elsewhere keep their size. */
+.container-weigh-card .form-group label {
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+/* -- Inline weighing card --
+   NOTE: every custom property in this file is `--pos-` prefixed, deliberately.
+   Frappe defines a Bootstrap-derived palette at :root on every www page —
+   card-bg (white), text-muted (#525252), success (#28a745), warning (#ffc107).
+   An unprefixed `var(--card-bg, #1f2937)` therefore resolved to Frappe's WHITE:
+   the variable IS defined, so our fallback never fired and this card rendered
+   light inside the dark terminal. Same for the muted labels, the green weight
+   readout and the amber badges, which silently rendered in Bootstrap colours.
+   Prefix any new token the same way. */
 .container-weigh-card {
     padding: 12px 14px;
     margin-top: 10px;
     border-radius: 8px;
-    background: var(--card-bg, #1f2937);
-    border: 1px solid var(--card-border, #374151);
+    background: var(--pos-card-bg, #1e293b);
+    border: 1px solid var(--pos-card-border, #334155);
 }
 
 .weigh-grade-row {
@@ -7063,17 +7082,17 @@ button.category-tab.from-order-tab.active {
     align-items: center;
     gap: 10px;
     padding: 8px 0;
-    border-bottom: 1px dashed var(--card-border, #374151);
+    border-bottom: 1px dashed var(--pos-card-border, #334155);
     margin-bottom: 10px;
 }
 .weigh-grade-label {
     font-size: 13px;
-    color: var(--text-muted, #9ca3af);
+    color: var(--pos-text-muted, #94a3b8);
     min-width: 60px;
 }
 .weigh-grade-value { flex: 1; }
 .weigh-grade-empty {
-    color: var(--text-muted, #9ca3af);
+    color: var(--pos-text-muted, #94a3b8);
     font-style: italic;
     font-size: 13px;
 }
@@ -7083,14 +7102,14 @@ button.category-tab.from-order-tab.active {
     gap: 8px;
     padding: 4px 10px;
     border-radius: 16px;
-    background: var(--accent-soft, #1e3a8a33);
-    color: var(--accent, #60a5fa);
+    background: var(--pos-accent-soft, #1e3a8a33);
+    color: var(--pos-accent, #60a5fa);
     font-weight: 600;
 }
 .weigh-grade-clear {
     background: transparent;
     border: 0;
-    color: var(--accent, #60a5fa);
+    color: var(--pos-accent, #60a5fa);
     cursor: pointer;
     font-size: 14px;
     line-height: 1;
@@ -7115,18 +7134,18 @@ button.category-tab.from-order-tab.active {
     font-size: 28px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-    color: var(--success, #22c55e);
+    color: var(--pos-success, #22c55e);
 }
 .weigh-live-display .live-weight-uom {
     font-size: 14px;
-    color: var(--text-muted, #9ca3af);
+    color: var(--pos-text-muted, #94a3b8);
 }
 .weigh-live-display .live-weight-stable {
     margin-left: 6px;
     padding: 2px 6px;
     border-radius: 4px;
-    background: var(--success-soft, #16653433);
-    color: var(--success, #22c55e);
+    background: var(--pos-success-soft, #16653433);
+    color: var(--pos-success, #22c55e);
     font-size: 11px;
     font-weight: 600;
 }
@@ -7134,8 +7153,8 @@ button.category-tab.from-order-tab.active {
     margin-left: 6px;
     padding: 2px 6px;
     border-radius: 4px;
-    background: var(--warning-soft, #78350f33);
-    color: var(--warning, #f59e0b);
+    background: var(--pos-warning-soft, #78350f33);
+    color: var(--pos-warning, #f59e0b);
     font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -7152,7 +7171,7 @@ button.category-tab.from-order-tab.active {
 .weigh-input-label {
     display: block;
     font-size: 12px;
-    color: var(--text-muted, #9ca3af);
+    color: var(--pos-text-muted, #94a3b8);
     margin-bottom: 4px;
 }
 .weight-input-large {
@@ -7162,12 +7181,12 @@ button.category-tab.from-order-tab.active {
     text-align: right;
     padding: 8px 12px;
     border-radius: 6px;
-    background: var(--input-bg, #111827);
-    border: 1px solid var(--card-border, #374151);
-    color: var(--text-primary, #f9fafb);
+    background: var(--pos-input-bg, #0f172a);
+    border: 1px solid var(--pos-card-border, #334155);
+    color: var(--pos-text-primary, #e2e8f0);
 }
 .weight-input-large:focus {
-    outline: 2px solid var(--accent, #60a5fa);
+    outline: 2px solid var(--pos-accent, #60a5fa);
     outline-offset: -1px;
 }
 .weight-input-group {
@@ -7176,13 +7195,13 @@ button.category-tab.from-order-tab.active {
     align-items: center;
     gap: 6px;
 }
-.weight-uom { color: var(--text-muted, #9ca3af); }
+.weight-uom { color: var(--pos-text-muted, #94a3b8); }
 
 .weigh-action-row {
     align-items: flex-end;
     margin-top: 6px;
     padding-top: 10px;
-    border-top: 1px dashed var(--card-border, #374151);
+    border-top: 1px dashed var(--pos-card-border, #334155);
 }
 
 /* Wave 11 — banner shown in MIDDLE pane when Dropoff is Completed/Cancelled.
@@ -7264,7 +7283,7 @@ button.category-tab.from-order-tab.active {
 }
 @keyframes container-row-flash {
     0%   { background: rgba(96, 165, 250, 0.35); }
-    100% { background: var(--card-bg, #1f2937); }
+    100% { background: var(--pos-card-bg, #1e293b); }
 }
 .pos-terminal.light-theme .container-row-highlight {
     box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.55);
@@ -7278,12 +7297,24 @@ button.category-tab.from-order-tab.active {
 }
 
 /* Camera-icon badge inside journal rows when a container has photos. */
+/* Now a <button> — clicking it opens the bag's saved photos in a view-only
+   photo modal. Styled to stay visually identical to the old inert <span>. */
 .container-row-photo {
     flex: 0 0 auto;
     color: #60a5fa;
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
+    background: none;
+    border: 0;
+    padding: 2px 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.container-row-photo:hover {
+    background: rgba(96, 165, 250, 0.16);
 }
 .pos-terminal.light-theme .container-row-photo { color: #1d4ed8; }
 
@@ -7292,9 +7323,9 @@ button.category-tab.from-order-tab.active {
     width: 100%;
     padding: 8px 10px;
     border-radius: 6px;
-    background: var(--input-bg, #111827);
-    border: 1px solid var(--card-border, #374151);
-    color: var(--text-primary, #f9fafb);
+    background: var(--pos-input-bg, #0f172a);
+    border: 1px solid var(--pos-card-border, #334155);
+    color: var(--pos-text-primary, #e2e8f0);
 }
 .btn-pos.btn-large {
     flex: 1;
@@ -7312,8 +7343,8 @@ button.category-tab.from-order-tab.active {
     padding: 10px 12px;
     margin: 6px 0;
     border-radius: 6px;
-    background: var(--card-bg, #1f2937);
-    border: 1px solid var(--card-border, #374151);
+    background: var(--pos-card-bg, #1e293b);
+    border: 1px solid var(--pos-card-border, #334155);
 }
 .container-row-main {
     display: flex;
@@ -7331,7 +7362,7 @@ button.category-tab.from-order-tab.active {
     line-height: 1.2;
 }
 .container-row-name-text {
-    color: var(--text-primary, #f9fafb);
+    color: var(--pos-text-primary, #e2e8f0);
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -7359,14 +7390,14 @@ button.category-tab.from-order-tab.active {
 }
 .container-row-type {
     flex: 0 0 50px;
-    color: var(--text-muted, #9ca3af);
+    color: var(--pos-text-muted, #94a3b8);
     font-size: 12px;
     text-align: center;
 }
 .container-row-weight {
     flex: 0 0 100px;
     text-align: right;
-    color: var(--success, #22c55e);
+    color: var(--pos-success, #22c55e);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
@@ -7390,11 +7421,11 @@ button.category-tab.from-order-tab.active {
     margin-top: 12px;
     padding: 6px 10px;
     border-radius: 6px;
-    background: var(--bg-muted, #11182780);
-    border: 1px dashed var(--card-border, #374151);
+    background: var(--pos-bg-muted, #0f172a80);
+    border: 1px dashed var(--pos-card-border, #334155);
 }
 .container-voided-block-header {
-    color: var(--text-muted, #9ca3af);
+    color: var(--pos-text-muted, #94a3b8);
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -7407,7 +7438,7 @@ button.category-tab.from-order-tab.active {
     gap: 8px;
     padding: 10px 0;
     margin-top: 12px;
-    border-top: 1px solid var(--card-border, #374151);
+    border-top: 1px solid var(--pos-card-border, #334155);
 }
 
 /* Panel header: count + total */
@@ -7416,7 +7447,7 @@ button.category-tab.from-order-tab.active {
     align-items: center;
     justify-content: space-between;
     padding-bottom: 8px;
-    border-bottom: 1px solid var(--card-border, #374151);
+    border-bottom: 1px solid var(--pos-card-border, #334155);
 }
 .container-panel-title { font-size: 14px; font-weight: 600; }
 .container-count-badge {
@@ -7424,13 +7455,13 @@ button.category-tab.from-order-tab.active {
     margin-left: 6px;
     padding: 1px 8px;
     border-radius: 10px;
-    background: var(--accent-soft, #1e3a8a33);
-    color: var(--accent, #60a5fa);
+    background: var(--pos-accent-soft, #1e3a8a33);
+    color: var(--pos-accent, #60a5fa);
     font-size: 11px;
 }
 .container-total-weight {
     font-weight: 700;
-    color: var(--success, #22c55e);
+    color: var(--pos-success, #22c55e);
     font-variant-numeric: tabular-nums;
 }
 
@@ -7488,20 +7519,20 @@ button.category-tab.from-order-tab.active {
 }
 
 /* Tighten journal-pane row colors per theme — the generic .container-row
-   rule uses `var(--card-bg, #1f2937)` which is fine in dark mode but the
+   rule uses `var(--pos-card-bg, #1f2937)` which is fine in dark mode but the
    light-theme override only sets `background`/`border-color`. Spell out the
    text colors here so the row text doesn't inherit the dark `--text-primary`
    fallback when light-theme is active. */
 .panel-journal .container-row {
-    background: #1f2937;
-    border-color: #374151;
-    color: #f9fafb;
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
 }
 .panel-journal .container-row .container-row-type {
     color: #94a3b8;
 }
 .panel-journal .container-row .container-row-name-text {
-    color: #f9fafb;
+    color: #e2e8f0;
 }
 .panel-journal .container-row .container-row-id {
     color: #64748b;

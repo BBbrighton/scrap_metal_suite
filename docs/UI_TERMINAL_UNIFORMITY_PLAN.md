@@ -1,7 +1,7 @@
 # Terminal UI Uniformity Plan
 
-**Date:** 2026-04-14
-**Status:** Proposed
+**Date:** 2026-04-14 · palette/token findings added 2026-08-21
+**Status:** Proposed (§2–§6) · §1a landed
 **Author:** Engineering (via Claude Code UI analysis agent)
 
 ---
@@ -28,6 +28,60 @@ Four terminal HTML files exist with inconsistent architectures:
 3. **Duplicated fullscreen overrides** — written 4 separate ways
 4. **Two production terminals** — orange (3-panel) and blue (2-panel) with different architectures
 5. **`terminal-base.css` does not exist** despite being referenced in project memory
+6. ~~**Frappe's Bootstrap palette leaks into every terminal**~~ — FIXED 2026-08-21, see §7
+7. ~~**Two colour families mixed** (Tailwind gray vs slate)~~ — FIXED 2026-08-21, see §7
+
+---
+
+## 1a. Palette & token findings (2026-08-21) — FIXED
+
+Two systemic problems found while chasing "the weigh card is white in dark theme". Both are now fixed in `pos.css` and `production-theme.css`, and both are **constraints the refactor in §3 must preserve**.
+
+### Problem A — Frappe hijacks unprefixed CSS custom properties
+
+Frappe defines a Bootstrap-derived palette at `:root` on **every www page** (`frappe/public/scss/common/css_variables.scss`). Our CSS used `var(--token, fallback)` assuming the fallback would apply — but the variable *is* defined, just with Frappe's value. The fallback was dead code and the terminals silently rendered Bootstrap colours:
+
+| token | Frappe forced | we intended | symptom |
+|---|---|---|---|
+| `--card-bg` | `white` | `#1f2937` | weigh card rendered white inside the dark terminal |
+| `--text-muted` | `#525252` | `#94a3b8` | all muted labels rendered muddy mid-grey |
+| `--success` | `#28a745` | `#22c55e` | live weight readout in Bootstrap green |
+| `--warning` | `#ffc107` | `#f59e0b` | MANUAL / stability badges in Bootstrap amber |
+
+**Fix:** every custom property in `pos.css` is now `--pos-` prefixed (49 renames across 16 tokens). `production-theme.css` was already safe — it uses `--production-`.
+
+> **Rule for the refactor:** the `:root` block proposed in §3.2 uses `--t-*` names. Keep a prefix. Never introduce a bare `--card-bg`, `--text-muted`, `--success`, `--warning`, `--primary`, `--danger`, `--info`, or `--border-color` — Frappe owns all of those. When adding a token, verify at runtime with
+> `getComputedStyle(document.documentElement).getPropertyValue('--yourtoken')` — if it returns anything, the name is taken.
+
+### Problem B — two Tailwind colour families were mixed
+
+The terminal shell used Tailwind **slate** (blue-tinted); the container-redesign block and the duplicated scale-picker widget used Tailwind **gray** (neutral). Gray reads muddy next to slate, which is what made the card look wrong even once it was dark.
+
+Converted 39 declarations in `pos.css` + 10 in `production-theme.css`, mapping each gray step to the same-numbered slate step. **Occurrences inside `.light-theme` rules were deliberately left alone** — there, light grey is intentional.
+
+**The canonical dark palette is slate**, and it matches the `:root` block already proposed in §3.2:
+
+| role | value | Tailwind |
+|---|---|---|
+| page background | `#0f172a` | slate-900 |
+| raised surface (cards, panes) | `#1e293b` | slate-800 |
+| recessed surface (inputs) | `#0f172a` | slate-900 |
+| border | `#334155` | slate-700 |
+| body text | `#e2e8f0` | slate-200 |
+| muted text | `#94a3b8` | slate-400 |
+| accent | `#3b82f6` | blue-500 |
+| success | `#22c55e` | green-500 |
+| warning | `#f59e0b` | amber-500 |
+
+Result: distinct surface backgrounds in the POS terminal went from **5 → 3**.
+
+### Verification method (reusable)
+
+Static greps miss this class of bug — the CSS *looks* correct. Check computed values in a real browser instead:
+
+- token hijack: read `getPropertyValue('--x')` at `:root`; non-empty means our fallback is dead
+- family mixing: collect `getComputedStyle(el).backgroundColor` across key surfaces and count distinct values
+- both scripts were throwaway; the approach is what matters
 
 ---
 
