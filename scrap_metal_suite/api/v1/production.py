@@ -579,3 +579,42 @@ def get_dropoff_final_status(dropoff):
         dropoff_final["sorting_count"] = sorting_count
 
     return dropoff_final
+
+
+@frappe.whitelist()
+def accept_dropoff_final_variance(dropoff_final, override_reason):
+    """Manager override: accept an out-of-tolerance variance on a Dropoff Final.
+
+    `DropoffFinal.auto_complete_if_done` parks a record at "In Progress" when it
+    has sorted items but the variance exceeds tolerance, and nothing else can
+    move it — there was no API, no desk button, and `dropoff_final.js` calls
+    `frm.disable_save()`. The only other exit is for the variance to become
+    acceptable, which for a real weight discrepancy it never will. Five live
+    records were stranded this way, one at 30% variance.
+
+    This is the deliberate human decision that releases it for settlement,
+    recorded with who, when and why. Mirrors
+    `scrap_metal_suite.api.v1.dropoff.verify_dropoff`.
+
+    Args:
+        dropoff_final: Dropoff Final document name
+        override_reason: why the discrepancy is being accepted (required)
+
+    Returns:
+        dict: success, status, verification_status, and the audit trail
+    """
+    check_production_operator()
+
+    doc = frappe.get_doc("Dropoff Final", dropoff_final)
+    doc.accept_variance(override_reason)
+
+    return {
+        "success": True,
+        "dropoff_final": doc.name,
+        "status": doc.status,
+        "verification_status": doc.verification_status,
+        "variance_percent": doc.variance_percent,
+        "overridden_by": doc.variance_override_by,
+        "overridden_at": doc.variance_override_at,
+        "override_reason": doc.variance_override_reason,
+    }

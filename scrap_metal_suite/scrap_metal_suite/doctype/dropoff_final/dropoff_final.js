@@ -44,6 +44,58 @@ frappe.ui.form.on('Dropoff Final', {
 			);
 		}
 
+		// Manager override — the only way out of "In Progress".
+		//
+		// auto_complete_if_done() parks a record here when it has sorted items
+		// but the variance exceeds tolerance. Nothing else can move it: every
+		// field is read-only and the form is save-disabled below, so without
+		// this button the document is stranded and can never be settled.
+		if (frm.doc.status === 'In Progress' && !frm.doc.variance_overridden) {
+			frm.add_custom_button(__('Accept Variance & Release'), function() {
+				frappe.prompt(
+					[{
+						fieldname: 'override_reason',
+						fieldtype: 'Small Text',
+						label: __('Why is this discrepancy acceptable?'),
+						reqd: 1,
+					}],
+					function(values) {
+						frappe.call({
+							method: 'scrap_metal_suite.api.v1.production.accept_dropoff_final_variance',
+							args: {
+								dropoff_final: frm.doc.name,
+								override_reason: values.override_reason,
+							},
+							freeze: true,
+							freeze_message: __('Applying override…'),
+							callback: function(r) {
+								if (r.message && r.message.success) {
+									frappe.show_alert({
+										message: __('Released for settlement'),
+										indicator: 'green',
+									}, 5);
+									frm.reload_doc();
+								}
+							},
+						});
+					},
+					__('Accept Variance of {0}%', [flt(frm.doc.variance_percent).toFixed(2)]),
+					__('Accept & Release')
+				);
+			}).addClass('btn-warning');
+		}
+
+		if (frm.doc.variance_overridden) {
+			frm.dashboard.set_headline_alert(
+				__('Variance of {0}% accepted by {1} — {2}', [
+					flt(frm.doc.variance_percent).toFixed(2),
+					frm.doc.variance_override_by,
+					frm.doc.variance_override_reason,
+				]),
+				'orange'
+			);
+		}
+
 		// Show summary stats
 		show_summary_stats(frm);
 

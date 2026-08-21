@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
@@ -100,13 +101,69 @@ class DropoffFinal(Document):
 		self.variance_ok = self.variance_percent <= threshold
 
 	def set_verification_status(self):
-		"""Set verification status based on variance"""
+		"""Set verification status based on variance.
+
+		A manager override wins: once `variance_overridden` is set, this must not
+		drag the record back to "Needs Review" on the next save, or the override
+		would be silently undone and the document would re-strand itself.
+		Mirrors `Dropoff.calculate_verification_status`, which respects
+		`verification_overridden` the same way.
+		"""
+		if self.variance_overridden:
+			self.verification_status = "Verified"
+			return
+
 		if not self.good_items and not self.unwanted_items:
 			self.verification_status = "Pending"
 		elif self.variance_ok:
 			self.verification_status = "Verified"
 		else:
 			self.verification_status = "Needs Review"
+
+	def accept_variance(self, override_reason=None):
+		"""Manager override: accept an out-of-tolerance variance and release
+		this Dropoff Final for settlement.
+
+		`auto_complete_if_done` parks a record at "In Progress" when it has
+		sorted items but `variance_ok` is false, and nothing else can move it —
+		no API, no button, and the desk form calls `frm.disable_save()`. The
+		only other way out is for the variance itself to become acceptable,
+		which for a genuine weight discrepancy it never will.
+
+		This is the deliberate human decision that closes it, recorded with who,
+		when and why. Mirrors `Dropoff.mark_verified`.
+
+		Idempotent: re-running on an already-overridden record is a no-op.
+		"""
+		if self.status in ("Settled", "Cancelled"):
+			frappe.throw(
+				_("Cannot override variance on a {0} Dropoff Final").format(self.status)
+			)
+
+		if self.variance_overridden:
+			return
+
+		if not override_reason:
+			frappe.throw(_("Override reason required to accept an out-of-tolerance variance"))
+
+		self.variance_overridden = 1
+		self.variance_override_by = frappe.session.user
+		self.variance_override_at = now_datetime()
+		self.variance_override_reason = override_reason
+
+		self.verification_status = "Verified"
+		self.status = "Unsettled"
+		if not self.completed_at:
+			self.completed_at = now_datetime()
+			self.completed_by = frappe.session.user
+
+		self.save(ignore_permissions=True)
+		self.add_comment(
+			"Comment",
+			_("Variance override applied ({0}%): {1}").format(
+				flt(self.variance_percent, 2), override_reason
+			),
+		)
 
 	def auto_complete_if_done(self):
 		"""Auto-set to Unsettled if sorting is done and variance is within threshold"""
