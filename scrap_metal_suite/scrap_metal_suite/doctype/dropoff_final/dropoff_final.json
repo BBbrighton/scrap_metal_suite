@@ -2,7 +2,7 @@
  "actions": [],
  "autoname": "naming_series:",
  "creation": "2026-03-03 00:00:00.000000",
- "default_print_format": "\u0e43\u0e1a\u0e04\u0e31\u0e14\u0e41\u0e22\u0e01",
+ "default_print_format": "ใบคัดแยก",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -33,6 +33,12 @@
   "column_break_verification",
   "variance_ok",
   "verification_status",
+  "section_override",
+  "variance_overridden",
+  "variance_override_by",
+  "column_break_override",
+  "variance_override_at",
+  "variance_override_reason",
   "section_workflow",
   "completed_by",
   "completed_at",
@@ -202,7 +208,6 @@
    "read_only": 1
   },
   {
-   "default": "0.1",
    "fieldname": "variance_threshold_percent",
    "fieldtype": "Percent",
    "label": "Variance Threshold %",
@@ -227,6 +232,42 @@
    "in_standard_filter": 1,
    "label": "Verification Status",
    "options": "Pending\nVerified\nNeeds Review",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_override",
+   "fieldtype": "Section Break",
+   "label": "Variance Override",
+   "depends_on": "eval:doc.variance_overridden"
+  },
+  {
+   "fieldname": "variance_overridden",
+   "fieldtype": "Check",
+   "label": "Variance Overridden",
+   "read_only": 1,
+   "description": "Set when a manager accepts an out-of-tolerance variance to release this Dropoff Final for settlement. Blocks verification_status from reverting to Needs Review on subsequent saves."
+  },
+  {
+   "fieldname": "variance_override_by",
+   "fieldtype": "Link",
+   "options": "User",
+   "label": "Overridden By",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_override",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "variance_override_at",
+   "fieldtype": "Datetime",
+   "label": "Overridden At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "variance_override_reason",
+   "fieldtype": "Small Text",
+   "label": "Override Reason",
    "read_only": 1
   },
   {

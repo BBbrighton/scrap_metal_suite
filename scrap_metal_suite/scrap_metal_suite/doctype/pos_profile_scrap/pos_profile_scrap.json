@@ -44,7 +44,7 @@
    "in_list_view": 1,
    "label": "Default Price List",
    "options": "Price List",
-   "reqd": 1
+   "description": "Fetched by the session picker but not used for pricing on the scrap terminal. Pricing lives in SMT Price Lock."
   },
   {
    "fieldname": "warehouse",
@@ -59,7 +59,7 @@
   },
   {
    "default": "1",
-   "description": "Show item prices to operator on POS screen",
+   "description": "⚠️ NOT CURRENTLY USED — no runtime code reads this field. Changing it has no effect. Scheduled for review in Phase 10 cleanup. The scrap terminal does not display prices.",
    "fieldname": "show_price",
    "fieldtype": "Check",
    "label": "Show Price to Operator"
@@ -89,7 +89,7 @@
    "label": "Enable Sticker Print"
   },
   {
-   "description": "OS-level printer name (optional, for routing)",
+   "description": "⚠️ NOT USED — printer selection happens in the browser's print dialog, which a server-side setting cannot control.",
    "fieldname": "sticker_printer_name",
    "fieldtype": "Data",
    "label": "Sticker Printer Name"

@@ -17,7 +17,7 @@
   },
   {
    "default": "0.1",
-   "description": "Used by truck/scrap variance check",
+   "description": "⚠️ NOT USED AT RUNTIME. Read only by the one-shot container migration patch. Live variance uses the per-Dropoff fields `truck_variance_threshold_percent` / `indicated_variance_threshold_percent`. Changing this does NOT tighten or loosen any weight check.",
    "fieldname": "weight_variance_threshold_pct",
    "fieldtype": "Percent",
    "label": "Weight Variance Threshold (%)"
@@ -29,7 +29,7 @@
   },
   {
    "default": "1",
-   "description": "Default behaviour; per-Profile override exists",
+   "description": "⚠️ NOT USED — no code reads this. Sticker auto-print is controlled by `enable_sticker_print` on POS Profile Scrap.",
    "fieldname": "auto_print_sticker_default",
    "fieldtype": "Check",
    "label": "Auto Print Sticker (default)"
