@@ -75,6 +75,18 @@ def run(cleanup_first=True, cleanup_after=True):
 
     try:
         frappe.set_user("Administrator")
+
+        # Fixture hygiene, not part of what is under test. A preceding suite's
+        # cleanup deletes the test User but leaves its Contact behind; Frappe's
+        # User insert then syncs to that stale Contact and throws
+        # TimestampMismatchError. Only shows up when this runs after another
+        # suite, which is exactly the case a batch run hits.
+        for contact in frappe.get_all(
+            "Contact", filters={"email_id": wf.TEST_OPERATOR}, pluck="name"
+        ):
+            frappe.delete_doc("Contact", contact, force=True, ignore_permissions=True)
+        frappe.db.commit()
+
         wf.ensure_user(wf.TEST_OPERATOR, ["POS Operator", "Production Worker", "System Manager"])
         item = wf.ensure_item(wf.THAI_ITEM_PRIMARY)
         supplier = wf.ensure_supplier()
