@@ -90,7 +90,9 @@ Verified after this change: zero non-black declarations reach anything inside `.
 
 The fixture `scrap_metal_suite/fixtures/print_format.json` is the source of truth, and `Print Format` is registered under `fixtures` in `hooks.py` (filtered to `module = Scrap Metal Suite`).
 
-**On migrate:** Frappe re-imports a fixture only when its `modified` timestamp is newer than the installed record, so any edit to the HTML must bump `modified` too. The patch script does this.
+**On migrate:** fixtures re-import **unconditionally**. `data_import.py:274-276` calls `import_file_by_path(..., force=True)`, and `import_file.py:130` guards its timestamp comparison with `if not force and db_modified_timestamp:` — so with `force=True` the `modified` check never runs.
+
+> **Correction (2026-08-21):** an earlier version of this section said a fixture is re-imported "only when `modified` is newer, so any edit must bump it too." That is wrong, and the same claim appeared in `_sync_print_formats.py`. Bumping `modified` is harmless but does nothing. If a template edit does not appear after a migrate, the cause is elsewhere — a `Property Setter`, a stale browser cache, or the fixture never being exported in the first place.
 
 **On a live site where migrate does not re-import** (standard formats are write-locked by `validate()`, so the document API refuses):
 

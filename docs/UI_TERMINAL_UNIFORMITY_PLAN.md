@@ -87,6 +87,18 @@ Static greps miss this class of bug — the CSS *looks* correct. Check computed 
 
 ## 2. Recommendation: Keep Blue Production Terminal
 
+> ### ⚠️ CORRECTION (2026-08-21) — do not action §2 or §4 as written
+>
+> This section recommends keeping the blue terminal (`www/production/terminal.html`) and **deleting** the orange one (`www/pos/production.html`). Verified against current code, that is backwards: **the orange terminal is the only one that works.**
+>
+> - Blue posts `items=` to `create_sorting` / `update_sorting`, which take `good_items` / `unwanted_items` (`api/v1/production.py:307,396`). Every save from it raises `TypeError`.
+> - Blue never loads `scale_reader.js`, so it has no live scale reading.
+> - Blue has no good/unwanted split, which the sorting model requires.
+>
+> Following §4's "DELETE `www/pos/production.html`" would remove the only functioning sorting terminal. The recommendation below is a **target state**: blue is the better *architecture* (POS_CORE, `data-i18n`, CSS custom properties), but it was never finished. Fix blue's API contract and scale wiring first, migrate, and only then delete orange.
+>
+> See [guide/admin/20-production-sorting.md](guide/admin/20-production-sorting.md).
+
 The blue terminal (`production/terminal.html`) follows the best patterns:
 - Uses `POS_CORE` for theme, clock, API wrapper
 - Uses `data-i18n` attributes for translation
