@@ -696,6 +696,12 @@
 </div>
 
 <script>
+{% if not error %}
+{# Same guard as pos/terminal.html: this script dereferences `session`, which
+   does not exist on the error path. The markup above is inside {% if error %},
+   but the script block is not — so an invalid or closed ?session= raised
+   `UndefinedError: 'session' is undefined` and returned HTTP 417 instead of
+   the "Session not found" page get_context prepares. #}
 // ===== State =====
 const state = {
     session: '{{ session.name }}',
@@ -3353,7 +3359,7 @@ function updateCompleteButton() {
     }
 }
 
-
+{% endif %}{# closes `if not error` opened at the top of this script block #}
 </script>
 
 {% endblock %}

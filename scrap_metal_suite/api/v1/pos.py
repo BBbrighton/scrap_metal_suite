@@ -132,7 +132,10 @@ def open_session(pos_profile):
         "pos_profile": pos_profile,
         "status": "Open"
     })
-    session.insert()
+    # check_pos_operator() above already authorised this caller; a pure POS
+    # Operator has no create permission on POS Session, so a plain insert()
+    # would raise for exactly the role this endpoint exists to serve.
+    session.insert(ignore_permissions=True)
 
     return {
         "session": session.name,
@@ -207,16 +210,21 @@ def lookup_order(query):
 
     Search logic:
     1. First try exact match on name, order_id, or license_plate (no date restriction)
-    2. If no exact match, try partial match with dropoff_date within +/- 2 days
+    2. If no exact match, try partial match with order_date within +/- 2 days
 
     Args:
         query: Search term (document name, order_id, or license_plate)
 
     Returns:
-        list: Matching orders with supplier_name, order_date, dropoff_date, license_plate, status
+        list: Matching orders with supplier_name, order_date, license_plate, status
 
-    TODO: Phase 8 - This API references POS Order.dropoff_date (legacy field on POS Order),
-    NOT Dropoff.dropoff_date. This field should be deprecated once Dropoff system is fully adopted.
+    Note: this used to window step 4 on `POS Order.dropoff_date`. That field was
+    dropped from the doctype during the Dropoff redesign, but MariaDB keeps the
+    orphaned column, so the query kept running while silently matching almost
+    nothing — nothing populates it any more (3 of 75 rows on the dev site, all
+    pre-redesign). Scheduling now lives on Dropoff. Step 4 windows on
+    `order_date` instead, which is always set, and `dropoff_date` is no longer
+    selected or returned. The stale column can be dropped in Phase 10 cleanup.
     """
     check_pos_operator()
     from frappe.utils import add_days
@@ -224,8 +232,7 @@ def lookup_order(query):
     if not query or len(query) < 2:
         return []
 
-    # TODO: Phase 8 - dropoff_date is legacy POS Order field, mark for future removal
-    fields = ["name", "order_id", "supplier", "supplier_name", "order_date", "dropoff_date", "license_plate", "status"]
+    fields = ["name", "order_id", "supplier", "supplier_name", "order_date", "license_plate", "status"]
 
     # Step 1: Try exact match on name (document ID)
     exact_by_name = frappe.db.get_value(
@@ -257,23 +264,23 @@ def lookup_order(query):
     if exact_by_plate:
         return [exact_by_plate]
 
-    # Step 4: Partial match - search within +/- 2 days of dropoff_date
+    # Step 4: Partial match - search within +/- 2 days of order_date
     today = nowdate()
     date_start = add_days(today, -2)
     date_end = add_days(today, 2)
 
     orders = frappe.db.sql("""
         SELECT
-            name, order_id, supplier, supplier_name, order_date, dropoff_date, license_plate, status
+            name, order_id, supplier, supplier_name, order_date, license_plate, status
         FROM `tabPOS Order`
         WHERE
-            dropoff_date BETWEEN %(date_start)s AND %(date_end)s
+            order_date BETWEEN %(date_start)s AND %(date_end)s
             AND (
                 name LIKE %(query)s
                 OR order_id LIKE %(query)s
                 OR license_plate LIKE %(query)s
             )
-        ORDER BY dropoff_date DESC, creation DESC
+        ORDER BY order_date DESC, creation DESC
         LIMIT 10
     """, {"query": f"%{query}%", "date_start": date_start, "date_end": date_end}, as_dict=True)
 
@@ -333,7 +340,9 @@ def get_order_details(order_id):
         "supplier": order.supplier,
         "supplier_name": order.supplier_name or (supplier_data.supplier_name if supplier_data else None),
         "order_date": order.order_date,
-        "dropoff_date": getattr(order, 'dropoff_date', None),
+        # `dropoff_date` dropped here too: the field is gone from the doctype, so
+        # the Document never carries it and this key was always None. Scheduling
+        # lives on Dropoff now. No client read it.
         "license_plate": order.license_plate,
         "purchase_order": order.purchase_order,
         "notes": order.notes,
@@ -397,174 +406,32 @@ def load_scrap_weight(scrap_weight_id):
 def create_scrap_weight(session, pos_order, items, remarks=None,
                         existing_scrap_weight=None, reweight_reason=None):
     """
-    Record or update scrap weight for a POS Order.
+    DEPRECATED — removed in the Wave 10 container redesign. Always raises.
 
-    If existing_scrap_weight is provided, updates the existing document.
-    Otherwise creates a new one.
+    This endpoint predates the Container model. It built a Scrap Weight from
+    per-event metadata (`session`, `pos_profile`, `scale`, `is_reweight`) and
+    keyed it to a POS Order. Wave 10 made Scrap Weight a submittable
+    per-Dropoff receipt: those fields no longer exist on the doctype, and
+    `ScrapWeight.autoname` now requires `dropoff`, which this signature has no
+    way to supply. Every call therefore failed with the misleading error
+    "Dropoff is required to generate a Scrap Weight ID."
 
-    Args:
-        session: POS Session name (required)
-        pos_order: POS Order name (required)
-        items: JSON list of items [{item_code, weight, uom}]
-        remarks: Optional remarks
-        existing_scrap_weight: Optional - if provided, updates this document instead of creating new
-        reweight_reason: Optional - reason for reweight (required if is_reweight)
+    It has no callers in this repo. Kept as a whitelisted stub so any external
+    integration still pointed here gets a message that names the replacement
+    rather than a cryptic naming error.
 
-    Returns:
-        dict: {scrap_weight, total_weight, is_reweight}
+    Replacement: `scrap_metal_suite.api.v1.dropoff.finish_weighing_session`,
+    which aggregates the Dropoff's containers into a submitted receipt.
+    See DROPOFF_CONTAINER_REDESIGN.md §14.19.
     """
-    check_pos_operator()
-    import json
-
-    if isinstance(items, str):
-        items = json.loads(items)
-
-    if not items:
-        frappe.throw(_("At least one item is required"))
-
-    # Validate session is open and get scale
-    session_data = frappe.db.get_value(
-        "POS Session",
-        session,
-        ["status", "scale", "pos_profile", "operator"],
-        as_dict=True
+    frappe.throw(
+        _(
+            "create_scrap_weight was removed in the container redesign. "
+            "Scrap Weight is now generated per Dropoff from its containers — "
+            "use finish_weighing_session(dropoff) instead."
+        ),
+        title=_("Deprecated API"),
     )
-    if not session_data or session_data.status != "Open":
-        frappe.throw(_("Session {0} is not open").format(session))
-
-    # SECURITY FIX: Verify session belongs to current user
-    if session_data.operator != frappe.session.user:
-        frappe.throw(_("This session does not belong to the current user"))
-
-    # Get scale's max capacity from database for validation
-    scale_max_capacity = None
-    scale_name = None
-    if session_data.scale:
-        scale_info = frappe.db.get_value("Scale", session_data.scale,
-                                        ["max_capacity_kg", "scale_name"], as_dict=True)
-        if scale_info:
-            scale_max_capacity = scale_info.max_capacity_kg
-            scale_name = scale_info.scale_name
-
-    # Validate POS Order exists
-    order_data = frappe.db.get_value(
-        "POS Order",
-        pos_order,
-        ["name", "supplier", "status", "license_plate"],
-        as_dict=True
-    )
-
-    if not order_data:
-        frappe.throw(_("POS Order {0} not found").format(pos_order))
-
-    # Build items list with SECURITY FIX: proper weight validation
-    weight_items = []
-    for item in items:
-        item_code = item.get("item_code")
-
-        # SECURITY FIX: Validate weight value
-        try:
-            weight = float(item.get("weight", 0))
-        except (ValueError, TypeError):
-            frappe.throw(_("Invalid weight value for item {0}").format(item_code))
-
-        # SECURITY FIX: Weight must be greater than zero
-        if weight <= 0:
-            frappe.throw(_("Weight must be greater than zero for item {0}").format(item_code))
-
-        # SECURITY FIX: Weight must not exceed scale capacity
-        if scale_max_capacity and weight > scale_max_capacity:
-            frappe.throw(_("Weight {0} kg exceeds scale {1} maximum capacity of {2} kg").format(
-                weight, scale_name, scale_max_capacity))
-
-        item_data = {
-            "item_code": item_code,
-            "weight": flt(weight),
-            "uom": item.get("uom", "Kg")
-        }
-        weight_items.append(item_data)
-
-    # SECURITY FIX: Sanitize remarks to prevent XSS
-    sanitized_remarks = None
-    if remarks:
-        from frappe.utils import sanitize_html
-        sanitized_remarks = sanitize_html(str(remarks).strip())
-        if len(sanitized_remarks) > 1000:
-            frappe.throw(_("Remarks exceed maximum length of {0} characters").format(1000))
-
-    # SECURITY FIX: Sanitize reweight_reason to prevent XSS
-    sanitized_reweight_reason = None
-    if reweight_reason:
-        from frappe.utils import sanitize_html
-        sanitized_reweight_reason = sanitize_html(str(reweight_reason).strip())
-        if len(sanitized_reweight_reason) > 500:
-            frappe.throw(_("Reweight reason exceed maximum length of {0} characters").format(500))
-
-    is_reweight = False
-
-    if existing_scrap_weight:
-        # UPDATE existing document
-        scrap_weight = frappe.get_doc("Scrap Weight", existing_scrap_weight)
-
-        # Clear existing items and add new ones
-        scrap_weight.items = []
-        for item_data in weight_items:
-            scrap_weight.append("items", item_data)
-
-        # Mark as reweight
-        scrap_weight.is_reweight = 1
-        scrap_weight.reweight_reason = sanitized_reweight_reason
-        scrap_weight.reweight_at = frappe.utils.now_datetime()
-        scrap_weight.reweight_by = frappe.session.user
-        scrap_weight.remarks = sanitized_remarks
-
-        scrap_weight.save()
-        is_reweight = True
-    else:
-        # CREATE new document
-        scrap_weight = frappe.get_doc({
-            "doctype": "Scrap Weight",
-            "pos_order": pos_order,
-            "supplier": order_data.supplier,
-            "posting_date": nowdate(),
-            "session": session,
-            "pos_profile": session_data.pos_profile,
-            "scale": session_data.scale,
-            "remarks": sanitized_remarks,
-            "is_reweight": 0,
-            "items": weight_items
-        })
-        scrap_weight.insert()
-
-    # Update POS Order
-    order_doc = frappe.get_doc("POS Order", pos_order)
-    order_doc.status = "Processed"
-    order_doc.processed_by = frappe.session.user
-    order_doc.processed_time = frappe.utils.now_datetime()
-
-    # Update total scrap weight on order (sum of all scrap weights)
-    total_scrap = frappe.db.sql("""
-        SELECT COALESCE(SUM(total_weight), 0) as total
-        FROM `tabScrap Weight`
-        WHERE pos_order = %s
-    """, pos_order, as_dict=True)[0].total
-    order_doc.total_scrap_weight = flt(total_scrap)
-
-    # Calculate variance if truck weights exist
-    if order_doc.net_truck_weight:
-        _calculate_variance(order_doc)
-
-    order_doc.save()
-
-    return {
-        "scrap_weight": scrap_weight.name,
-        "total_weight": scrap_weight.total_weight,
-        "order_id": pos_order,
-        "is_reweight": is_reweight,
-        "total_scrap_weight": order_doc.total_scrap_weight,
-        "weight_variance": order_doc.weight_variance,
-        "weight_variance_percent": order_doc.weight_variance_percent
-    }
 
 
 @frappe.whitelist()

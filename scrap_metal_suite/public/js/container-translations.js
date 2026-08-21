@@ -74,6 +74,7 @@
         photo_count_label: 'Photos',
         photos_attached: 'Photos attached',
         photos_attach_failed: 'Failed to attach some photos',
+        no_photos_for_container: 'No photos saved for this bag.',
 
         // Reopen flow (Wave 11)
         prompt_reopen_reason: 'Reason to reopen this dropoff:',
@@ -182,6 +183,7 @@
         photo_count_label: 'รูป',
         photos_attached: 'แนบรูปแล้ว',
         photos_attach_failed: 'แนบรูปบางรูปล้มเหลว',
+        no_photos_for_container: 'ยังไม่มีรูปของถุงนี้',
 
         // Reopen flow (Wave 11)
         prompt_reopen_reason: 'เหตุผลในการเปิดใบนี้ใหม่:',

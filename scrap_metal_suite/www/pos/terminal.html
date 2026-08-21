@@ -3,14 +3,14 @@
 {% block title %}POS Terminal{% endblock %}
 
 {% block head_include %}
-<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css">
-<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos-fullscreen.css">
-<script src="/assets/scrap_metal_suite/js/pos-translations.js"></script>
-<script src="/assets/scrap_metal_suite/js/pos-core.js"></script>
-<script src="/assets/scrap_metal_suite/js/html5-qrcode.min.js"></script>
-<script src="/assets/scrap_metal_suite/js/pos-scanner.js"></script>
-<script src="/assets/scrap_metal_suite/js/scale_reader.js"></script>
-<script src="/assets/scrap_metal_suite/js/pos-resizer.js"></script>
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css?v={{ asset_v }}">
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos-fullscreen.css?v={{ asset_v }}">
+<script src="/assets/scrap_metal_suite/js/pos-translations.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/pos-core.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/html5-qrcode.min.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/pos-scanner.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/scale_reader.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/pos-resizer.js?v={{ asset_v }}"></script>
 {% endblock %}
 
 {% block page_content %}
@@ -819,6 +819,13 @@
 </div>
 
 <script>
+{% if not error %}
+{# The terminal JS below dereferences `session` (and the whole terminal DOM),
+   neither of which exists on the error path. The markup above is guarded by
+   {% if error %}, but this script block sits outside it — so without this
+   guard an invalid or closed ?session= raised
+   `UndefinedError: 'session' is undefined` and the page 500'd (HTTP 417)
+   instead of showing the "Session not found" message get_context prepares. #}
 // ===== Translations =====
 // Using unified translation file: pos-translations.js
 
@@ -1729,8 +1736,52 @@ async function openPhotoCapture() {
     }
 }
 
+// View-only mode of #photoModal: shows photos already saved on a container.
+// Deliberately does NOT start the camera — opening a viewer should not grab the
+// device, and on a shared terminal that would also steal it from the scale bay.
+// Capture/save controls are hidden here and restored by closePhotoCapture().
+function openPhotoViewer(titleText) {
+    const modal = document.getElementById('photoModal');
+    modal.dataset.viewOnly = '1';
+
+    const cam = modal.querySelector('.camera-container');
+    const ctrls = modal.querySelector('.photo-controls');
+    if (cam) cam.style.display = 'none';
+    if (ctrls) ctrls.style.display = 'none';
+    document.getElementById('cameraControls').style.display = 'none';
+    document.getElementById('addPhotoBtn').style.display = 'none';
+    document.getElementById('savePhotoBtn').style.display = 'none';
+
+    const h = modal.querySelector('.modal-header h3');
+    if (h) {
+        h.dataset.origText = h.textContent;
+        h.textContent = titleText || (t('photos') || 'Photos');
+    }
+
+    updatePhotoThumbnails();
+    modal.style.display = 'flex';
+}
+
 function closePhotoCapture() {
     const video = document.getElementById('cameraVideo');
+
+    // Undo view-only mode so the next capture opens normally.
+    const modal = document.getElementById('photoModal');
+    if (modal.dataset.viewOnly) {
+        delete modal.dataset.viewOnly;
+        const cam = modal.querySelector('.camera-container');
+        const ctrls = modal.querySelector('.photo-controls');
+        if (cam) cam.style.display = '';
+        if (ctrls) ctrls.style.display = '';
+        document.getElementById('addPhotoBtn').style.display = '';
+        document.getElementById('savePhotoBtn').style.display = '';
+        const h = modal.querySelector('.modal-header h3');
+        if (h && h.dataset.origText) {
+            h.textContent = h.dataset.origText;
+            delete h.dataset.origText;
+        }
+        state.existingPhotos = [];
+    }
 
     if (state.cameraStream) {
         state.cameraStream.getTracks().forEach(track => track.stop());
@@ -3127,8 +3178,14 @@ window.CONTAINER_UI = (function () {
             const ctypeKey = String(c.container_type || '').toLowerCase();
             const ctypeLabel = (ctypeKey ? (t(ctypeKey) || c.container_type) : '') || '';
             const photoCount = parseInt(c.photo_count || 0, 10);
+            // Clickable: opens the saved photos for this bag in a view-only
+            // photo modal. Previously the count was a dead <span> — operators
+            // could see that photos existed but had no way to look at them.
             const photoIcon = photoCount > 0
-                ? '<span class="container-row-photo" title="' + photoCount + ' ' + (t('photo_count_label') || 'photos') + '">&#128247;&nbsp;' + photoCount + '</span>'
+                ? '<button type="button" class="container-row-photo" title="'
+                  + photoCount + ' ' + (t('photo_count_label') || 'photos')
+                  + '" onclick="CONTAINER_UI.viewPhotos(\'' + safeName + '\')">&#128247;&nbsp;'
+                  + photoCount + '</button>'
                 : '';
             html += '<div class="container-row" data-name="' + safeName + '">'
                 +   '<div class="container-row-main">'
@@ -3384,6 +3441,34 @@ window.CONTAINER_UI = (function () {
             state.capturedPhotos = state.capturedPhotos || [];
         }
         window.openPhotoCapture();
+    }
+
+    // View the photos already saved against a container. The thumbnail
+    // renderer (updatePhotoThumbnails) has always supported an "existing"
+    // section, but nothing populated it for containers — the journal showed a
+    // photo count with no way to open it. Fetches on demand rather than
+    // bloating list_containers with URLs the journal does not otherwise need.
+    async function viewContainerPhotosImpl(containerName) {
+        if (!containerName) return;
+        try {
+            const r = await frappe.call({
+                method: 'scrap_metal_suite.api.v1.dropoff.get_weight_photos',
+                args: { parent_doctype: 'Scrap Weight Container', parent_doc: containerName }
+            });
+            const photos = (r && r.message) || [];
+            if (!photos.length) {
+                frappe.msgprint(t('no_photos_for_container') || 'No photos saved for this bag.');
+                return;
+            }
+            if (window.state) {
+                state.existingPhotos = photos.map(p => ({ name: p.name, url: p.photo }));
+                state.capturedPhotos = [];
+            }
+            window.openPhotoViewer(containerName);
+        } catch (err) {
+            console.error('viewContainerPhotos failed:', err);
+            frappe.msgprint(t('error') || 'Error');
+        }
     }
 
     async function attachContainerPhotos(containerName, photos) {
@@ -3863,6 +3948,7 @@ window.CONTAINER_UI = (function () {
         openScanner: openScannerImpl,
         openContainerActions: openContainerActionsImpl,
         openPhotoModal: openPhotoModalImpl,
+        viewPhotos: viewContainerPhotosImpl,
         refreshPhotoPill: refreshPhotoPill,
     };
 })();
@@ -3890,6 +3976,7 @@ function confirmCompleteContainerDropoff() { CONTAINER_UI.confirmComplete(); }
 function openContainerScanner() { CONTAINER_UI.openScanner(); }
 function reopenDropoffContainer() { CONTAINER_UI.reopenDropoff(); }
 {% endif %}
+{% endif %}{# closes `if not error` opened at the top of this script block #}
 </script>
 
 {% endblock %}
