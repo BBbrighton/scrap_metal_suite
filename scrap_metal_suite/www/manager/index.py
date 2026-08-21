@@ -6,7 +6,11 @@ from frappe.utils import nowdate, getdate, get_first_day, flt
 no_cache = 1
 
 
+from scrap_metal_suite.www.manager.utils import require_login
+
+
 def get_context(context):
+    require_login(context, "/manager")
     context.active_page = "dashboard"
 
     # Get supplier statistics

@@ -259,7 +259,17 @@ fixtures = [
         "filters": [["module", "=", "Scrap Metal Suite"]]
     },
     {
-        "dt": "Scale"
+        # Scales are per-site hardware records. Without a filter,
+        # `bench export-fixtures` sweeps up every Scale on whatever site it is
+        # run against — including the `_TEST_*` scales the test suites create —
+        # and installing the app then creates them on the target site.
+        #
+        # The pattern is deliberately NOT backslash-escaped: Frappe escapes the
+        # backslash itself, so r"\_TEST\_%" matches nothing and the filter
+        # silently passes everything. Verified on `metal`: "_TEST_%" excludes
+        # the 5 test scales, r"\_TEST\_%" returns all 12.
+        "dt": "Scale",
+        "filters": [["name", "not like", "_TEST_%"]]
     },
     {
         "dt": "Print Format",

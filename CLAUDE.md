@@ -7,13 +7,14 @@ Frappe/ERPNext application for scrap metal buying operations. Includes supplier 
 
 ### Completed (Not Yet Tested)
 
-#### 1. Supplier Registration Module
-- **DocType**: `Supplier Registration` - Self-service registration form
-- **Public Form**: `/supplier-registration-form` - Guest-accessible registration
+#### 1. Supplier Registration Module — ⚠️ NOT PRODUCTION-READY
+- **DocType**: `Supplier Registration Request` (NOT `Supplier Registration` — that doctype does not exist; `www/manager/index.py` queries the wrong name and so always reports 0 pending)
+- **Public Form**: `/supplier-registration-form` - Guest-accessible registration (this part works)
 - **Features**:
-  - Auto-creates Supplier, Contact, User on approval
-  - Links User -> Contact -> Supplier via Dynamic Links
-  - Tracks registration source (Portal vs Manual)
+  - Creates Supplier and Contact on approval, and tracks registration source (Portal vs Manual)
+  - ⚠️ **Does NOT create a User.** `supplier_registration_request.py` never sets `contact.user`, so an approved supplier can never log in and the Supplier Portal is unreachable. An earlier version of this file claimed a User is auto-created — it is not.
+  - ⚠️ **Thai company names cannot be approved.** `approve()` → `supplier.insert()` → `populate_short_code` throws when the name has fewer than 2 ASCII characters — the default case for this business. No UI supplies a short code.
+- See `docs/guide/admin/80-portals-internals.md` for the full maturity assessment.
 
 #### 2. Supplier Portal (`/supplier`)
 - **Theme**: Light blue (`#1976d2`)

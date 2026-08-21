@@ -5,10 +5,15 @@ document API with `frappe.db.set_value` — the same approach as
 `_patch_print_format.py` and `_patch_sticker.py`, but driven off the fixture
 instead of hardcoded find/replace pairs, so it stays correct as templates change.
 
-Why it is needed at all: `bench migrate` re-imports a Print Format fixture only
-when the fixture's `modified` is newer than the installed record. That is easy
-to get wrong by hand, and on sites where the fixture is not re-imported the DB
-silently keeps the old template.
+Why it is needed at all: it syncs a site to the fixture WITHOUT running a full
+`bench migrate` — useful on production, where a migrate also runs patches and
+rebuilds, and you may only want the templates updated.
+
+Note: fixtures re-import unconditionally on migrate. `data_import.py:274-276`
+passes `force=True` and `import_file.py:130` guards the timestamp comparison
+with `if not force and db_modified_timestamp:`. An earlier version of this
+docstring claimed a `modified` bump was required — it is not, and bumping it
+changes nothing.
 
 Covers, as of 2026-08-21:
   - thermal legibility fix (Scrap Weight / Truck Weight / Container Sticker):

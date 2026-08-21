@@ -745,13 +745,18 @@ class Dropoff(Document):
         return frappe.db.get_all(
             "Scrap Weight Container",
             filters={"dropoff": self.name, "status": "Active"},
+            # `is_deviation` / `deviation_approved_by` were removed from
+            # Scrap Weight Container in Wave 9 (deviation moved to Dropoff), but
+            # were still selected here. This runs from before_save() on EVERY
+            # Dropoff save; it only kept working because MariaDB leaves an
+            # orphaned column behind when a field is dropped. On a fresh install
+            # the column does not exist and every save raised
+            # "Unknown column 'is_deviation'".
             fields=[
                 "name",
                 "item_code",
                 "item_name",
                 "net_weight",
-                "is_deviation",
-                "deviation_approved_by",
             ],
             order_by="creation asc",
         )
@@ -1002,6 +1007,16 @@ def _recalculate_order_fulfillment(pos_order_name):
 
     # Determine fulfillment status
     order.fulfillment_status = _get_fulfillment_status(order.fulfillment_percent)
+
+    # `status` is maintained by POSOrder.update_status(), which normally runs
+    # from validate(). We skip validate() below on purpose: this executes inside
+    # Dropoff.before_save during bulk allocation, and any future validation that
+    # threw would abort the whole Dropoff save mid-allocation. So call the one
+    # part we DO want explicitly.
+    #
+    # Without this, status never left "Pending" — orders sat at Pending while
+    # fulfillment_status read "Fulfilled" at 100%.
+    order.update_status()
 
     order.flags.ignore_validate = True
     order.save()

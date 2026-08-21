@@ -19,10 +19,13 @@ class TruckWeight(Document):
         """Ensure weight doesn't exceed scale maximum capacity"""
         if self.scale and self.weight:
             scale_doc = frappe.get_doc("Scale", self.scale)
-            if hasattr(scale_doc, 'max_capacity') and scale_doc.max_capacity:
-                if self.weight > scale_doc.max_capacity:
+            # Field is `max_capacity_kg` — an earlier `max_capacity` here meant
+            # hasattr() was always False and the check never fired, so
+            # over-capacity truck weights were accepted silently.
+            if scale_doc.get("max_capacity_kg"):
+                if self.weight > scale_doc.max_capacity_kg:
                     frappe.throw(
-                        f"Weight {self.weight} kg exceeds scale maximum capacity of {scale_doc.max_capacity} kg"
+                        f"Weight {self.weight} kg exceeds scale maximum capacity of {scale_doc.max_capacity_kg} kg"
                     )
 
     def after_insert(self):

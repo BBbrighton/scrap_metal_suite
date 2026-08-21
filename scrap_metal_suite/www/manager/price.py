@@ -5,7 +5,11 @@ import frappe
 no_cache = 1
 
 
+from scrap_metal_suite.www.manager.utils import require_login
+
+
 def get_context(context):
+    require_login(context, "/manager/price")
     context.active_page = "price"
 
     # Get prices from Item Price if available
