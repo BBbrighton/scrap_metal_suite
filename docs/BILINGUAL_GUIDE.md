@@ -395,6 +395,8 @@ This is the canonical EN→TH for domain terms used by the Container redesign an
 
 Format: `Thai • English` together, `<small>` styled.
 
+> **Size floor on thermal output: 10px for anything Thai, and black only.** Sarabun's tone and vowel marks collapse below that on a 203 dpi thermal head, and grey is dithered into a dot scatter that destroys small glyphs. "Small print" on a thermal sticker means 10px black — not 8px grey. See [THERMAL_PRINT_GUIDE.md](THERMAL_PRINT_GUIDE.md).
+
 | Sticker label |
 |---|
 | `น้ำหนักสุทธิ • Net Weight` |
