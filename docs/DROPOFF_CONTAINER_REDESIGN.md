@@ -814,7 +814,8 @@ For known-bad dropoffs like DO-260320-00002:
 - [ ] **PENDING** Verification: post-migration aggregate kg matches pre-migration truck net per supplier
 - [ ] **PENDING** Spot-check 20+ dropoffs manually
 
-### Phase 9 — Production cutover (NOT STARTED — gated by Phase 8 verification)
+### Phase 9 — Production cutover (NOT STARTED — gated by Phase 8 verification **and** the cam merge, see §14.23)
+- [ ] **Merge prerequisite** — `cam_integration_v0` merged into this branch and the merged tree green (decision 2026-08-21: production receives ONE release containing both cam integration and the container redesign, never two separate deploys)
 - [ ] Backup production DB
 - [ ] Deploy code (feature flag off initially)
 - [ ] Run migration patch
@@ -860,9 +861,12 @@ For known-bad dropoffs like DO-260320-00002:
     - Run: `cd ~/frappe-bench && SMT_UI_ADMIN_PWD="$SMT_UI_ADMIN_PWD" env/bin/pytest apps/scrap_metal_suite/scrap_metal_suite/ui_test/ -v`
     - Env vars: `SMT_UI_HEADLESS=1` (hide browser), `SMT_UI_SLOW_MO=0` (no throttle), `SMT_UI_BASE_URL`, `SMT_UI_SITE`, `SMT_UI_ADMIN_PWD`.
 - [ ] **PENDING** Migration tests against real production data snapshot
-- [ ] **PENDING** UI test for legacy cart fallback path (when `use_container_model=false`)
-- [ ] **PENDING** UI test for Pause/Resume cycle
-- [ ] **PENDING** UI test for Reweigh flow
+- [x] `ui_test/test_pos_terminal_flows.py` — **NEW (2026-08-21)**, 4 tests, all passing:
+    - `test_pause_resume_cycle` — pause → assert Dropoff `Paused` + action bar flips to Resume → resume → assert `In Progress`, prior bag survives the reload, weighing usable again. Regression guard for the Wave 11 session-lock bug.
+    - `test_reweigh_flow` — asserts the void-of-old + insert-of-new contract: original goes `Voided` (not `Reweighed`), replacement carries the new weight and back-links via `reweighed_from`, journal still shows exactly one live bag.
+    - `test_ctn_scan_loads_parent_dropoff` — closes the §14.22 "foreign-dropoff CTN scan" question: from a cleared context, scanning a CTN resolves its parent Dropoff, loads it, and flashes the matching journal row.
+    - `test_container_photo_viewer_surface` — the new photo viewer (see §14.24).
+- [ ] **BLOCKED** UI test for legacy cart fallback path. `terminal.py` reads `getattr(profile, "use_container_model", True)` and **POS Profile Scrap has no such field**, so the flag is always True and the legacy path is unreachable. Needs the Phase 11 follow-up ("Real `use_container_model` field") before it can be tested at all.
 
 ---
 
@@ -1486,6 +1490,126 @@ Plus a few throwaway diagnostic scripts in `api_test/` (`_diag_two_issues.py`, `
 3. **Run the test fixture**: `bench --site metal execute scrap_metal_suite.api_test.setup_inprogress_dropoff.run` — gives you a Scheduled Dropoff to test the terminal UI in-browser.
 4. **Hard-refresh the browser** before testing (Ctrl+Shift+R) — JS/CSS changed extensively.
 5. **Decision needed**: commit the delta now, or continue iterating? The user signed off mid-iteration; ask before committing.
+
+### 14.23 — Release strategy: cam integration + container redesign ship together (2026-08-21)
+
+**Planning session only. No code changed.** This section records decisions about *how this branch reaches production*, not about the container model itself. Full repo/branch survey in [docs/stocktake/STOCKTAKE_2026-08-21.md](stocktake/STOCKTAKE_2026-08-21.md).
+
+#### Situation
+
+Work has split three ways since the 2026-05-01 sign-off, and no two parts know about each other:
+
+| Where | Branch | State |
+|---|---|---|
+| Local machine only | `feature/container-redesign` @ `ce7a9d6` | Waves 1–11 + E2E suite, **committed** (the §14.22 delta is no longer uncommitted), never pushed |
+| GitHub only | `cam_integration_v0` @ `4803c08` | CCTV camera integration, pushed 2026-08-17 from another machine, never fetched here |
+| Everywhere | `develop` @ `9bad181` | v1.1.0, what production runs today |
+
+Both feature branches fork from `develop` and both are 0 commits behind it, so the merge starts from a clean three-way base.
+
+#### Decision — one release, not two
+
+Production goes from v1.1.0 straight to a single new version containing **both** the cam integration and the container redesign. There is no intermediate deploy of one without the other. Rationale: the container redesign is a breaking data-model change requiring a migration patch; running that cutover twice, or running it on a tree that is about to be merged again, doubles the risk for no benefit.
+
+#### Sequence
+
+1. **Finish the container design first.** Everything below is gated on that; do not start the merge mid-Wave.
+2. Push `feature/container-redesign` to GitHub (backup — currently single-disk).
+3. Fetch and merge `cam_integration_v0` into the container branch.
+4. Prove the **merged** tree green locally.
+5. Migration dry-run on a production snapshot (Phase 8 PENDING items below).
+6. Version bump + tag, then deploy as one release.
+
+#### Merge conflict surface
+
+Only two files are touched by both branches. Everything else (111 files) is disjoint.
+
+| File | container branch | cam branch | Risk |
+|---|---|---|---|
+| `public/css/pos.css` | +595 (appended) | 36 changed | Low |
+| `www/pos/truck.html` | 24 changed (10 del) | 429 changed | **Moderate** — cam substantially rewrites it; resolve by hand |
+
+#### Testing gate — what "it works locally" does and does not prove
+
+The existing §11.4 already specifies restoring a production snapshot to staging before migrating. Two clarifications from this session:
+
+- **The snapshot test now applies to the merged tree**, not to the container branch alone. Green container tests + green cam tests ≠ green merged tree.
+- **Code is replaced; data is not.** `bench migrate` on production runs `patches/v2_0/migrate_to_containers.py` against a year of real Scrap Weight rows that have drifted into shapes no local fixture has ever produced. Synthetic fixtures cannot answer whether that migration is correct — only a restored production backup can. This is exactly what Phase 8's three PENDING items exist to cover; they are the real deploy gate, not the unit/integration suites.
+
+The migration design itself (§10), the patch (`patches/v2_0/migrate_to_containers.py`, registered in `patches.txt`), the rollback via the `use_container_model` flag (§10.4), and the pre-migration duplicate report (§10.6) are all already written. Nothing new is needed there — what is missing is *execution against real data*.
+
+#### Side job landed the same day — thermal print legibility
+
+Operators reported faint/unclear thermal output. Root cause was greyscale text (`#333`/`#666`/`#999`/`#ccc`) plus sub-10px Thai: a thermal head is 1-bit, so grey is dithered into a dot scatter, and at 7–9px Sarabun's tone/vowel marks merge into the glyph body. 27 edits across `Scrap Weight Thermal`, `Truck Weight Thermal`, and `Scrap Weight Container Sticker` — all text to solid `#000`, 10px floor for Thai, `line-height` 1.45, and the sticker's `↻ REWEIGHT • ชั่งซ้ำ` marker changed from red `#b00` (which printed palest of all) to bold black.
+
+Applied to the fixture and synced to `metal`. **Not on `smt` production — it ships with this release.** Full write-up, rules for future formats, and ready-to-paste team release notes in [THERMAL_PRINT_GUIDE.md](THERMAL_PRINT_GUIDE.md); §7 of that doc is written for the version update. Verified in rendered HTML only — **a real paper print test is still owed** and belongs in the hardware walkthrough.
+
+#### Side job 2 — terminal palette + asset caching (2026-08-21)
+
+Reported as "the weigh card is white in dark theme". Two systemic causes, both fixed; full write-up in [UI_TERMINAL_UNIFORMITY_PLAN.md §1a](UI_TERMINAL_UNIFORMITY_PLAN.md).
+
+- **Frappe hijacks unprefixed CSS variables.** It defines `--card-bg` (white), `--text-muted` (#525252), `--success` (#28a745) and `--warning` (#ffc107) at `:root` on every www page. Our `var(--card-bg, #1f2937)` fallbacks were dead code, so the card rendered white, labels muddy grey, and the weight readout and MANUAL badge in Bootstrap colours. All 16 tokens in `pos.css` are now `--pos-` prefixed (49 renames).
+- **Two Tailwind colour families were mixed** — shell in slate, container block + scale picker in gray. 39 conversions in `pos.css`, 10 in `production-theme.css`; `.light-theme` occurrences deliberately untouched. Distinct surfaces in the POS terminal: **5 → 3**.
+- Also: `.form-textarea` text `#fff` → `#e2e8f0`, Remarks label `0.9rem` → `12px` (scoped to the card).
+
+Covers `pos/terminal`, `pos/truck`, `pos/production`, `production/index` (all share `pos.css`); `production/terminal` was already pure slate. Truck and production verified statically — POS sessions kept auto-closing during browser checks.
+
+**Asset caching — matters for the release.** These pages hand-link `/assets/scrap_metal_suite/...` with no version, served `Cache-Control: max-age=43200`. A browser therefore keeps old CSS/JS for **12 hours**, and neither `bench clear-cache` nor `bench build` can dislodge it — they clear server state, not the browser's HTTP cache. After a deploy, floor terminals can run stale JS against a new API for up to 12h, which is a far worse failure than a mis-coloured card.
+
+`terminal.html` now appends `?v={{ asset_v }}`, where `get_asset_version()` in `terminal.py` is the newest mtime of the 8 files it links. mtime (not `get_build_version()`) because `public/` is symlinked into `sites/assets`, so editing a file never changes `assets.json`. **The other six pages plus cam's `camera-test/` still need this** — see the deferred list below.
+
+#### Deferred to the merge session
+
+- Merge order (container-first vs cam-first) — container-first preferred, so `truck.html` is resolved once against a settled base.
+- Version number: `1.2.0` vs `2.0.0`. Phase 10 already reserves `v2.0.0` for post-cutover cleanup, and the Container-replaces-Scrap-Weight change is breaking, so `2.0.0` is the honest choice.
+- Whether `cam_integration_v0` is finished or still moving on the other machine. Merging a moving branch is worse than waiting — confirm before step 3.
+- GitHub default branch is still `master` (Dec 2025, 72 commits behind, v0.0.1) and the repo is public.
+- **Cache-bust the remaining six pages** — `pos/truck`, `pos/index`, `pos/production`, `production/terminal`, `production/index`, `scale-test/index`, plus `camera-test/index` which the cam branch adds. Deliberately left until after the merge: cam adds a `<script>` tag to `truck.html`'s head, so editing that region now would conflict in the file that is already the moderate-risk merge file. Promote `get_asset_version()` out of `terminal.py` into a shared util at that point.
+- **Run `_sync_print_formats.run` on `smt`** if fixture import does not fire on the production migrate (standard print formats are write-locked by `validate()`).
+
+---
+
+### 14.24 — Backlog clear-out: API fixes, error paths, photo viewer (2026-08-21)
+
+Worked the outstanding A/B to-do list. The hardware walkthrough stays manual; everything else below is done and verified.
+
+#### Stale to-do entries corrected
+
+Two long-standing items were based on pre-Wave-10 assumptions and needed re-diagnosis rather than the fix they described:
+
+- **"`posting_time` never set on Scrap Weight"** — `posting_time` does not exist. Wave 10 removed it along with `session`, `pos_profile`, `scale`, `entry_method`, `is_reweight`. The right field is **`generated_at`**, set in `before_insert`. The bilingual queue print now uses it. Note the fixture still carried the *original* crashing expression (`posting_date ~ ' ' ~ posting_time`) — the earlier `creation` workaround was only ever applied to the live DB, so a fresh site or fixture re-import would have brought the ParserError straight back. Fixed at the fixture and synced.
+- **"`create_scrap_weight` doesn't set the required `dropoff` field"** — it also writes five fields that no longer exist, and `ScrapWeight.autoname` requires `dropoff`, which its signature cannot supply. It could never succeed and has **no callers**. Replaced with a whitelisted stub that throws a message naming `finish_weighing_session`, instead of the misleading "Dropoff is required to generate a Scrap Weight ID."
+
+#### Fixed
+
+| Item | Fix |
+|---|---|
+| `open_session` insert | `session.insert(ignore_permissions=True)` — `check_pos_operator()` already authorised the caller, and a pure POS Operator has no create permission on POS Session, so this broke exactly the role the endpoint serves. |
+| `lookup_order` Phase 8 TODOs | Step 4's ±2-day window queried `POS Order.dropoff_date`, a field dropped from the doctype. **MariaDB keeps the orphaned column**, so the query kept running while matching almost nothing — 3 of 75 rows populated on the dev site, all pre-redesign. Windows on `order_date` now; `dropoff_date` no longer selected or returned (also removed from `get_order_details`, where it was always `None`). Verified: the Step-4 shape returns rows against `order_date` where the old column returned zero. Stale column can be dropped in Phase 10. |
+| Terminal 500 on bad session | `/pos/terminal` and `/pos/truck` returned **HTTP 417 `UndefinedError: 'session' is undefined`** for an invalid or closed `?session=`. The markup is inside `{% if error %}`, but the ~3,000-line `<script>` block sits outside it and dereferences `session`. Both now wrap the script in `{% if not error %}` and render the "Session not found" page `get_context` already prepared. `/production/terminal` was already correct. |
+
+#### Photo viewer (Wave 11 punch-list leftover)
+
+`updatePhotoThumbnails()` has always been able to render an "existing photos" section, but nothing populated it for containers — the journal showed a camera count that did nothing. The count is now a button calling `CONTAINER_UI.viewPhotos(name)`, which fetches `get_weight_photos('Scrap Weight Container', …)` on demand and opens the modal in a **view-only** mode: no camera is started (opening a viewer should not grab the device, and on a shared terminal that would steal it from the scale bay), capture/save controls are hidden and restored on close. Bilingual key `no_photos_for_container` added.
+
+#### Verification
+
+```
+Playwright UI          7 passed, 1 skipped   (was 3 + 1)
+E2E full flow          24 / 24
+finish_weighing_session / sticker render / container photos   all pass
+create_scrap_weight    raises, message names finish_weighing_session
+lookup_order           runs clean, no dropoff_date in response
+invalid ?session=      /pos/terminal · /pos/truck · /production/terminal → HTTP 200 + "Session not found"
+```
+
+#### Still open from that list
+
+- **Hardware walkthrough** — scanner, scale, both printers, and the paper print test for the thermal fix. Manual by nature.
+- **Legacy cart fallback test** — blocked on the missing `use_container_model` field (Phase 11).
+- Repo hygiene: 8 throwaway `api_test/_*.py` diagnostics to keep-or-delete; untracked `.claude/settings.json`; stray local branch `origin`; `master` tracking `origin/develop`.
+
+---
 
 ## 15. Appendix
 
