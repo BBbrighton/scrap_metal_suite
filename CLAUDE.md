@@ -63,7 +63,28 @@ Frappe/ERPNext application for scrap metal buying operations. Includes supplier 
   - Per-item fulfillment with FIFO allocation
 - **Design Doc**: See `docs/DROPOFF_ARCHITECTURE.md`, `docs/PHASE_8_DROPOFF_REDESIGN.md`
 
-#### 6. Production Sorting Module - PLANNED
+#### 6. CCTV Camera Integration - REBUILT, NOT DEPLOYED
+- **Purpose**: Capture stills from the fixed Hikvision weighbridge cameras and
+  attach them to Truck Weight records
+- **Branch**: `cam_integration_v0`
+- **Status**: Verified against real hardware 2026-08-17; browser UI not yet
+  exercised end-to-end; not deployed to production
+- **Read first**: `docs/CAMERA_INTEGRATION_HANDOFF.md` — deployment steps,
+  25 known failure modes, and how to extend to the other terminals
+
+**Components**: `Camera` doctype, `camera/service.py` (reusable backend),
+`api/v1/camera.py`, `public/js/camera_client.js`, `agent/` (on-site capture
+agent), `/camera-test` verification page.
+
+**Two transports**: the Frappe backend fetches directly (dev/on-prem), or an
+on-site agent fetches on the camera LAN and uploads (cloud production, since the
+cloud server cannot reach `192.168.1.x`). Same terminal code either way.
+
+⚠️ **Three things are not in git** and must be set up per environment — most
+importantly a `POS Operator` permission fix that repairs a bug affecting
+reweighing and photo attachment on production today. See §3 of the handoff doc.
+
+#### 7. Production Sorting Module - PLANNED
 - **Purpose**: QA/QC operations after Dropoff - sort, grade, and verify materials
 - **Status**: Planning complete, implementation pending
 - **Design Doc**: See `docs/PRODUCTION_SORTING_PLAN.md`

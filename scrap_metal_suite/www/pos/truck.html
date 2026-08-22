@@ -11,7 +11,14 @@
 <script src="/assets/scrap_metal_suite/js/html5-qrcode.min.js"></script>
 <script src="/assets/scrap_metal_suite/js/pos-scanner.js"></script>
 <script src="/assets/scrap_metal_suite/js/scale_reader.js"></script>
+<script src="/assets/scrap_metal_suite/js/camera_client.js"></script>
 <script src="/assets/scrap_metal_suite/js/pos-resizer.js"></script>
+<script>
+    // CCTV transport: set on the cloud site (where the server can't reach the
+    // camera LAN) so CameraClient talks to the on-site agent; empty in dev,
+    // where the backend fetches the camera itself.
+    window.SMT_CAMERA_AGENT_URL = "{{ camera_agent_url or '' }}";
+</script>
 {% endblock %}
 
 {% block page_content %}
@@ -51,6 +58,25 @@
                     </button>
                     <button class="scale-menu-item" onclick="openScaleTestPage()">
                         <span>🔧</span> <span data-i18n="reconfigureScale">Reconfigure Scale</span>
+                    </button>
+                </div>
+            </div>
+            <!-- Camera badge: same shape as the scale badge above -->
+            <div class="scale-badge-container" id="cameraBadgeContainer" style="display:none; position: relative;">
+                <button class="scale-badge" id="cameraBadge" onclick="toggleCameraMenu()">
+                    <span class="scale-icon">&#128249;</span>
+                    <span id="cameraCountDisplay"></span>
+                    <span class="scale-status-indicator" id="cameraStatusIndicator">●</span>
+                </button>
+                <div class="scale-menu" id="cameraMenu" style="display:none;">
+                    <div class="scale-menu-header">
+                        <span id="cameraMenuStatus"></span>
+                    </div>
+                    <button class="scale-menu-item" onclick="refreshCameraStatus(true)">
+                        <span>🔄</span> <span data-i18n="testCameras">Test Cameras</span>
+                    </button>
+                    <button class="scale-menu-item" onclick="openCameraTestPage()">
+                        <span>🔧</span> <span data-i18n="cameraTestTitle">Camera Configuration</span>
                     </button>
                 </div>
             </div>
@@ -121,9 +147,6 @@
                                     </div>
                                 </div>
                                 <div class="weight-entry-footer">
-                                    <button class="btn-pos btn-secondary btn-photo" onclick="openPhotoCapture('Gross')" id="grossPhotoBtn" disabled title="Save weight first">
-                                        &#128247; <span data-i18n="photo">Photo</span>
-                                    </button>
                                     <button class="btn-pos btn-primary btn-save-weight" onclick="saveGrossWeight()" id="saveGrossBtn">
                                         <span data-i18n="saveWeight">Save Weight</span>
                                     </button>
@@ -160,9 +183,6 @@
                                     </div>
                                 </div>
                                 <div class="weight-entry-footer">
-                                    <button class="btn-pos btn-secondary btn-photo" onclick="openPhotoCapture('Tare')" id="tarePhotoBtn" disabled title="Save weight first">
-                                        &#128247; <span data-i18n="photo">Photo</span>
-                                    </button>
                                     <button class="btn-pos btn-primary btn-save-weight" onclick="saveTareWeight()" id="saveTareBtn">
                                         <span data-i18n="saveWeight">Save Weight</span>
                                     </button>
@@ -490,6 +510,34 @@
         </div>
     </div>
 
+    <!-- Post-weigh review: shows the CCTV photos just taken, and gates printing -->
+    <div id="weighReviewModal" class="modal" style="display:none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="weighReviewTitle" data-i18n="weightRecorded">Weight Recorded</h3>
+            </div>
+            <div class="modal-body">
+                <div class="weight-confirmation" style="display:flex; margin-bottom:14px;">
+                    <div class="confirmation-icon">&#10004;</div>
+                    <div class="confirmation-text">
+                        <strong id="weighReviewValue">0.00 Kg</strong>
+                        <span class="confirmation-time" id="weighReviewType"></span>
+                    </div>
+                </div>
+                <div id="weighReviewStatus" class="weight-hint" style="margin-bottom:10px;"></div>
+                <div id="weighReviewPhotos" class="weigh-review-photos"></div>
+            </div>
+            <div class="modal-footer" style="flex-direction: column; gap: 10px;">
+                <button class="btn-pos btn-warning" onclick="recaptureWeightFromReview()" id="weighReviewRecaptureBtn">
+                    &#128260; <span data-i18n="recaptureWeight">Recapture Weight</span>
+                </button>
+                <button class="btn-pos btn-success" onclick="confirmWeighAndPrint()" id="weighReviewPrintBtn">
+                    &#128424; <span data-i18n="confirmAndPrint">Confirm &amp; Print</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scale Selection Modal (mandatory, no close button) -->
     <div id="scaleModal" class="modal" style="display:none;">
         <div class="modal-content">
@@ -776,6 +824,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Check if scale is already set for this session
     await checkSessionScale();
+
+    // Discover the weighbridge CCTV cameras (non-blocking - the terminal is
+    // fully usable without them)
+    initCctv();
 
     document.addEventListener('keydown', handleDropoffSearchKeydown);
 });
@@ -2986,9 +3038,11 @@ async function saveWeightByType(weightType, weight, remarks, reweightReason) {
                 document.getElementById('tareWeightInput').value = '';
             }
 
-            // Auto-print truck weight receipt
+            // Capture the cameras, then let the operator review the photos and
+            // confirm before the ticket prints. Printing is deliberately no
+            // longer automatic - see showWeighReview().
             if (response.message.truck_weight_record) {
-                printTruckWeight(response.message.truck_weight_record);
+                showWeighReview(response.message.truck_weight_record, weightType, weight);
             }
         }
     } catch (error) {
@@ -2998,6 +3052,365 @@ async function saveWeightByType(weightType, weight, remarks, reweightReason) {
             message: error.message || t('failedToRecordWeight')
         });
     }
+}
+
+// =============================================================================
+// CCTV (fixed weighbridge cameras)
+//
+// Separate from the device-webcam capture above: these are the fixed Hikvision
+// cameras, reached either by the Frappe backend (dev) or by the on-site capture
+// agent (cloud prod). CameraClient hides which. Nothing here may block a weigh.
+// =============================================================================
+
+let cameraClient = null;
+
+function getCameraClient() {
+    if (!cameraClient) {
+        cameraClient = new CameraClient({
+            usageType: 'Truck',
+            agentUrl: window.SMT_CAMERA_AGENT_URL || null
+        });
+    }
+    return cameraClient;
+}
+
+async function initCctv() {
+    try {
+        const cam = getCameraClient();
+        await cam.loadCameras();
+
+        if (cam.hasCameras()) {
+            // Show the header badge, then verify reachability in the background
+            document.getElementById('cameraBadgeContainer').style.display = 'inline-block';
+            updateCameraBadge('unknown', cam.cameras.length);
+            refreshCameraStatus();
+        } else {
+            console.info('CCTV: ' + t('noTruckCameras'));
+        }
+    } catch (e) {
+        console.warn('CCTV init failed:', e.message);
+    }
+}
+
+/**
+ * Badge state mirrors the scale badge, and deliberately uses the same CSS
+ * classes so the two read identically: connected (green) = all reachable,
+ * partial (amber) = some, disconnected (red) = none, connecting (blinking
+ * amber) = probing now. Never throws - a camera problem must not disturb
+ * the terminal.
+ */
+function updateCameraBadge(state, total, onlineCount) {
+    const countEl = document.getElementById('cameraCountDisplay');
+    const dot = document.getElementById('cameraStatusIndicator');
+    const menuStatus = document.getElementById('cameraMenuStatus');
+    const badge = document.getElementById('cameraBadge');
+    if (!countEl || !dot) return;
+
+    countEl.textContent = total;
+
+    const cssState = {
+        ok: 'connected',
+        partial: 'partial',
+        bad: 'disconnected',
+        testing: 'connecting',
+        unknown: ''
+    }[state] || '';
+    dot.className = ('scale-status-indicator ' + cssState).trim();
+
+    let label;
+    if (state === 'ok') label = t('cameraStatusAll');
+    else if (state === 'partial') label = (onlineCount || 0) + '/' + total + ' ' + t('online');
+    else if (state === 'bad') label = t('cameraStatusNone');
+    else if (state === 'testing') label = t('testing');
+    else label = t('notTested');
+
+    if (menuStatus) menuStatus.textContent = label;
+    if (badge) badge.title = label;
+}
+
+/**
+ * Probe the cameras and update the badge.
+ * @param {boolean} showResult - true when the operator asked (menu click), so
+ *        the outcome is reported in a dialog rather than only as a coloured dot.
+ */
+async function refreshCameraStatus(showResult) {
+    closeCameraMenu();
+    const cam = getCameraClient();
+
+    if (!cam.hasCameras()) {
+        if (showResult) frappe.msgprint(t('noTruckCameras'));
+        return;
+    }
+
+    updateCameraBadge('testing', cam.cameras.length);
+
+    const summary = await cam.testAll();
+    updateCameraBadge(
+        summary.online === summary.total ? 'ok' : (summary.online > 0 ? 'partial' : 'bad'),
+        summary.total,
+        summary.online
+    );
+
+    if (showResult) showCameraStatusDialog(cam, summary);
+}
+
+function showCameraStatusDialog(cam, summary) {
+    const rows = summary.results.map(r => {
+        const detail = r.ok
+            ? [
+                r.channel ? t('channelLabel') + ' ' + r.channel : null,
+                r.bytes ? (r.bytes / 1024).toFixed(1) + ' KB' : null
+              ].filter(Boolean).join(' &middot; ')
+            : (r.error || '-');
+
+        return '<tr>' +
+            '<td style="padding:6px 10px;font-weight:600;">' + r.camera + '</td>' +
+            '<td style="padding:6px 10px;">' +
+                (r.ok
+                    ? '<span style="color:#16a34a;font-weight:600;">&#9679; ' + t('online') + '</span>'
+                    : '<span style="color:#dc2626;font-weight:600;">&#9679; ' + t('offline') + '</span>') +
+            '</td>' +
+            '<td style="padding:6px 10px;color:#4b5563;">' + detail + '</td>' +
+        '</tr>';
+    }).join('');
+
+    const allOk = summary.online === summary.total;
+    const headline = allOk
+        ? t('cameraStatusAll')
+        : (summary.online > 0
+            ? summary.online + '/' + summary.total + ' ' + t('online')
+            : t('cameraStatusNone'));
+
+    // Which path was actually exercised matters when diagnosing
+    const via = cam.isAgentMode() ? t('transportAgent') : t('transportBackend');
+
+    frappe.msgprint({
+        title: t('testCameras'),
+        indicator: allOk ? 'green' : (summary.online > 0 ? 'orange' : 'red'),
+        message:
+            '<p style="margin-bottom:10px;"><b>' + headline + '</b><br>' +
+            '<span style="color:#6b7280;font-size:12px;">' + t('transport') + ': ' + via + '</span></p>' +
+            '<table style="width:100%;border-collapse:collapse;font-size:13px;">' + rows + '</table>' +
+            (allOk ? '' :
+                '<p style="margin-top:12px;color:#6b7280;font-size:12px;">' +
+                t('cameraTestSubtitle') + ' &rarr; <a href="/camera-test" target="_blank">/camera-test</a></p>')
+    });
+}
+
+function toggleCameraMenu() {
+    const menu = document.getElementById('cameraMenu');
+    if (!menu) return;
+    const showing = menu.style.display === 'block';
+    menu.style.display = showing ? 'none' : 'block';
+    if (!showing) {
+        setTimeout(() => document.addEventListener('click', closeCameraMenuOnOutsideClick), 0);
+    }
+}
+
+function closeCameraMenu() {
+    const menu = document.getElementById('cameraMenu');
+    if (menu) menu.style.display = 'none';
+    document.removeEventListener('click', closeCameraMenuOnOutsideClick);
+}
+
+function closeCameraMenuOnOutsideClick(e) {
+    const container = document.getElementById('cameraBadgeContainer');
+    if (container && !container.contains(e.target)) closeCameraMenu();
+}
+
+function openCameraTestPage() {
+    window.open('/camera-test', '_blank');
+}
+
+// Weight Photo stores the qualified type; the terminal works in gross/tare
+function cctvWeightType(weightType) {
+    return weightType.toLowerCase() === 'tare' ? 'Truck Tare' : 'Truck Gross';
+}
+
+/**
+ * Fired after a weight saves. Best-effort: any failure is reported to the
+ * caller rather than thrown, because the weigh has already succeeded and must
+ * never be undone by a camera problem.
+ *
+ * @returns {Promise<Object>} { ok, fail, errors } - zeroed when no cameras
+ */
+async function autoCaptureCctv(truckWeightName, weightType) {
+    const empty = { ok: 0, fail: 0, errors: [] };
+    if (!truckWeightName) return empty;
+
+    const cam = getCameraClient();
+    if (!cam.hasCameras()) return empty;
+
+    try {
+        const result = await cam.captureAll({
+            parentDoctype: 'Truck Weight',
+            parentDoc: truckWeightName,
+            weightType: cctvWeightType(weightType),
+            dropoff: state.dropoff ? state.dropoff.name : null,
+            session: state.session
+        });
+
+        if (result.fail > 0) console.warn('CCTV auto-capture errors:', result.errors);
+        return result;
+    } catch (e) {
+        // Defensive: captureAll already swallows, but a weigh must never fail here
+        console.warn('CCTV auto-capture failed:', e.message);
+        return { ok: 0, fail: 1, errors: [e.message] };
+    }
+}
+
+// =============================================================================
+// POST-WEIGH REVIEW
+//
+// The weight is already committed by the time this runs. This step exists so the
+// operator sees what the cameras actually recorded before a ticket is printed -
+// a blank or obstructed frame is worth catching before the truck leaves.
+// Printing is gated on confirmation; the weight itself is not.
+// =============================================================================
+
+let reviewTruckWeight = null;
+let reviewWeightType = null;
+
+async function showWeighReview(truckWeightName, weightType, weight) {
+    reviewTruckWeight = truckWeightName;
+    reviewWeightType = weightType;
+
+    const modal = document.getElementById('weighReviewModal');
+    const status = document.getElementById('weighReviewStatus');
+    const grid = document.getElementById('weighReviewPhotos');
+    const printBtn = document.getElementById('weighReviewPrintBtn');
+
+    document.getElementById('weighReviewValue').textContent = Number(weight).toFixed(2) + ' Kg';
+    document.getElementById('weighReviewType').textContent =
+        weightType === 'gross' ? t('grossWeight') : t('tareWeight');
+
+    grid.innerHTML = '';
+    modal.style.display = 'flex';
+
+    const cam = getCameraClient();
+    if (!cam.hasCameras()) {
+        status.textContent = t('noTruckCameras');
+        return;
+    }
+
+    // Printing waits until we know what was captured
+    status.textContent = t('capturingPhotos');
+    printBtn.disabled = true;
+
+    // Note which rows already existed, so the review shows only this capture.
+    // A reweigh leaves the earlier photos in place, and those are not what the
+    // operator is being asked to approve.
+    const preExisting = new Set(getStoredPhotos(truckWeightName, weightType).map(p => p.name));
+
+    const result = await autoCaptureCctv(truckWeightName, weightType);
+
+    // Re-read the record so the thumbnails come from stored rows. This is the
+    // only transport-agnostic source: in agent mode the browser never sees the
+    // JPEG, the agent uploads it straight to the server.
+    let photos = [];
+    try {
+        if (state.dropoff) await fetchDropoffDetails(state.dropoff.name);
+
+        const all = getStoredPhotos(truckWeightName, weightType);
+        photos = all.filter(p => !preExisting.has(p.name));
+
+        // Fallback: if the diff came back empty but cameras did report success,
+        // our "before" snapshot was stale. Show the newest N instead of nothing.
+        if (!photos.length && result.ok > 0) {
+            photos = all.slice(-result.ok);
+        }
+    } catch (e) {
+        console.warn('Could not reload photos:', e.message);
+    }
+
+    // Both transports report which cameras succeeded, in the same order the rows
+    // were appended - more reliable than parsing names out of the filename.
+    const cameraNames = (result.results || []).map(r => r.camera).filter(Boolean);
+    renderReviewPhotos(photos, cameraNames);
+
+    if (photos.length) {
+        status.textContent = photos.length + ' ' + t('photosCaptured');
+        if (result.fail > 0) status.textContent += ' — ' + t('someCamerasFailed');
+    } else if (result.fail > 0) {
+        status.textContent = t(cam.agentOnline === false ? 'cctvAgentOffline' : 'cctvOffline');
+    } else {
+        status.textContent = t('noPhotosCaptured');
+    }
+
+    printBtn.disabled = false;
+}
+
+/** Weight Photo rows on this Truck Weight matching the weight type just saved. */
+function getStoredPhotos(truckWeightName, weightType) {
+    const wanted = cctvWeightType(weightType);
+    const tw = (state.truckWeights || []).find(t => t.name === truckWeightName);
+    if (!tw || !tw.photos) return [];
+    return tw.photos.filter(p => !p.weight_type || p.weight_type === wanted);
+}
+
+function renderReviewPhotos(photos, cameraNames) {
+    const grid = document.getElementById('weighReviewPhotos');
+
+    if (!photos.length) {
+        grid.innerHTML = '';
+        return;
+    }
+
+    const useReported = cameraNames && cameraNames.length === photos.length;
+
+    grid.innerHTML = photos.map((p, i) => {
+        const label = useReported ? cameraNames[i] : cameraFromFileName(p.file_name);
+        return '<div class="review-photo">' +
+            '<img src="' + p.photo + '" alt="" ' +
+                 'onclick="window.open(\'' + p.photo + '\',\'_blank\')">' +
+            (label ? '<div class="review-photo-label">' + label + '</div>' : '') +
+        '</div>';
+    }).join('');
+}
+
+/**
+ * Recover the camera from a stored file name. Fallback only - used when the
+ * capture result and the row count disagree.
+ * Pattern: cctv_<YYYYMMDD>_<HHMMSS>_<camera>_<weighttype>_<hash>.jpg
+ */
+function cameraFromFileName(fileName) {
+    const m = /^cctv_\d{8}_\d{6}_(.+?)_[^_]+_[0-9a-f]+\.jpg$/i.exec(fileName || '');
+    return m ? m[1].toUpperCase() : '';
+}
+
+function closeWeighReview() {
+    document.getElementById('weighReviewModal').style.display = 'none';
+    getCameraClient().stopPreview();
+    reviewTruckWeight = null;
+    reviewWeightType = null;
+}
+
+function confirmWeighAndPrint() {
+    const name = reviewTruckWeight;
+    closeWeighReview();
+    if (name) printTruckWeight(name);
+}
+
+/**
+ * Operator rejected the weigh. The saved weight stands until they save again -
+ * that second save goes through the existing reweigh path, which demands a
+ * reason and stamps is_reweight. We only send them back to the input.
+ */
+function recaptureWeightFromReview() {
+    const weightType = reviewWeightType;
+    closeWeighReview();
+
+    if (!weightType) return;
+
+    switchWeightTab(weightType === 'gross' ? 'gross' : 'tare');
+
+    const input = document.getElementById(weightType === 'gross' ? 'grossWeightInput' : 'tareWeightInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+
+    frappe.show_alert({ message: t('recaptureWeightHint'), indicator: 'blue' }, 4);
 }
 
 // ===== Print Thermal Receipt =====

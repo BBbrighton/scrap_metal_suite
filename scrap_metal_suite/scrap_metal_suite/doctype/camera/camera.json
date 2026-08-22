@@ -1,0 +1,159 @@
+{
+ "actions": [],
+ "autoname": "field:camera_name",
+ "creation": "2026-08-15 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "camera_name",
+  "usage_type",
+  "column_break_1",
+  "location",
+  "is_active",
+  "section_break_connection",
+  "vendor",
+  "ip_address",
+  "port",
+  "column_break_2",
+  "channel",
+  "username",
+  "password",
+  "section_break_notes",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "camera_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Camera Name",
+   "reqd": 1,
+   "unique": 1,
+   "description": "Unique identifier for this camera (e.g., TRUCK-CAM-01). The local capture agent matches its cameras to this exact name."
+  },
+  {
+   "fieldname": "usage_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Usage Type",
+   "options": "Truck\nScrap\nProduction",
+   "reqd": 1,
+   "description": "Which terminal uses this camera. Truck = weighbridge, Scrap = small-scale station, Production = sorting."
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Location",
+   "description": "Physical location (e.g., Weighbridge Front)"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Is Active",
+   "description": "Uncheck to hide this camera from the terminals"
+  },
+  {
+   "fieldname": "section_break_connection",
+   "fieldtype": "Section Break",
+   "label": "Connection",
+   "description": "Used only when the Frappe backend fetches the snapshot itself (dev / on-prem). In cloud production the on-site agent holds the real credentials and these are labels only - leave the password blank."
+  },
+  {
+   "default": "Hikvision ISAPI",
+   "fieldname": "vendor",
+   "fieldtype": "Select",
+   "label": "Vendor",
+   "options": "Hikvision ISAPI",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ip_address",
+   "fieldtype": "Data",
+   "label": "IP Address",
+   "description": "e.g., 192.168.1.11"
+  },
+  {
+   "default": "80",
+   "fieldname": "port",
+   "fieldtype": "Int",
+   "label": "Port"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "102",
+   "fieldname": "channel",
+   "fieldtype": "Data",
+   "label": "Channel",
+   "description": "ISAPI channel: 101 = main stream (high-res), 102 = sub stream (faster, more reliable). 102 recommended - saved captures still try 101 first and fall back here."
+  },
+  {
+   "default": "admin",
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "label": "Username"
+  },
+  {
+   "fieldname": "password",
+   "fieldtype": "Password",
+   "label": "Password",
+   "description": "Digest auth password. Leave blank in cloud production - credentials stay in the on-site agent's config.json."
+  },
+  {
+   "fieldname": "section_break_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-15 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "Camera",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "POS Operator"
+  },
+  {
+   "read": 1,
+   "role": "Production Worker"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
