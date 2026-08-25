@@ -18,7 +18,7 @@ Fix
 - Schema defaults updated `0.001` → `0.1` (this patch only updates DB rows)
 - Controller fallbacks updated `or 0.001` → `or 0.1`
 - This patch backfills existing Dropoffs whose threshold is NULL, 0, or 0.001
-  to the new default 0.1, then re-runs `calculate_truck_variance` so
+  to the new default 0.1, then re-runs `calculate_totals` so
   `truck_variance_ok` / `indicated_variance_ok` get re-evaluated against the
   corrected threshold.
 
@@ -51,6 +51,7 @@ def execute():
 
     updated = 0
     recomputed = 0
+    failed = 0
     for row in rows:
         updates: dict[str, float] = {}
 
@@ -76,7 +77,12 @@ def execute():
         if row.total_truck_weight or row.total_indicated_weight:
             try:
                 doc = frappe.get_doc("Dropoff", row.name)
-                doc.calculate_truck_variance()
+                # calculate_totals() computes the truck variance AND calls
+                # calculate_indicated_variance(). There is no
+                # calculate_truck_variance() on Dropoff — calling it raised
+                # AttributeError into the except below, so this patch reported
+                # success while recomputing nothing.
+                doc.calculate_totals()
                 # Persist just the recomputed flags + percentages without
                 # re-running full save() (avoids re-validating the whole doc
                 # on stale data).
@@ -98,6 +104,7 @@ def execute():
                     )
                 recomputed += 1
             except Exception:
+                failed += 1
                 frappe.log_error(
                     frappe.get_traceback(),
                     f"fix_variance_threshold_defaults: recompute failed for {row.name}",
@@ -108,3 +115,12 @@ def execute():
         f"fix_variance_threshold_defaults: updated thresholds on {updated} of {len(rows)} dropoffs; "
         f"recomputed variance flags on {recomputed}"
     )
+    # Every recompute failing still left the counters looking plausible and the
+    # patch "successful" — the only signal was a zero that nobody reads. Say it
+    # loudly instead.
+    if failed:
+        print(
+            f"  WARNING: {failed} dropoff(s) failed to recompute and kept their "
+            f"previous variance verdict against the NEW threshold. See Error Log "
+            f"entries titled 'fix_variance_threshold_defaults: recompute failed'."
+        )
