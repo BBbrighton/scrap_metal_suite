@@ -210,25 +210,54 @@ def lookup_dropoff(query):
     #
     # On the floor the worker is holding a bag with a CTN sticker on it, not a
     # dropoff docket — the sticker is what the scanner sees. Matching only
-    # Dropoff name / plate / supplier meant scanning a bag found nothing at all,
-    # with no hint that the ID was valid but the wrong kind of thing.
+    # Dropoff name / plate / supplier meant a bag found nothing at all, with no
+    # hint that the ID was valid but the wrong kind of thing.
     #
-    # Exact match only: CTN codes come from a scanner or are typed in full, and
-    # a partial container match would be ambiguous against dropoff fields.
+    # Exact match short-circuits (a scanner sends the whole code). A partial
+    # match also works, because a human typing "CTN-2608" should see the bags
+    # that matches — searching only on exact codes means everything looks
+    # broken until the final character is typed.
+    exact_parent = None
     if frappe.db.exists("Scrap Weight Container", query):
-        parent = frappe.db.get_value("Scrap Weight Container", query, "dropoff")
-        if parent:
+        exact_parent = frappe.db.get_value("Scrap Weight Container", query, "dropoff")
+        if exact_parent:
             via_container = frappe.db.get_value(
-                "Dropoff", {"name": parent, "status": "Completed"}, fields, as_dict=True
+                "Dropoff", {"name": exact_parent, "status": "Completed"}, fields, as_dict=True
             )
             if via_container:
                 via_container["has_sorting"] = bool(frappe.db.exists(
                     "Production Sorting", {"dropoff": via_container.name}
                 ))
                 # Tell the UI why it landed here, so it can say "CTN-… → DO-…"
-                # rather than silently showing a different document.
+                # rather than silently showing a document nobody asked for.
                 via_container["matched_container"] = query
                 return [via_container]
+
+    # Partial container match -> the distinct Completed dropoffs behind them.
+    container_rows = frappe.db.sql("""
+        SELECT c.name AS ctn, c.dropoff
+        FROM `tabScrap Weight Container` c
+        JOIN `tabDropoff` d ON d.name = c.dropoff
+        WHERE c.name LIKE %(q)s AND d.status = 'Completed'
+        ORDER BY c.name
+        LIMIT 50
+    """, {"q": f"%{query}%"}, as_dict=True)
+
+    by_dropoff = {}
+    for row in container_rows:
+        by_dropoff.setdefault(row.dropoff, []).append(row.ctn)
+
+    container_results = []
+    for parent, ctns in by_dropoff.items():
+        rec = frappe.db.get_value("Dropoff", parent, fields, as_dict=True)
+        if not rec:
+            continue
+        rec["has_sorting"] = bool(frappe.db.exists("Production Sorting", {"dropoff": parent}))
+        # Every matching bag, so the operator can confirm they picked the right
+        # load before committing to it.
+        rec["matched_container"] = ", ".join(ctns[:5]) + ("…" if len(ctns) > 5 else "")
+        rec["matched_container_count"] = len(ctns)
+        container_results.append(rec)
 
     # Partial search
     results = frappe.db.sql("""
@@ -250,7 +279,10 @@ def lookup_dropoff(query):
             "Production Sorting", {"dropoff": r.name}
         ))
 
-    return results
+    # Container hits lead: if the operator typed something CTN-shaped that is
+    # what they meant. Dedupe so a dropoff found both ways appears once.
+    seen = {r["name"] for r in container_results}
+    return container_results + [r for r in results if r.name not in seen]
 
 @frappe.whitelist()
 def search_dropoff(query):
