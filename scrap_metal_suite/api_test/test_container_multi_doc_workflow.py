@@ -136,8 +136,28 @@ def cleanup_test_data():
             pass
 
     # Delete in dependency order
+    # Containers must go before the Dropoffs they hang off, but scope them to
+    # *this test's* dropoffs. Matching the name prefix instead — {"name":
+    # ["like", "CTN-%"]} — matches the global naming series and deletes every
+    # container in the database, including migrated production data.
+    _test_dropoffs = frappe.get_all(
+        "Dropoff",
+        filters={"license_plate": ["like", f"%{TEST_PREFIX}%"]},
+        pluck="name",
+    )
+    if _test_dropoffs:
+        for _ctn in frappe.get_all(
+            "Scrap Weight Container",
+            filters={"dropoff": ["in", _test_dropoffs]},
+            pluck="name",
+        ):
+            try:
+                frappe.delete_doc("Scrap Weight Container", _ctn,
+                                  force=True, ignore_permissions=True)
+            except Exception:
+                pass
+
     for dt, filt in [
-        ("Scrap Weight Container", {"name": ["like", "CTN-%"]}),
         ("Dropoff", {"license_plate": ["like", f"%{TEST_PREFIX}%"]}),
         ("POS Session", {"operator": TEST_OPERATOR}),
         ("POS Order", {"smt_price_lock": ["like", f"%{TEST_PREFIX}%"]}),
