@@ -53,6 +53,32 @@ const POS_SCANNER = (function() {
                 statusEl.textContent = POS_CORE.t('startingCamera');
             }
 
+            // Focus the manual field the moment the modal opens.
+            //
+            // Most yards scan with a USB/Bluetooth barcode gun, which is a
+            // keyboard: it types the code and presses Enter. Those keystrokes
+            // go to whatever holds focus, so without this the operator has to
+            // click the input first and a scan fired before that click is
+            // silently lost. Camera scanning is unaffected — it does not need
+            // focus — so this helps the hardware case and costs the camera
+            // case nothing.
+            //
+            // Deferred a frame: the modal has only just been set to display
+            // and is not yet focusable in some browsers.
+            const manualEl = document.getElementById(opts.manualInputId);
+            if (manualEl) {
+                manualEl.value = '';
+                setTimeout(function () {
+                    try {
+                        manualEl.focus();
+                        manualEl.select();
+                    } catch (e) {
+                        // focus() can throw if the element was removed while
+                        // the modal was closing; nothing to recover.
+                    }
+                }, 50);
+            }
+
             try {
                 html5QrCode = new Html5Qrcode(opts.readerId);
 
