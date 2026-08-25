@@ -45,7 +45,7 @@ jinja = {
 
 This app's own `jinja` hook is **commented out** (`scrap_metal_suite/hooks.py:84-88`). `qr_foundry` is present in `sites/apps.txt` on both `metal` and production.
 
-> **If `qr_foundry` is not installed, `Scrap Weight Thermal`, `Truck Weight Thermal`, and `Scrap Weight Container Sticker` all fail to render** with an undefined-callable error. This is the single most likely cause of "printing broke after a site rebuild". Check `bench --site <site> list-apps` first.
+> **If `qr_foundry` is not installed, `Scrap Weight Thermal`, `Truck Weight Thermal`, `Production Sorting Thermal`, and `Scrap Weight Container Sticker` all fail to render** with an undefined-callable error. This is the single most likely cause of "printing broke after a site rebuild". Check `bench --site <site> list-apps` first.
 
 `BILINGUAL_GUIDE.md` §11 describes `qr_src` as a "Frappe built-in Jinja filter that generates inline SVG QR". **That is wrong on three counts** — it is not built-in, it is a method not a filter, and it returns a PNG data URI (or a file URL), not SVG. See §9.
 
@@ -59,6 +59,7 @@ All eight live in one fixture array: `scrap_metal_suite/fixtures/print_format.js
 |---|---|---|---|---|---|---|
 | `Scrap Weight Thermal` | `Scrap Weight` | **Auto** on Finish Weighing; manual reprint | `80mm auto`, margin `2mm` | Thermal receipt | `Yes` (locked) | `:23` |
 | `Truck Weight Thermal` | `Truck Weight` | **Auto** on truck weight save; manual reprint | `80mm auto`, margin `2mm` | Thermal receipt | `Yes` (locked) | `:55` |
+| `Production Sorting Thermal` | `Production Sorting` | **Auto** on Submit Sorting; manual reprint via 🖶 in the header | `80mm auto`, margin `2mm` | Thermal receipt | `Yes` | added 2026-08-25 |
 | `Scrap Weight Container Sticker` | `Scrap Weight Container` | **Auto** on add/reweigh container (profile-gated); manual per row | `50mm 80mm`, margin `0` | Sticker / label | `No` (editable) | `:241` |
 | `ใบคิวสองภาษา` | `Dropoff` | Manual (desk default format) | `A4`, margin `15mm` | Office A4 | `Yes` (locked) | `:87` |
 | `ใบสรุปการส่งมอบ` | `POS Order` | Manual (desk default format) | `A4`, margin `15mm` | Office A4 | `No` (editable) | `:99` |
@@ -75,6 +76,7 @@ Only **three** are referenced by anything other than test scripts:
 ```
 Scrap Weight Thermal            → terminal.html:2209, dropoff.py:1526, dropoff.py:1694
 Truck Weight Thermal            → truck.html:3005
+Production Sorting Thermal      → production-terminal.js (printSortingSlip, on submit + 🖶 reprint)
 Scrap Weight Container Sticker  → dropoff.py:1043, terminal.html:3858
 ```
 
@@ -1198,6 +1200,7 @@ Results as of 2026-08-21 on `metal`: sticker smoke test **PASS** (all six fields
 **Not covered — what a green run does not prove:**
 
 - **Nothing has ever been printed on paper.** Every assertion is against rendered HTML. Print-head density, paper sensitivity, and printer darkness settings are invisible to these tests. §6 is verified as CSS, not as output.
+- **`Production Sorting Thermal` has no smoke test either** (added 2026-08-25). It has been rendered manually against a real record but never on paper — Thai tone marks at 10px on a 1-bit head are exactly the case §4.2 of the testing handoff asks to be checked physically.
 - **No test renders the five A4 formats.** `ใบคิวสองภาษา`, `ใบสรุปการส่งมอบ`, `ใบยืนยันราคา`, `ใบสั่งซื้อ`, `ใบคัดแยก` have no smoke test at all. §9.2 and §9.3 survived precisely because nothing exercises them. A `_doc_render_check`-style loop over all eight formats would have caught both.
 - **No test asserts the thermal rules.** Nothing fails when a new `color: #666` or a 7 px Thai label is added. The §6.4 audit was done by hand. A regression test that parses each thermal template and asserts "no colour but `#000`, no Thai below 10 px" is cheap and currently missing.
 - **No test covers the dangling-Dropoff path** (§9.1) — the one smoke test that could hit it explicitly filters those documents out.

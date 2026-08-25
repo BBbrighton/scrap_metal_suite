@@ -90,3 +90,15 @@ Not something you did wrong. Use the workaround given and report it.
 
 เลขเอกสารทำให้ตามเรื่องได้ในไม่กี่วินาที คำอธิบายอย่างเดียวใช้เวลาเป็นชั่วโมง
 A document number finds the record in seconds. A description alone can take an hour.
+
+## การคัดแยก / Production Sorting
+
+| อาการ / Symptom | สาเหตุ / Cause | วิธีแก้ / Fix |
+|---|---|---|
+| กด **✚ Add Item** แล้วขึ้น *"Select a container first"* | การคัดแยกทำทีละถุง / sorting is per bag | กด CTN ในรายการถุงทางซ้ายก่อน / click a CTN in the worklist first |
+| สแกน CTN แล้วขึ้นสีจาง กดไม่ได้ | ถุงถูกยกเลิกตอนรับเข้า / the bag was voided at receiving | ถุงนั้นถูกตัดออกแล้ว ไม่ต้องคัดแยก / it was written off; it is not sorted |
+| สแกน CTN แล้วไม่เจอ | ใบส่งของยังไม่ *Completed* | คัดแยกได้เฉพาะใบที่ปิดงานแล้ว / only Completed drop-offs can be sorted |
+| ถุงขึ้นเขียว + *"sorted earlier"* | คัดแยกครบไปแล้ว / already fully sorted | ปกติ — ทำซ้ำจะบวกน้ำหนักเพิ่ม / normal; redoing adds the weight again |
+| Submit แล้วขึ้น *"has already been sorted"* | ใบนี้ Submit ไปแล้ว / already submitted | กด **↺ Reopen** ใส่เหตุผล — ใบเดิมจะถูกยกเลิก / **↺ Reopen** with a reason; the old sorting is cancelled |
+| ใบคัดแยกไม่พิมพ์ออก | กล่องพิมพ์ถูกปิด หรือกระดาษหมด | กด **🖶 Print** บนแถบบนเพื่อพิมพ์ซ้ำ / **🖶 Print** in the header reprints the last slip |
+| ยอด **รับเข้า** ในใบคัดแยกดูสูงผิดปกติ | ใบสรุปที่สร้างก่อน 2026-08-25 / a Dropoff Final built before 2026-08-25 | เปิดใบสรุปแล้วกด Save เพื่อสร้างใหม่ / open the Dropoff Final and save it to rebuild |

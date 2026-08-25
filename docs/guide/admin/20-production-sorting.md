@@ -52,8 +52,9 @@ erDiagram
 | DocType | Type | Purpose |
 |---|---|---|
 | `Production Sorting` | **Submittable** | One sorting pass against one completed `Dropoff`. `production_sorting.json:270` |
-| `Production Sorting Good Item` | Child | Material kept and payable. `item_code`, `weight`, `uom`, `remarks` |
-| `Production Sorting Unwanted Item` | Child | Material returned. Adds `return_reason` (`reqd: 1`) |
+| `Production Sorting Good Item` | Child | Material kept and payable. `container`, `item_code`, `weight`, `uom`, `remarks` |
+| `Production Sorting Unwanted Item` | Child | Material returned. Adds `return_reason` (`reqd: 1`). Also carries `container` |
+| `Dropoff Final Container Item` | Child | Per-bag received-vs-sorted detail on `Dropoff Final`. Rebuilt by `aggregate_from_sortings()`; every field read-only |
 | `Production Sorting Source Item` | Child | Read-only snapshot of `Dropoff.item_summary` at insert time |
 | `Production Sorting Settings` | **Single** | `variance_threshold_percent`, `default_uom`, `allowed_item_groups` |
 | `Production Sorting Item Group` | Child | One allowed `Item Group` row |
@@ -66,6 +67,7 @@ erDiagram
 |---|---|---|---|
 | `dropoff` | `Production Sorting` | Link, `reqd` | The only hard input. **Not unique** — the current JSON dropped the `unique: 1` the pre-March schema had, so a drop-off can carry many sorting passes and `Dropoff Final` sums them all (`dropoff_final.py:24-28`) |
 | `session` | `Production Sorting` | Link, read-only | Written by `create_sorting`; `operator` and `scale` are `fetch_from` this (`production_sorting.json:96,104`) |
+| `container` | `…Good Item` / `…Unwanted Item` | Link → `Scrap Weight Container` | The bag this output came from. One received bag produces several rows — 100 kg of Grade A may sort into 90 A + 9 B + 1 tare. `create_sorting` validates the container exists **and** belongs to this dropoff, so a mis-scanned CTN from another supplier's load cannot be attributed here |
 | `good_items` / `unwanted_items` | `Production Sorting` | Table | The whole payload. `calculate_totals` sums both on every `validate` (`production_sorting.py:39-49`) |
 | `total_weight` | `Production Sorting` | Float(3), read-only | `total_good_weight + total_unwanted_weight`. Read by `Production Session.close_session` and `get_session_summary` |
 | `status` | `Production Sorting` | Select | `Draft / In Progress / Completed / Cancelled` — **never advanced past `Draft` by any code.** See §10 |
@@ -222,7 +224,7 @@ The sign convention is inverted between the terminals and the server. Magnitudes
 
 ## 5. API surface
 
-All 16 whitelisted endpoints live in `scrap_metal_suite/api/v1/production.py`. Every one calls `check_production_operator()` as its first statement — which admits **`Production Worker`, `Production Manager`, or `System Manager`** and rejects `Guest` (`auth.py:21-32`). Note the role is `Production Worker`, not "Production Operator"; a `Production Operator` role does exist on the site but is used only by `Scrap Weight Container` (`scrap_weight_container.json:319`) and grants nothing here.
+All 18 whitelisted endpoints live in `scrap_metal_suite/api/v1/production.py`. Every one calls `check_production_operator()` as its first statement — which admits **`Production Worker`, `Production Manager`, or `System Manager`** and rejects `Guest` (`auth.py:21-32`). Note the role is `Production Worker`, not "Production Operator"; a `Production Operator` role does exist on the site but is used only by `Scrap Weight Container` (`scrap_weight_container.json:319`) and grants nothing here.
 
 | # | Endpoint (`…api.v1.production.`) | Args | Returns | Auth | Notes |
 |---|---|---|---|---|---|
@@ -232,16 +234,19 @@ All 16 whitelisted endpoints live in `scrap_metal_suite/api/v1/production.py`. E
 | 4 | `update_session_activity` | `session` | `{success: bool}` | :94 + ownership :103-104 | Heartbeat. Returns `{success: False}` (no throw) when the session is not Open (:101-102). Writes `last_activity` with `update_modified=False` (:106-109) so it does not churn `modified` |
 | 5 | `get_session_summary` | `session` | `{session, totals:{sorting_count, total_weight}}` | :116 | `totals` is a **live** `SUM` over `tabProduction Sorting` (:127-133), independent of the denormalised session fields. Counts cancelled sortings too — no `docstatus` filter |
 | 6 | `set_session_scale` | `session, scale` | `{session, scale, scale_name, scale_type}` | :119 + ownership :148-151 | The only place a scale is locked (`in_use`, `in_use_by_session` :173-176). Throws if the session already has a scale (:153-154), if the scale is inactive (:164-165), or if it is held by another session (:166-168). Non-owner override here is **System Manager only** — Production Manager is not accepted (:150) |
-| 7 | `lookup_dropoff` | `query` | `[dropoff dict]` (max 10) | :189 | `[]` for queries under 2 chars (:191-192). Exact-name match short-circuits (:200-207); otherwise `LIKE %q%` across `name`, `license_plate`, `supplier_name` (:210-222). Filters `status = 'Completed'`. Adds `has_sorting` per row (:224-227). **LIKE wildcards in `query` are not escaped** — `%` matches everything |
+| 7 | `lookup_dropoff` | `query` | `[dropoff dict]` (max 10) | :189 | `[]` for queries under 2 chars (:191-192). Exact-name match short-circuits (:200-207); otherwise `LIKE %q%` across `name`, `license_plate`, `supplier_name` (:210-222). Filters `status = 'Completed'`. Adds `has_sorting` per row. **Also resolves container IDs**: an exact CTN short-circuits to that bag's dropoff carrying `matched_container`; a partial CTN returns the distinct dropoffs behind the matching bags, each listing them. Container hits lead the merged list and are deduped against dropoff hits. **LIKE wildcards in `query` are not escaped** — `%` matches everything |
 | 8 | `search_dropoff` | `query` | same | via `lookup_dropoff` | One-line alias (:231-234). Used by the orange terminal; the blue one calls `lookup_dropoff` directly |
-| 9 | `get_dropoff_for_sorting` | `dropoff` | `{name, supplier, supplier_name, license_plate, total_actual_weight, status, source_items[], existing_sorting}` | :240 | Loads the full `Dropoff` doc (:242) — `frappe.get_doc` does no permission check, which is why it works for a Production Worker who has **no read permission on `Dropoff`**. Raises `DoesNotExistError` for an unknown name. `existing_sorting` reads the orphan `verification_status` column (:255) and returns only **one** row even when several sortings exist |
+| 9 | `get_dropoff_for_sorting` | `dropoff` | `{name, supplier, supplier_name, license_plate, total_actual_weight, status, source_items[], existing_sorting}` | :240 | Loads the full `Dropoff` doc (:242) — `frappe.get_doc` does no permission check, which is why it works for a Production Worker who has **no read permission on `Dropoff`**. Raises `DoesNotExistError` for an unknown name. `existing_sorting` reads the orphan `verification_status` column and returns only **one** row even when several sortings exist. **Also returns `containers[]`** — the dropoff's **Active** bags only (Voided were written off, Reweighed superseded; neither physically exists) with `already_sorted` summed from submitted sortings and a `fully_sorted` flag, plus `container_count`. Without `already_sorted` the worklist shows a finished load as untouched and it gets sorted twice |
 | 10 | `get_allowed_items` | — | `{items[], groups{}, group_names[]}` | :273 | Reads `Production Sorting Settings.allowed_item_groups` (:275-279); returns a bare `[]` (not a dict) when none are configured (:276-277) — an inconsistent shape callers must handle. Filters `Item.disabled = 0` (:281-289) |
-| 11 | `create_sorting` | `session, dropoff, good_items=None, unwanted_items=None` | `{name, status, total_good_weight, total_unwanted_weight, total_weight}` | :309 | Accepts lists or JSON strings (:311-321). Throws when both lists are empty (:326-327), when the session is not Open or not the caller's (:330-337), when the dropoff is missing or not `Completed` (:340-344), and when any weight ≤ 0 (:349-352, :366-368). `remarks` and `return_reason` are `sanitize_html`-ed and truncated to 1000 / 500 chars. **Inserts and submits** (:385-386) |
+| 11 | `create_sorting` | `session, dropoff, good_items=None, unwanted_items=None` | `{name, status, total_good_weight, total_unwanted_weight, total_weight}` | :309 | Accepts lists or JSON strings (:311-321). Throws when both lists are empty (:326-327), when the session is not Open or not the caller's (:330-337), when the dropoff is missing or not `Completed` (:340-344), and when any weight ≤ 0 (:349-352, :366-368). `remarks` and `return_reason` are `sanitize_html`-ed and truncated to 1000 / 500 chars. **Inserts and submits**. **Refuses a dropoff that already has submitted sorting**, naming the record — sorting twice adds the same material to `Dropoff Final` again, and settlement pays against that. Use `reopen_sorting` first. Each row's `container` is validated against this dropoff |
 | 12 | `update_sorting` | `sorting_name, good_items=None, unwanted_items=None` | same shape | :398 + ownership :422-426 | Throws on `docstatus` 1 or 2 (:417-420). **Replaces both tables wholesale** — passing only `good_items` silently wipes `unwanted_items` (:429, :444). Rarely reachable in practice, since `create_sorting` submits |
 | 13 | `complete_sorting` | `sorting_name` | same shape | :471 + ownership :483-487 | Throws on empty (:475-476) or already-submitted/cancelled (:478-481). Returns **no** `verification_status` or `variance_ok`, though the blue terminal reads both (§6) |
 | 14 | `get_sorting_for_dropoff` | `dropoff` | `{name, status, verification_status, total_weight}` or `None` | :501 | `verification_status` is the orphan column — always `'Pending'` (:506) |
 | 15 | `get_scales` | `usage_type=None` | `[scale dict]` | :515 | Returns full serial config. **No `is_active` filter** — inactive scales are returned and must be filtered client-side |
 | 16 | `get_dropoff_final_status` | `dropoff` | `Dropoff Final` fields + `sorting_count`, or `None` | :563 | The only endpoint exposing real verification data. `sorting_count` counts `docstatus = 1` only (:575-578) |
+
+| 17 | `search_containers` | `query, limit=25` | `[container dict]` | `check_production_operator` | Finds bags by ID for the scan box — the sorter searches for the bag in their hand, not the load. Active bags sort first; Voided and Reweighed are returned rather than hidden (scanning a written-off sticker should say *why*, not "not found") and carry `sortable: false` so the UI greys and refuses them. Only bags on `Completed` dropoffs |
+| 18 | `reopen_sorting` | `dropoff, reason` | `{cancelled_sortings[], dropoff_final, reason}` | `check_production_operator` | Mirrors `dropoff.reopen_dropoff`: reason **required**, cancels the submitted `Production Sorting` records, and rebuilds `Dropoff Final` immediately so cancelled rows leave the aggregate. Unlike `reopen_dropoff` it **persists** the reason (`cancellation_reason`, `cancelled_by`, `cancelled_at`) — the audit question is asked of the document months later, not of an HTTP response |
 
 **Internal helper (correctly not whitelisted):** `update_dropoff_final(dropoff)` (`production.py:534-557`) — creates a `Dropoff Final` if none exists, otherwise re-saves the existing one to force recomputation. Called from `ProductionSorting.on_submit` and `on_cancel`.
 
@@ -338,7 +343,25 @@ All three return HTTP 301 → `/login?…` when unauthenticated and HTTP 200 whe
 
 Sections: bilingual header with status badge · General Information (drop-off, supplier, plate, verification badge, PO Final if set) · Good Items table with total · Unwanted Items table with `return_reason` column and total · Variance Summary (drop-off weight, verified total, variance kg + %, Pass/Fail) · two signature blocks (ผู้คัดแยก / ผู้ตรวจสอบ) · printed-at footer. Item cells render `item.item_name or item.item_code` verbatim — Thai names pass through untranslated, per `docs/BILINGUAL_GUIDE.md`.
 
-**There is no print format on `Production Sorting`** — verified: `frappe.get_all("Print Format", {"doc_type": "Production Sorting"})` returns `[]`. Printing one falls back to Frappe's Standard format. `test_full_workflow.py:1016` probes for one and records a *skip*, not a failure.
+Also renders a **Container Detail** section — per-bag received-vs-sorted, grouped one block per container, with the received grade and weight printed once per bag and a totals row reconciling both sides. Wrapped in `{% if doc.container_items %}`, so Dropoff Finals from before per-container sorting print exactly as they did.
+
+> The received column is deliberately sparse — it prints on a bag's first row only. Anything totalling it must count **distinct containers, not rows**: an earlier version compared each row with the previous one to find a bag's first row, but a bag's Good and Unwanted rows are not adjacent, so every container was counted twice (510 kg printed as 1,020 with a phantom 510 difference).
+
+### Print format `Production Sorting Thermal`
+
+**Attached to `Production Sorting`.** Supersedes the earlier note in this guide that no print format existed for the DocType — that was true until 2026-08-25.
+
+| Property | Value |
+|---|---|
+| `doc_type` | `Production Sorting` |
+| `module` / `standard` / type | Scrap Metal Suite / Yes / Jinja |
+| Stylesheet | Copied verbatim from `Scrap Weight Thermal`, so both slips are physically identical off the same 80 mm printer |
+
+Sections: company header · Thai title `ใบคัดแยกสินค้า` · date, drop-off, plate, supplier · manager-override badge (mirroring the amended badge on the scrap slip) · **Good** and **Unwanted** blocks, each line carrying its CTN, each with a subtotal · totals showing sorted against received **and the difference** — the number a supervisor checks a sorting slip for · operator and printed-at footer · two QR codes (Drop-off, Production Sorting) · cut line.
+
+Printed automatically by `/pos/production` on submit, via the same hidden-iframe pattern the scrap and truck terminals use, fired before the post-submit reset clears the record name. A **🖶 Print** button in the header reprints the last slip.
+
+`test_full_workflow.py:1016` probes for a Production Sorting print format and records a *skip*; that probe can now succeed.
 
 ---
 

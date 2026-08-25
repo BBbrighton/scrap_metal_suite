@@ -139,13 +139,22 @@ Open `/pos` → click the **🔧 Production Sorting** card → you land on `/pos
 | ส่วน / Part | ทำอะไร / What it does |
 |---|---|
 | **⚖ Prod-1 ●** | จุดสีเขียว = ตาชั่งต่ออยู่ · สีแดง = ยังไม่ต่อ / green dot = scale connected, red = not |
-| **ซ้าย / LEFT** | ค้นหาและล็อกใบส่งของ · แสดงรายการที่ผู้ขายส่งมาเป็นตัวเทียบ / find and lock the drop-off; shows what was received as a reference |
+| **ซ้าย / LEFT** | ค้นหาใบส่งของ **หรือสแกน CTN** · แสดง **รายการถุง / container worklist** และรายการที่รับเข้ามา / search a drop-off **or scan a CTN**; shows the **container worklist** and what was received |
+| **รายการถุง / Worklist** | ทุกถุงในใบส่งของนี้ พร้อมยอด **คัดแยกแล้ว / รับเข้า** — เทา = ยังไม่แตะ · เหลือง = คัดแยกบางส่วน · เขียว = ครบแล้ว / every bag in this load with **sorted / received** — grey untouched, amber partial, green complete |
 | **กลาง / MIDDLE** | น้ำหนักตัวใหญ่ · แท็บ **ของดี / ของไม่เอา** · ปุ่มรายการสินค้า · ปุ่ม **Add Item** |
 | **ขวา / RIGHT** | ยอดรวมสด · รายการที่เพิ่มแล้ว · ปุ่ม **Submit Sorting** |
 | **แท็บ From Dropoff** | กรองให้เหลือเฉพาะรายการที่มาในใบส่งของนี้ — กดอันนี้ก่อนเสมอ / filters to only what came in this drop-off — start here |
 
 > **ตารางสินค้าสีเทาจาง = ยังไม่ได้เลือกใบส่งของ**
 > **A greyed-out item grid means no drop-off is selected yet.** เลือกใบส่งของก่อน แล้วปุ่มจะกดได้ / pick one and the buttons wake up.
+
+> **ต้องเลือกถุงก่อนเสมอ / You must pick a bag first.**
+> การคัดแยกทำทีละถุง — กด CTN ในรายการถุงก่อน แล้วจึงชั่งและกด **✚ Add Item**
+> ถ้ายังไม่เลือกถุง จะขึ้นข้อความ *"Select a container first"*
+> Sorting is per bag. Click a CTN in the worklist, then weigh and **✚ Add Item**.
+> Without a bag selected you get *"Select a container first"* — every sorted
+> weight has to say which bag it came out of, or it cannot appear on the
+> drop-off final.
 
 ---
 
@@ -163,6 +172,23 @@ Open `/pos` → click the **🔧 Production Sorting** card → you land on `/pos
 
 **บนหน้าจอ / On screen:** ขึ้นข้อความเขียว *"Session started"* → หน้าจอโหลดใหม่ → แถบบนขึ้นเลขกะ เช่น `PSORT-SES-260821-00003`
 A green *"Session started"* toast, the page reloads, and the header shows your session number.
+
+---
+
+**ขั้นที่ 2ก — สแกนถุง / Scan a bag**  *(ทางลัดที่เร็วที่สุด / the quickest way in)*
+
+สแกน QR บนสติกเกอร์ถุง หรือพิมพ์เลข `CTN-…` ในช่องค้นหา
+Scan the QR on a bag sticker, or type a `CTN-…` code into the search box.
+
+- ระบบจะเปิด **ใบส่งของของถุงนั้น** ให้อัตโนมัติ พร้อมเลือกถุงนั้นไว้ให้แล้ว
+  The system opens **that bag's drop-off** and selects the bag for you.
+- พิมพ์แค่บางส่วนก็ได้ เช่น `CTN-2608` — จะขึ้นรายการให้เลือก
+  A partial code such as `CTN-2608` lists the bags to choose from.
+- ถุงที่ถูก **ยกเลิก (Voided)** จะขึ้นเป็นสีจาง กดไม่ได้ พร้อมบอกเหตุผล
+  **Voided** bags appear greyed and refuse to be selected, with the reason.
+
+ค้นหาด้วยเลขใบส่งของ ทะเบียนรถ หรือชื่อผู้ขาย ก็ยังทำได้เหมือนเดิม
+Searching by drop-off number, plate or supplier still works as before.
 
 ---
 
@@ -398,6 +424,12 @@ Unwanted: 1
 
 3. กด **Yes**
 
+**ใบคัดแยกจะพิมพ์ออกมาทันที / The sorting slip prints straight away** — สลิปความร้อน 80 มม. เหมือนใบชั่งสินค้า มีเลข CTN กำกับทุกบรรทัด
+An 80 mm thermal slip, same as the weighing receipts, with the CTN on every line.
+
+ถ้ากระดาษติดหรือหมด กด **🖶 Print** บนแถบบนเพื่อพิมพ์ซ้ำใบล่าสุด
+If the paper jams or runs out, **🖶 Print** in the header reprints the last slip.
+
 **บนหน้าจอ / On screen:** ขึ้นข้อความเขียว *"Sorting submitted: SORT-260821-00007"*
 จากนั้นหน้าจอ **ล้างเอง** — ช่องค้นหาว่าง รายการหายหมด พร้อมรับงานถัดไป
 A green *"Sorting submitted: SORT-260821-00007"* toast, then the screen **clears itself** and is ready for the next drop-off.
@@ -493,6 +525,11 @@ Submitting automatically creates a **Dropoff Final** (`DFL-260821-00007`). That 
 | **สถานะเป็น Pending ทั้งที่กด Submit แล้ว** | ใบสรุปยังไม่มีรายการ — Submit อาจไม่สำเร็จ | ตรวจ list ของ Production Sorting ว่ามีเลข `SORT-…` ของคุณจริง / check the Production Sorting list for your `SORT-…` |
 | **เปิด Dropoff จากหน้า Desk ไม่ได้** | `Production Worker` ไม่มีสิทธิ์อ่าน Dropoff | ปกติ — ใช้ข้อมูลในหน้าจอคัดแยกแทน หรือขอให้หัวหน้าเปิดให้ / expected; use the terminal, or ask a manager |
 | **กะหายไประหว่างพัก** | ปิดอัตโนมัติหลังไม่ใช้งาน 10 นาที | เปิดกะใหม่ — งานที่ Submit แล้วไม่หาย / open a new one; anything already submitted is safe |
+| **กด ✚ Add Item แล้วขึ้น "Select a container first"** | ยังไม่ได้เลือกถุง | กด CTN ในรายการถุงทางซ้ายก่อน / click a CTN in the worklist first |
+| **สแกน CTN แล้วขึ้นสีจาง กดไม่ได้** | ถุงนั้นถูกยกเลิก (Voided) ตอนรับเข้า | ถุงนั้นถูกตัดออกแล้ว ไม่ต้องคัดแยก — ใช้ถุงอื่น / that bag was written off at receiving; it is not sorted |
+| **สแกน CTN แล้วไม่เจอ** | ใบส่งของยังไม่เป็น *Completed* | คัดแยกได้เฉพาะใบที่ปิดงานแล้ว / only Completed drop-offs can be sorted |
+| **ถุงขึ้นเขียวและมีคำว่า "sorted earlier"** | ถุงนี้คัดแยกครบไปแล้วก่อนหน้านี้ | ปกติ — ไม่ต้องทำซ้ำ ถ้าทำซ้ำน้ำหนักจะถูกบวกเพิ่ม / normal; redoing it would add the weight again |
+| **กด Submit แล้วขึ้น "has already been sorted"** | ใบส่งของนี้ Submit ไปแล้ว | กด **↺ Reopen** แล้วใส่เหตุผล — ระบบจะยกเลิกใบเดิมให้ / click **↺ Reopen** and give a reason; the old sorting is cancelled |
 
 ---
 
@@ -506,17 +543,19 @@ Submitting automatically creates a **Dropoff Final** (`DFL-260821-00007`). That 
 | ❌ อย่าใช้ / Do not use | `/production/terminal`, `/production` |
 | ผลการตรวจสอบ + พิมพ์ / Result & print | Desk → **Dropoff Final** → `ใบคัดแยก` |
 
-**ลำดับงาน 8 ขั้น / The eight steps**
+**ลำดับงาน 10 ขั้น / The ten steps**
 
 ```
 1. /pos → 🔧 Production Sorting
 2. เลือกตาชั่ง Prod-1     → เปิดกะ / session opens
 3. ⚖ badge → 🔌 Connect   → จุดเขียว / green dot
-4. ค้นหาใบส่งของ          → ตารางสินค้าสว่าง / grid wakes up
-5. แท็บ Good   → ชั่ง → เลือกสินค้า → ✚ Add Item   (ทำซ้ำ / repeat)
-6. แท็บ Unwanted → ชั่ง → เลือกสินค้า → ✚ Add Item  (ทำซ้ำ / repeat)
-7. Variance ≈ 0.000 kg   → Submit Sorting → จด SORT-…
-8. Close Session
+4. สแกน CTN (หรือค้นหาใบส่งของ) → ใบส่งของเปิด + รายการถุงขึ้น / scan a CTN, or search
+5. กดถุง CTN ในรายการ     → ถุงนั้นถูกเลือก / pick the bag you are holding
+6. แท็บ Good   → ชั่ง → เลือกสินค้า → ✚ Add Item   (ทำซ้ำ / repeat)
+7. แท็บ Unwanted → ชั่ง → เลือกสินค้า → ✚ Add Item  (ทำซ้ำ / repeat)
+8. ถุงขึ้นเขียว → กดถุงถัดไป / bag turns green, move to the next
+9. Variance ≈ 0.000 kg   → Submit Sorting → ใบคัดแยกพิมพ์ออก + จด SORT-…
+10. Close Session
 ```
 
 **เลขเอกสาร / Document numbers**

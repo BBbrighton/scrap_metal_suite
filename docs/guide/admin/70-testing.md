@@ -76,6 +76,25 @@ bench --site metal execute scrap_metal_suite.api_test.test_container_workflow.ru
   --kwargs '{"cleanup_first": true, "cleanup_after": false}'
 ```
 
+> ⚠️ **`--kwargs` is evaluated as Python, not JSON.** The example above uses
+> `true`, which raises `NameError: name 'true' is not defined`. Write
+> `"{'cleanup_first': True}"`. Note also that some suites reject `cleanup_after`
+> and fail with a confusing `NameError` naming the module rather than the kwarg.
+
+> 🔴 **Fixed 2026-08-25 — these suites used to delete every container in the
+> database.** `test_container_workflow`, `test_container_multi_doc_workflow` and
+> `test_finish_weighing_session` cleaned up containers with
+> `{"name": ["like", "CTN-%"]}` — the global naming series, not a test prefix —
+> so any run with `cleanup_first=True` wiped every `Scrap Weight Container` on
+> the site, including migrated production data. Observed: all 360 containers
+> from `migrate_to_containers` destroyed, and the suites still reported PASS.
+> They now resolve containers through the test's own dropoffs.
+>
+> **This matters for the deploy gate.** The agreed gate is a migration dry-run
+> on a restored production backup, and running these suites there is the obvious
+> next step — it would have destroyed the data being validated. If you are on a
+> branch predating that fix, do not run them against real data.
+
 ### 3.1 The permanent regression lane — keep these green
 
 | Module | Entry | kwargs | Checks | Cleans up after? |
