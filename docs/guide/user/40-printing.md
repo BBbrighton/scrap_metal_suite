@@ -3,7 +3,7 @@
 > **Status:** Production
 > **Who / ใคร:** POS Operator (ผู้ปฏิบัติงานหน้าลาน), Truck Operator (ผู้ชั่งรถ), Production Operator (ผู้คัดแยก), Manager (ผู้จัดการ), Accountant (พนักงานบัญชี)
 > **Where / ที่ไหน:** POS Terminal `/pos/terminal` · Truck Terminal `/pos/truck` · Desk (หน้าจอหลังบ้าน) for A4 documents
-> **Last verified / ตรวจสอบล่าสุด:** 2026-08-21 against `feature/container-redesign`
+> **Last verified / ตรวจสอบล่าสุด:** 2026-08-25 — ทดสอบกับระบบจริง / tested against a live site
 
 ---
 
@@ -20,20 +20,26 @@
 
 ## 1. What gets printed, and when / เอกสารที่พิมพ์
 
-ระบบพิมพ์เอกสาร 8 แบบ แบ่งเป็นสองกลุ่มใหญ่ — **กลุ่มที่พิมพ์อัตโนมัติหน้าลาน** และ **กลุ่มที่พิมพ์เองจากหลังบ้าน**
+ระบบพิมพ์เอกสาร 9 แบบ แบ่งเป็นสองกลุ่มใหญ่ — **กลุ่มที่พิมพ์อัตโนมัติหน้าลาน** และ **กลุ่มที่พิมพ์เองจากหลังบ้าน**
 
-The system prints eight documents, in two groups — **printed automatically at the yard**, and **printed by hand from the desk**.
+The system prints nine documents, in two groups — **printed automatically at the yard**, and **printed by hand from the desk**.
 
 ### 1.1 พิมพ์อัตโนมัติ / Printed automatically
 
-เอกสารสามแบบนี้ออกมาเองเมื่อคุณกดปุ่ม ไม่ต้องสั่งพิมพ์
-These three come out on their own when you press a button — you never choose a format.
+เอกสารสี่แบบนี้ออกมาเองเมื่อคุณกดปุ่ม ไม่ต้องสั่งพิมพ์
+These four come out on their own when you press a button — you never choose a format.
 
 | เอกสาร / Document | พิมพ์เมื่อไหร่ / Printed when | กระดาษ / Paper |
 |---|---|---|
 | **สติ๊กเกอร์ภาชนะ**<br>Container Sticker | กดปุ่ม **Save & Print Sticker** หลังชั่งถุง<br>หรือกด **ชั่งใหม่ / Reweigh** | สติ๊กเกอร์ 50 × 80 มม. |
 | **ใบชั่งสินค้า**<br>Scrap Weight receipt | กดปุ่ม **Finish Container Weighing** (จบการชั่ง) | ใบเสร็จความร้อน 80 มม. |
 | **ใบชั่งรถ**<br>Truck Weight ticket | บันทึกน้ำหนักรถ (ขาเข้า หรือ ขาออก) | ใบเสร็จความร้อน 80 มม. |
+| **ใบคัดแยก (สลิป)**<br>Sorting slip | กด **Submit Sorting** ในหน้าจอคัดแยก<br>พิมพ์ซ้ำได้ที่ปุ่ม **🖶 Print** บนแถบบน | ใบเสร็จความร้อน 80 มม. |
+
+> **ใบคัดแยกมี 2 แบบ อย่าสับสน / Two different sorting printouts:**
+> **สลิป 80 มม.** ออกอัตโนมัติที่หน้าจอคัดแยกทันทีที่กด Submit — ให้พนักงานถือติดตัว
+> **ใบ A4** (`ใบคัดแยก`) พิมพ์เองจากหลังบ้านที่ Dropoff Final — เอกสารทางการที่มีรายละเอียดรายถุง
+> The 80 mm **slip** prints itself at the terminal on submit; the **A4 report** is printed by hand from the Dropoff Final record and carries the full per-bag breakdown.
 
 ### 1.2 พิมพ์เองจากหลังบ้าน / Printed by hand from the desk
 
@@ -602,33 +608,41 @@ The QR holds a **full link including the server name**. A phone camera opens the
 | **พิมพ์สติ๊กเกอร์ / Print Sticker** | แต่ละแถวในรายการถุง / each journal row | พิมพ์สติ๊กเกอร์ใบนั้นซ้ำ / reprints that one sticker |
 | **🖶 Print** | แถบบน POS Terminal | พิมพ์ใบชั่งสินค้าล่าสุดซ้ำ / reprints the current customer receipt |
 | **🖶 Print** | แถบบน Truck Terminal | พิมพ์ใบชั่งรถล่าสุดซ้ำ / reprints the last truck ticket |
+| **🖶 Print** | แถบบนหน้าจอคัดแยก / Sorting terminal | พิมพ์สลิปใบคัดแยกล่าสุดซ้ำ / reprints the last sorting slip |
+| **Submit Sorting** | หน้าจอคัดแยก ช่องขวา / sorting terminal, right pane | ยืนยันการคัดแยก + พิมพ์สลิป 80 มม. / submits the sorting and prints its 80 mm slip |
 | **Finish Container Weighing** | แถบเครื่องมือภาชนะ | จบการชั่ง + พิมพ์ใบชั่งสินค้า / finishes weighing and prints the receipt |
 | **Print** | มุมขวาบนของหน้าจอหลังบ้าน / desk, top right | พิมพ์เอกสาร A4 / prints the A4 document |
 
-**เอกสารทั้ง 8 แบบ / All eight documents**
+**เอกสารทั้ง 9 แบบ / All nine documents**
 
 | เอกสาร | กระดาษ | อัตโนมัติ? |
 |---|---|---|
 | สติ๊กเกอร์ภาชนะ / Container Sticker | สติ๊กเกอร์ 50×80 มม. | ✅ ใช่ / Yes |
 | ใบชั่งสินค้า / Scrap Weight | ใบเสร็จ 80 มม. | ✅ ใช่ / Yes |
 | ใบชั่งรถ / Truck Weight | ใบเสร็จ 80 มม. | ✅ ใช่ / Yes |
+| ใบคัดแยก (สลิป) / Sorting slip | ใบเสร็จ 80 มม. | ✅ ใช่ / Yes |
 | ใบส่งสินค้า / Drop-off Receipt | A4 | ❌ พิมพ์เอง / Manual |
 | ใบสรุปการส่งมอบ / Fulfillment Summary | A4 | ❌ พิมพ์เอง / Manual |
 | ใบยืนยันราคา / Price Lock | A4 | ❌ พิมพ์เอง / Manual |
 | ใบสั่งซื้อ / Purchase Order | A4 | ❌ พิมพ์เอง / Manual |
-| ใบคัดแยก / Sorting Report | A4 | ❌ พิมพ์เอง / Manual |
+| ใบคัดแยก (A4) / Sorting Report | A4 | ❌ พิมพ์เอง / Manual |
 
 **เลขเอกสาร / Document numbers**
 
-| ขึ้นต้นด้วย / Starts with | คือ / Is a |
-|---|---|
-| `DO-` | ใบส่งมอบ / Drop-off |
-| `CTN-` | ภาชนะ (ถุง) / Container |
-| `WGT-` หรือ `SW-` | ใบชั่งสินค้า / Scrap Weight |
-| `TW-` | ใบชั่งรถ / Truck Weight |
-| `DFL-` | ใบคัดแยก / Sorting Report |
-| `PL-` | ใบยืนยันราคา / Price Lock |
-| `ORD-` | คำสั่งซื้อ / POS Order |
+ตรวจกับระบบจริงแล้วเมื่อ 25 ส.ค. 2026 / checked against live records on 25 Aug 2026
+
+| ขึ้นต้นด้วย / Starts with | คือ / Is a | ตัวอย่าง / Example |
+|---|---|---|
+| `DO-` | ใบส่งมอบ / Drop-off | `DO-ACME-260825-4` |
+| `CTN-` | ภาชนะ (ถุง) / Container | `CTN-2608-00015` |
+| `SW-` | ใบชั่งสินค้า / Scrap Weight | `SW-ACME-260825-6` |
+| `TW-` | ใบชั่งรถ / Truck Weight | `TW-260825-00006` |
+| `SORT-` | ใบคัดแยก 1 รอบ / one sorting pass | `SORT-260825-00006` |
+| `DFL-` | ใบสรุปการคัดแยก / Dropoff Final | `DFL-260825-00004` |
+| `PLO-` | ใบยืนยันราคา / Price Lock | `PLO-ACME-2608-001` |
+| `PDR-` | คำสั่งซื้อ / POS Order | `PDR-ACME-2608-001` |
+| `SPO-` | ใบสั่งซื้อ / SMT Purchase Order | `SPO-ACME-2608-001` |
+| `SES-` | กะ / Session | `SES-2026-00136` |
 
 **กฎที่ต้องจำ / Rules to remember**
 

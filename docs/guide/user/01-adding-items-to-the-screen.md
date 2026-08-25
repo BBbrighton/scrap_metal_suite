@@ -3,7 +3,7 @@
 > **Status:** Production
 > **Who / ใคร:** ออฟฟิศ / ผู้ดูแลระบบ — office or admin (not yard operators)
 > **Where / ที่ไหน:** Desk — `/app/item` and `/app/pos-profile-scrap`
-> **Last verified:** 2026-08-21
+> **Last verified:** 2026-08-25 — ทดสอบกับระบบจริง / tested against a live site
 
 ปุ่มเกรดที่ผู้ชั่งเห็นบนหน้าจอ มาจากการตั้งค่า 2 ที่ ไม่ใช่ที่เดียว
 The grade buttons an operator sees come from **two** places, not one. Getting this wrong is the most common reason a new grade "doesn't show up".

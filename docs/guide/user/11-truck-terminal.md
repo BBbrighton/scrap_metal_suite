@@ -3,7 +3,35 @@
 > **Status:** Production
 > **Who / ใคร:** POS Operator (ต้องมีบทบาท `POS Operator`)
 > **Where / ที่ไหน:** `/pos/truck?session=<รหัสกะ>` — เข้าจากหน้า `/pos` แล้วกดการ์ด **Truck Scale**
-> **Last verified:** 2026-08-21 against `feature/container-redesign`
+> **Last verified:** 2026-08-25 — ทดสอบกับระบบจริง / tested against a live site
+
+---
+
+## ⚡ ฉบับย่อ — ชั่งรถคันหนึ่งทำแค่นี้ / The short version
+
+รถ 1 คัน = ชั่ง 2 ครั้ง คือ **ตอนเข้า** กับ **ตอนออก**
+One truck, two weighings: **in** with the load, **out** empty.
+
+| | ตอนรถเข้า / Truck arrives | ตอนรถออก / Truck leaves |
+|---|---|---|
+| **1** | เปิด `/pos` → การ์ด **Truck Scale** → เลือกตาชั่ง | เลือกใบส่งของใบเดิม |
+| **2** | ค้นหาใบส่งของ `DO-…` หรือทะเบียนรถ | กดแท็บ **น้ำหนักเปล่า / Tare** |
+| **3** | แท็บ **น้ำหนักรวม / Gross** (เลือกไว้ให้แล้ว) | รถขึ้นตาชั่งเปล่า รอ `STABLE` |
+| **4** | รถขึ้นตาชั่ง รอป้าย `STABLE` | กด **บันทึกน้ำหนัก** → **ยืนยัน** |
+| **5** | กด **บันทึกน้ำหนัก** → **ยืนยัน** | น้ำหนักสุทธิคำนวณให้เอง + สลิปพิมพ์ออก |
+| **6** | ฉีกสลิปให้คนขับ **บอกให้เก็บไว้** | กด **✔ เสร็จสิ้นใบส่งของ** |
+
+**3 อย่างที่ต้องจำ / Three things to remember**
+
+1. **น้ำหนักสุทธิ = น้ำหนักรวม − น้ำหนักเปล่า** ระบบคิดให้เอง คุณไม่ต้องคำนวณ
+   Net = Gross − Tare. The system does the arithmetic.
+2. **กะปิดเองถ้าไม่มีการบันทึก 90 นาที** — ระหว่างรถเข้ากับรถออกมักเกิน ถ้าโดนปิด ให้เปิดกะใหม่ **น้ำหนักที่ชั่งไว้ยังอยู่ครบ ไม่ต้องชั่งซ้ำ**
+   Sessions auto-close after 90 minutes with no save, which the gap between weigh-in and weigh-out often exceeds. Just open a new one — **the gross weight you already saved is safe**.
+3. **ชั่งผิด ให้ชั่งซ้ำในแท็บเดิม** พร้อมใส่เหตุผล — ไม่ต้องออกใบใหม่ เลข `TW-…` เดิมยังใช้ได้
+   Got it wrong? Reweigh on the same tab with a reason. No new document — the same `TW-…` number stands.
+
+> ⚠️ **ข้อความบางจุดยังขึ้นเป็นรหัสภาษาอังกฤษ** เช่น `confirmReweight`, `missingGrossWeight` — เป็นข้อบกพร่องที่ทราบแล้ว **ไม่กระทบข้อมูล** ความหมายอยู่ในตารางข้อ 8
+> Some messages still show raw codes instead of Thai. Confirmed still present on 25 Aug 2026. **Harmless** — the translations are in §8.
 
 ---
 

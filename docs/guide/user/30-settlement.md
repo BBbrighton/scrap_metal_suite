@@ -4,7 +4,35 @@
 > **Who / ใคร:** SMT Accountant, SMT Accounting Manager, System Manager
 > **Where / ที่ไหน:** Frappe desk เท่านั้น ไม่มีหน้าจอ terminal / desk only, there is no touch terminal for this
 > **Desk paths:** `/app/smt-accounting` (workspace) · `/app/smt-price-lock` · `/app/smt-purchase-order` · `/app/dropoff-final`
-> **Last verified:** 2026-08-21 against `feature/container-redesign`
+> **Last verified:** 2026-08-25 — เดินครบทั้งเส้นกับข้อมูลจริง / walked end to end on live data
+
+---
+
+## ⚡ ฉบับย่อ — งานบัญชีมี 2 จังหวะ / The short version
+
+งานของคุณมีแค่ 2 จังหวะ คือ **ก่อนของมา** กับ **หลังคัดแยกเสร็จ** ที่เหลือระบบทำให้เอง
+Your job has only two moments: **before the material arrives**, and **after sorting finishes**. Everything in between is automatic.
+
+| จังหวะ / Moment | คุณทำอะไร / You do | ระบบทำให้เอง / The system does |
+|---|---|---|
+| **ก่อนของมา** | สร้าง **SMT Price Lock** (ใบยืนยันราคา) → Submit | สร้าง **POS Order** ให้ลานทำงานทันที |
+| *(ระหว่างนั้น)* | — ไม่ต้องทำอะไร — | ลานชั่ง → คัดแยก → ได้ **Dropoff Final** |
+| **หลังคัดแยกเสร็จ** | สร้าง **SMT Purchase Order** (ใบสั่งซื้อ) → ใส่แถวจัดสรร → Submit | ตัดโควตาใบยืนยันราคา · ปิด Dropoff Final · สร้าง **Purchase Invoice** แบบร่าง |
+| **ปิดท้าย** | เปิดใบแจ้งหนี้ร่าง → ใส่คลังสินค้า → ตรวจภาษี → Submit | — |
+
+**กฎที่ห้ามลืม / The rules that will stop you**
+
+1. **ของดีทุกกิโลต้องมีที่ไป** — จัดสรรไม่ครบ = Submit ไม่ได้ ปิดครึ่ง ๆ ไม่ได้
+   Every kilo must be allocated. Partial closure is impossible.
+2. **ราคาจาก `PO` แก้ไม่ได้** — จะจ่ายราคาอื่นต้องใช้ `Spot`
+   A `PO` rate comes from the lock and cannot be typed over. Use `Spot` for anything else.
+3. **1 ใบสั่งซื้อ = 1 ผู้ขาย** — ผสมผู้ขายไม่ได้
+   One settlement, one supplier.
+4. **Submit แล้ว Amend ไม่ได้** — ต้อง Cancel แล้วสร้างใหม่ ดู [ข้อ 10](#10-ปัญหาที่พบบ่อย--what-can-go-wrong)
+   Amend does not work. Cancel and re-create.
+
+> ✅ **เส้นทางนี้ทดสอบแล้วว่าใช้ได้จริง** เมื่อ 25 ส.ค. 2026 เดินครบตั้งแต่ Dropoff Final → ใบสั่งซื้อ → Submit → ใบแจ้งหนี้ร่างออกมาถูกต้อง
+> The whole chain was walked end to end on 25 Aug 2026: a `Unsettled` Dropoff Final settled cleanly and produced a correct draft Purchase Invoice.
 
 ---
 
@@ -428,7 +456,7 @@ Cancel every settlement that references it first, then the lock.
 | อาการ / Symptom | สาเหตุ / Cause | แก้ยังไง / Fix |
 |---|---|---|
 | **Total Settled Value เป็น `0.00` เสมอ** แม้จ่ายเงินไปแล้วครึ่งใบ / **always reads `0.00`** even after settling | 🐛 **บั๊กที่ยืนยันแล้ว** ช่องนี้คำนวณตอน Save เท่านั้น และการตัดโควตาไม่ผ่าน Save / **confirmed bug** — the field is only computed on save, and settlement bypasses save | อย่าใช้ช่องนี้ ให้ดู **Settled Qty × PO Rate** ในตาราง Items แทน หรือดู Grand Total ในใบสั่งซื้อ / ignore it. Read **Settled Qty × PO Rate** from the Items table, or the settlement's Grand Total |
-| **POS Order Status ค้างที่ `Pending`** ทั้งที่ Fulfillment Status เป็น `Fulfilled` แล้ว / **stuck at `Pending`** while Fulfillment Status says `Fulfilled` | 🐛 **บั๊กที่ยืนยันแล้ว** ตอนระบบจับคู่น้ำหนัก มันข้ามการคำนวณสถานะ / **confirmed bug** — the allocation write skips the status recalculation | เชื่อ **Fulfillment Status** อย่าเชื่อ Status ถ้าอยากให้ตรง เปิด POS Order แล้ว Save ซ้ำ 1 ครั้ง / trust **Fulfillment Status**, not Status. Opening and re-saving the POS Order corrects it |
+| **POS Order Status ค้างที่ `Pending`** ทั้งที่ Fulfillment Status เป็น `Fulfilled` แล้ว / **stuck at `Pending`** while Fulfillment Status says `Fulfilled` | ✅ **แก้แล้ว** — ตรวจกับใบจริงทั้ง 127 ใบเมื่อ 25 ส.ค. 2026 ไม่มีใบไหนไม่ตรงกันเลย / **fixed** — all 127 live orders re-checked on 25 Aug 2026, zero disagreements | ถ้ายังเจอใบที่ไม่ตรง เปิดใบนั้นแล้วกด Save 1 ครั้ง / if you still find one, open it and press Save once |
 | **Dropoff Final เลือกไม่ขึ้นในใบสั่งซื้อ** / does not appear in the picker | สถานะไม่ใช่ `Unsettled` — ส่วนใหญ่เป็น `In Progress` เพราะ variance ตอนคัดแยกเกิน `0.10%` / status is not `Unsettled`, usually `In Progress` because sorting variance exceeded `0.10%` | ⚠️ **ไม่มีทางแก้จากหน้าจอ** ไม่มีปุ่ม override และหน้าฟอร์ม Dropoff Final แก้ไม่ได้เลย ต้องให้ System Manager แก้ผ่าน API หรือให้ฝ่ายคัดแยกทำใหม่ให้ตรง / **no UI escape hatch exists.** The form is read-only and there is no override button. A System Manager must fix it via API, or sorting must be redone |
 | Dropoff Final เป็น `Unsettled` แต่ Verification Status เป็น `Needs Review` | ครั้งแรกผ่านเกณฑ์ แล้วมีการคัดแยกเพิ่มทีหลังจนเกินเกณฑ์ สถานะเลยค้าง / it passed once, then later sorting pushed it out of tolerance and the status stayed | ระบบ **จะยอมให้สรุปยอดได้** ทั้งที่ยังไม่ผ่านการตรวจ ให้ดู Verification Status ด้วยตาทุกครั้งก่อนกด Submit / the system **will let you settle it anyway**. Check Verification Status by eye before submitting |
 | *Supplier … has no Short Code* | ผู้ขายยังไม่ได้กรอก Short Code | เปิด Supplier กรอก Short Code (2–8 ตัวอักษร) แล้วลองใหม่ |
@@ -485,6 +513,10 @@ type − supplier short code − YYMM − per-supplier monthly counter.
 | `In Progress` | คัดแยกแล้ว แต่ variance เกินเกณฑ์ / sorted but out of tolerance | ไม่ได้ — และไม่มีทาง override / no, and no override exists |
 | `Unsettled` | พร้อมจ่ายเงิน / ready to pay | **ได้** / **yes** |
 | `Settled` | จ่ายแล้ว / paid | ไม่ได้ (จ่ายไปแล้ว) / no |
+| `Cancelled` | ยกเลิกแล้ว / cancelled | ไม่ได้ / no |
+
+> **ถ้าเจอสถานะอื่นนอกจาก 5 อย่างนี้** (เช่น `Completed`) แปลว่าเป็นข้อมูลเก่าจากระบบรุ่นก่อน — เลือกในใบสั่งซื้อไม่ขึ้น ให้แจ้งผู้ดูแลระบบพร้อมเลข `DFL-…`
+> Anything outside these five (a stray `Completed`, for instance) is leftover data from an older version. It will not appear in the picker — report it with the `DFL-…` number.
 
 ### กฎที่ระบบบังคับ ห้ามฝืน / Rules the system enforces, no exceptions
 

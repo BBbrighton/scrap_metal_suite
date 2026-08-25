@@ -2,10 +2,29 @@
 
 > **Status:** Production
 > **Who / ใคร:** ทุกคนที่ใช้งานหน้าจอในลาน / everyone who uses a terminal in the yard
-> **Last verified:** 2026-08-21
+> **Last verified:** 2026-08-25 — ทดสอบกับระบบจริง / tested against a live site
 
 อ่านหน้านี้ก่อน แล้วค่อยไปที่คู่มือของงานที่คุณทำ
 Read this once, then go to the guide for the job you actually do.
+
+---
+
+## ⚡ รีบใช้งาน? เปิดหน้านี้ / In a hurry? Open this
+
+**ทุกอย่างเริ่มที่ `/pos` เสมอ** แล้วกดการ์ดที่ตรงกับงานของคุณ
+**Everything starts at `/pos`.** Click the card that matches your job.
+
+| งานของคุณ / Your job | กดการ์ด / Click the card | คู่มือ / Guide |
+|---|---|---|
+| 🧺 ชั่งถุงบนตาชั่งโต๊ะ / Weigh bags | **Scrap Weighing** | [10](10-pos-scrap-terminal.md) · [12](12-dropoff-receiving.md) |
+| 🚚 ชั่งรถบนตาชั่งรถ / Weigh trucks | **Truck Scale** | [11](11-truck-terminal.md) |
+| 🔧 คัดแยกและตรวจเกรด / Sort & grade | **Production Sorting** | [20](20-production-sorting.md) |
+
+**งานในออฟฟิศไม่ได้เริ่มที่ `/pos`** — ทำราคาและจ่ายเงินที่ Desk ดู [30](30-settlement.md) · จัดคิวรับของดู [13](13-scheduling-a-dropoff.md)
+Office work does not start at `/pos` — pricing and payment happen in the desk.
+
+**ติดปัญหา?** ไปที่ [90 — แก้ปัญหา](90-troubleshooting.md) แล้วดู "ลองสามอย่างนี้ก่อน"
+**Stuck?** Go to [90 — Troubleshooting](90-troubleshooting.md) and read "Try these three first".
 
 ---
 

@@ -3,20 +3,43 @@
 > **Status:** Production
 > **Who / ใคร:** พนักงานคัดแยก (`Production Worker`), หัวหน้าฝ่ายผลิต (`Production Manager`) — *Production Worker, Production Manager*
 > **Where / ที่ไหน:** **`/pos/production`** ← ใช้หน้านี้ / use this one
-> **Last verified:** 2026-08-21
+> **Last verified:** 2026-08-25 — ทดสอบกับระบบจริง / tested against a live site
 
 > ## ⚠️ ใช้ `/pos/production` เท่านั้น / Use `/pos/production` only
 >
-> ระบบมีหน้าจอคัดแยก **2 หน้า** แต่หน้า **`/production/terminal` กดบันทึกไม่ได้** — กดแล้วขึ้น Error ทุกครั้ง
-> There are **two** sorting screens. The one at **`/production/terminal` cannot save** — every save fails with an error.
+> ระบบมีหน้าจอคัดแยก **2 หน้า** แต่หน้า **`/production/terminal` กดบันทึกไม่ได้** — กดแล้วขึ้น Error ทุกครั้ง (ยืนยันแล้วเมื่อ 25 ส.ค. 2026)
+> There are **two** sorting screens. The one at **`/production/terminal` cannot save** — confirmed by test on 25 Aug 2026, every save fails.
 >
-> | หน้าจอ / Screen | ใช้ได้ไหม / Works? |
-> |---|---|
-> | `/pos/production` (สีส้ม / orange, 3 ช่อง) | ✅ ใช้ได้ / **Use this** |
-> | `/production/terminal` (สีน้ำเงิน / blue, 2 ช่อง) | ❌ บันทึกไม่ได้ / cannot save |
+> | หน้าจอ / Screen | สีและหน้าตา / Looks like | ใช้ได้ไหม / Works? |
+> |---|---|---|
+> | **`/pos/production`** | **สีส้ม 3 ช่อง / orange, three panels** | ✅ **ใช้หน้านี้ / Use this** |
+> | `/production/terminal` | สีน้ำเงิน 2 ช่อง / blue, two panels | ❌ บันทึกไม่ได้ / cannot save |
 >
-> ถ้าเปิดจากหน้า `/pos` แล้วกดการ์ด **Production Sorting** จะเข้าหน้าที่ถูกต้องเสมอ
-> Entering from `/pos` and clicking the **Production Sorting** card always lands you on the right one.
+> **วิธีเข้าที่ถูกเสมอ:** เปิด `/pos` แล้วกดการ์ด **Production Sorting** — จะเข้าหน้าที่ถูกทุกครั้ง อย่าพิมพ์ URL เอง
+> **The safe way in:** open `/pos` and click the **Production Sorting** card. Never type the URL by hand.
+
+---
+
+## ⚡ ฉบับย่อ — งานคัดแยกสรุปได้เท่านี้ / The short version
+
+| | ทำอะไร / Do this |
+|---|---|
+| **1** | เปิด `/pos` → กดการ์ด **Production Sorting** → เลือกตาชั่ง |
+| **2** | **สแกน QR บนถุง** (หรือพิมพ์เลข `CTN-…`) → ระบบเปิดใบส่งของของถุงนั้นให้ พร้อมถุงอื่นทั้งหมดในใบเดียวกัน |
+| **3** | **กดเลือกถุงในรายการทางซ้าย** ← ข้ามข้อนี้ไม่ได้ ทุกน้ำหนักต้องบอกว่ามาจากถุงใบไหน |
+| **4** | ชั่งของดี → เลือกเกรด → กด **✚ Add Item** (แท็บ **ของดี**) |
+| **5** | ชั่งของไม่เอา → กด **✚ Add Item** (แท็บ **ของไม่เอา**) |
+| **6** | ทำข้อ 3–5 ให้ครบทุกถุง — ถุงที่ครบแล้วจะเป็น **สีเขียว** |
+| **7** | กด **Submit Sorting** แล้วกด **🖶 Print** เพื่อพิมพ์ใบคัดแยก |
+
+**3 อย่างที่ต้องจำ / Three things to remember**
+
+1. **ต้องเลือกถุงก่อนเสมอ** — ถ้าลืม จะขึ้น *"Select a container first"*
+   Always pick a bag first, or you get *"Select a container first"*.
+2. **ต้องชั่งทั้ง 2 กอง** — ของดี **+** ของไม่เอา ต้องเท่ากับน้ำหนักที่รับเข้ามา ถ้าใส่แค่ของดี ระบบจะคิดว่าของหาย
+   Weigh **both** piles. Good + Unwanted must equal what was received, or the system thinks material vanished.
+3. **Submit แล้วแก้ไม่ได้** — ถ้าต้องแก้ ต้องกด **↺ Reopen** พร้อมใส่เหตุผล
+   Once submitted it locks. To change anything, press **↺ Reopen** and give a reason.
 
 ---
 
@@ -519,7 +542,7 @@ Submitting automatically creates a **Dropoff Final** (`DFL-260821-00007`). That 
 | **ตัวเลขน้ำหนักไม่ขยับ** | ตาชั่งหลุด (จุดเป็นสีแดง) | กด **🔄 Reconnect** · หรือพิมพ์น้ำหนักเอง / or type the weight in |
 | **Variance ติดลบมาก** | ยังชั่งไม่ครบ | ชั่งกองที่เหลือ โดยเฉพาะ **ของไม่เอา** / weigh what is left, especially the Unwanted pile |
 | **Variance เป็นบวก** | ชั่งได้มากกว่าที่รับเข้า — น่าจะกดซ้ำ | ตรวจรายการซ้ำ กด **[x]** ลบ / look for duplicate lines and remove them |
-| **บันทึกของไม่เอาผิดเป็นของดี** | เผลออยู่แท็บ Good | ยังไม่กด Submit → กด **[x]** ลบแล้วทำใหม่ · กด Submit ไปแล้ว → **ต้องให้หัวหน้ายกเลิก** / not yet submitted, delete and redo; already submitted, a manager must cancel it |
+| **บันทึกของไม่เอาผิดเป็นของดี** | เผลออยู่แท็บ Good | ยังไม่กด Submit → กด **[x]** ลบแล้วทำใหม่ · กด Submit ไปแล้ว → กด **↺ Reopen** ใส่เหตุผล แล้วคัดแยกใบนั้นใหม่ / not yet submitted, delete and redo; already submitted, press **↺ Reopen** with a reason and sort that load again |
 | **เหตุผลการคืนขึ้นเป็น "Other" ทุกอัน** | หน้าจอไม่มีช่องเลือกเหตุผล (ข้อจำกัดที่ทราบแล้ว) | เขียนเหตุผลใน **Remarks** ให้หัวหน้าแก้ในหน้า Desk / write it in Remarks; a manager corrects it on the desk |
 | **สถานะค้างที่ Needs Review** | ส่วนต่างเกิน 0.1% | ไม่มีปุ่มอนุมัติในหน้าจอนี้ — แจ้งหัวหน้าพร้อมเลข `DFL-…` / no approve button here; escalate with the `DFL-…` number |
 | **สถานะเป็น Pending ทั้งที่กด Submit แล้ว** | ใบสรุปยังไม่มีรายการ — Submit อาจไม่สำเร็จ | ตรวจ list ของ Production Sorting ว่ามีเลข `SORT-…` ของคุณจริง / check the Production Sorting list for your `SORT-…` |
@@ -580,7 +603,7 @@ Submitting automatically creates a **Dropoff Final** (`DFL-260821-00007`). That 
 
 1. **ของดี + ของไม่เอา = น้ำหนักที่รับเข้ามา** — ไม่งั้นขึ้น Needs Review / otherwise it flags.
 2. **ตรวจแท็บทุกครั้งก่อนกด Add Item** — Good กับ Unwanted หน้าตาเหมือนกันมาก / they look identical.
-3. **กด Submit แล้วแก้ไม่ได้** — ต้องให้หัวหน้ายกเลิก / only a manager can undo it.
+3. **กด Submit แล้วแก้ไม่ได้ทันที** — ถ้าต้องแก้ ให้กด **↺ Reopen** แล้วใส่เหตุผล ใบเดิมจะถูกยกเลิกและเปิดให้ทำใหม่ / submitting locks it. Press **↺ Reopen** with a reason; the old sorting is cancelled and you start that load again.
 4. **จดเลข `SORT-…` และ `DFL-…`** — หน้าจอล้างตัวเองทันที / the screen clears itself immediately.
 5. **เหตุผลการคืน ให้เขียนใน Remarks** — จนกว่าช่องเลือกเหตุผลจะถูกเพิ่มเข้ามา / until the reason picker is added.
 6. **ชื่อสินค้าเป็นภาษาไทยเสมอ ไม่แปล** — `ทองแดงปอก` คือ `ทองแดงปอก` / item names are never translated.

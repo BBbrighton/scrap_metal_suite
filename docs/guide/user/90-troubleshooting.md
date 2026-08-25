@@ -2,7 +2,7 @@
 
 > **Status:** Production
 > **Who / ใคร:** ทุกคน / everyone
-> **Last verified:** 2026-08-21
+> **Last verified:** 2026-08-25 — ทดสอบทุกข้อกับระบบจริง / every entry re-tested against a live site
 
 หาอาการที่ตรงกับปัญหาของคุณ ถ้าไม่เจอ ดูคู่มือของงานนั้นโดยตรง
 Find your symptom below. If it isn't here, check the "What can go wrong" section in your module's guide.
@@ -12,15 +12,29 @@ Not something you did wrong. Use the workaround given and report it.
 
 ---
 
+## 0. ลองสามอย่างนี้ก่อน / Try these three first
+
+ปัญหาส่วนใหญ่จบที่นี่ ลองเรียงจากบนลงล่าง
+Most problems end here. Work down the list.
+
+| | ลองอะไร / Try this | แก้อาการอะไรได้ / Fixes |
+|---|---|---|
+| **1** | กด **Ctrl + Shift + R** | หน้าจอไม่อัปเดต · ปุ่มใหม่ไม่ขึ้น · หน้าตาเพี้ยน |
+| **2** | **ปิดกะแล้วเปิดใหม่** จากหน้า `/pos` | ต่อตาชั่งไม่ติด · ไปหน้าจอผิด · ตาชั่งถูกจองค้าง |
+| **3** | **พิมพ์น้ำหนักเองแทน** ไม่ต้องรอตาชั่ง | ตาชั่งเสีย สายหลุด เบราว์เซอร์ไม่รองรับ |
+
+**ยังไม่หาย?** หาอาการของคุณในตารางข้างล่าง แล้วแจ้งหัวหน้าพร้อม **เลขเอกสาร** — ดู [ข้อ 6](#6-เมื่อไหร่ควรแจ้งต่อ--when-to-escalate)
+
+---
+
 ## 1. การชั่งและบันทึก / Weighing and saving
 
 | อาการ / Symptom | สาเหตุ / Cause | แก้ยังไง / Fix |
 |---|---|---|
-| 🐞 **กดบันทึกถุงแล้วไม่สำเร็จ ทั้งที่ตาชั่งต่ออยู่** / Saving a bag fails while the scale is connected | ระบบส่งค่าประเภทการชั่งผิด / the terminal sends an invalid entry-method value | **พิมพ์น้ำหนักเองแทน** — กดในช่องน้ำหนักแล้วพิมพ์ตัวเลขที่อ่านได้จากตาชั่ง แล้วบันทึก / **Type the weight by hand instead.** Read it off the scale display, type it into the Net Weight box, save. Manual entry saves normally. Report this — it needs a code fix. |
 | น้ำหนักบนหน้าจอไม่ขยับ / The weight on screen doesn't move | ตาชั่งยังไม่เชื่อมต่อ (จุดสีแดง) / scale not connected — red dot | กดที่ชื่อตาชั่งบนแถบด้านบน แล้วอนุญาตในเบราว์เซอร์ / click the scale name in the header and grant the browser permission |
 | ต่อตาชั่งไม่ได้เลย / Cannot connect the scale at all | สายหลุด, พอร์ตถูกใช้โดยกะอื่น, หรือเบราว์เซอร์ไม่รองรับ / cable, port held by another session, or unsupported browser | ตรวจสาย → ปิดกะที่ค้างอยู่ → ใช้ Chrome หรือ Edge / check the cable, close any stale session holding that scale, use Chrome or Edge |
 | น้ำหนักเพี้ยนไป 10 เท่า หรือ 1000 เท่า / Weight is out by a factor of 10 or 1000 | ค่าแปลงหน่วยของตาชั่งตั้งผิด / the scale's unit conversion factor is wrong | หยุดใช้ตาชั่งตัวนั้น แจ้งผู้ดูแลระบบทันที / stop using that scale and tell an admin immediately — do not "correct" it by typing a different number |
-| 🐞 **ชั่งรถเกินพิกัดแล้วระบบไม่เตือน** / Over-capacity truck weight is accepted silently | การตรวจพิกัดตาชั่งไม่ทำงาน / the capacity check never fires | ตรวจเองว่าน้ำหนักสมเหตุสมผล / sanity-check the number yourself against the scale's rated capacity |
+| กดบันทึกแล้วขึ้นว่า **น้ำหนักเกินพิกัดตาชั่ง** / *"exceeds scale capacity"* | น้ำหนักเกินพิกัดที่ตั้งไว้กับตาชั่งตัวนั้น — **ระบบกันไว้ถูกแล้ว** / the weight is over that scale's rated limit; the block is correct | ชั่งใหม่ให้ถูก ถ้าน้ำหนักถูกต้องจริงแปลว่าพิกัดตาชั่งตั้งไว้ผิด — แจ้งผู้ดูแล / reweigh. If the number really is right, the scale's rated capacity is set wrong — tell an admin |
 
 ---
 
@@ -32,6 +46,8 @@ Not something you did wrong. Use the workaround given and report it.
 | 🐞 **กะปิดเองระหว่างชั่งเข้ากับชั่งออก** / The session closed itself between weigh-in and weigh-out | ระบบปิดกะที่ไม่มีการ *บันทึก* เกิน 90 นาที — การเปิดหน้าจอค้างไว้ไม่นับ / the idle sweep measures time since the last **save**, not since you last touched the screen | เปิดกะใหม่แล้วทำต่อ งานที่บันทึกไว้แล้วไม่หาย / open a new session and continue — saved work is safe. On long jobs, save something periodically. |
 | "This session belongs to another operator" | กะนั้นเป็นของคนอื่น / it is someone else's session | เปิดกะของตัวเอง — อย่าใช้กะคนอื่น เพราะชื่อผู้ชั่งจะผิด / open your own; using someone else's misattributes every weight |
 | หน้าจอขึ้น "Session not found" | เลขกะผิด หรือกะถูกปิดไปแล้ว / bad or closed session id | กลับไปที่ `/pos` แล้วเปิดกะใหม่ / go back to `/pos` and open a new session |
+| **มีกะค้างอยู่ เปิดกะใหม่ไม่ได้** / You already have an open session and cannot start another | 1 คนเปิดได้ 1 กะ / one session per person | กลับไป `/pos` — หน้านั้นจะบอกว่ามีกะค้างอยู่ และมีปุ่ม **ปิดกะ / Close Session** ให้กดได้เลย ไม่ต้องเรียกผู้ดูแล / `/pos` now detects it and offers a **Close Session** button. You can clear it yourself |
+| กดปุ่มย้อนกลับของเบราว์เซอร์แล้วหน้าจอค้าง กดอะไรไม่ได้ / The screen freezes after pressing the browser Back button | เคยเป็นปัญหา — **แก้แล้ว** / this was a real bug, now **fixed** | ถ้ายังเจออยู่ กด **Ctrl + Shift + R** หนึ่งครั้ง เบราว์เซอร์ยังใช้ไฟล์เก่าอยู่ / press Ctrl+Shift+R once — your browser is still on the old files |
 | แก้ CSS/หน้าจอแล้วไม่เปลี่ยน / A visual change doesn't appear | เบราว์เซอร์เก็บไฟล์เก่าไว้ได้ถึง 12 ชั่วโมง / the browser caches assets for up to 12 hours | กด **Ctrl + Shift + R** / hard-refresh. `/pos/terminal` แก้แล้ว แต่หน้าอื่นยังต้องกดเอง / `/pos/terminal` is fixed; other pages still need this |
 
 ---
@@ -67,7 +83,7 @@ Not something you did wrong. Use the workaround given and report it.
 | อาการ / Symptom | สาเหตุ / Cause | แก้ยังไง / Fix |
 |---|---|---|
 | 🐞 **ใบยืนยันราคาแสดงยอดที่ชำระแล้ว = 0.00 ทั้งที่ปิดยอดแล้ว** / The price confirmation prints a settled value of 0.00 even when fully settled | ค่านี้ไม่เคยถูกคำนวณจริง / the field is never recomputed | คำนวณยอดเองจากใบชั่งจริง อย่าใช้ตัวเลขบนใบนี้ / compute from the actual weight receipts. Do not rely on this number. |
-| 🐞 **ใบสั่งซื้อยังขึ้น "Pending" ทั้งที่ส่งของครบแล้ว** / An order still says Pending at 100% fulfilled | สถานะไม่ถูกอัปเดต / the status never advances | ดูที่ช่อง **fulfillment** แทน — ค่านั้นถูกต้อง / read the **fulfillment** field instead; that one is accurate |
+| ใบสั่งซื้อยังขึ้น "Pending" ทั้งที่ส่งของครบแล้ว / An order still says Pending at 100% fulfilled | เคยเป็นปัญหา — **แก้แล้ว** ตรวจกับข้อมูลจริง 127 ใบ ตรงกันทุกใบ / was a real bug, now **fixed** — checked against all 127 live orders, all agree | ถ้ายังเจอ ให้เปิดใบนั้นแล้วกด Save หนึ่งครั้ง / if you still see it, open the order and press Save once |
 | 🐞 **งานค้างที่ "In Progress" ปิดไม่ได้** / A final settlement is stuck at In Progress with no way to close it | ไม่มีปุ่มหรือคำสั่งให้ปิด / no exit path exists in the code | แจ้งผู้ดูแลระบบ — ต้องแก้ที่ระบบ / needs an admin and a code fix |
 | ราคาบนหน้าจอผู้จัดการดูไม่ถูก / Prices on the manager screen look wrong | 🐞 หน้าจอนั้นยังไม่เสร็จ บางค่าเป็นตัวอย่างที่ใส่ไว้ / that screen is unfinished and some values are hardcoded samples | **อย่าใช้ตัวเลขจากหน้าจอนั้น** / do not use figures from that screen — see [80 — Portals (Preview)](80-portals-preview.md) |
 
@@ -91,10 +107,11 @@ Not something you did wrong. Use the workaround given and report it.
 เลขเอกสารทำให้ตามเรื่องได้ในไม่กี่วินาที คำอธิบายอย่างเดียวใช้เวลาเป็นชั่วโมง
 A document number finds the record in seconds. A description alone can take an hour.
 
-## การคัดแยก / Production Sorting
+## 5b. การคัดแยก / Production Sorting
 
 | อาการ / Symptom | สาเหตุ / Cause | วิธีแก้ / Fix |
 |---|---|---|
+| 🐞 **เปิดหน้าคัดแยกแล้วกดบันทึกไม่ได้เลย** / The sorting screen cannot save anything | คุณอยู่ผิดหน้า — `/production/terminal` เป็นหน้าเก่าที่ใช้ไม่ได้แล้ว / you are on `/production/terminal`, the old screen, which no longer works | ไปที่ **`/pos/production`** แทน (เข้าจาก `/pos` แล้วกดการ์ด **Production Sorting**) / use **`/pos/production`** — enter from `/pos` and click the **Production Sorting** card |
 | กด **✚ Add Item** แล้วขึ้น *"Select a container first"* | การคัดแยกทำทีละถุง / sorting is per bag | กด CTN ในรายการถุงทางซ้ายก่อน / click a CTN in the worklist first |
 | สแกน CTN แล้วขึ้นสีจาง กดไม่ได้ | ถุงถูกยกเลิกตอนรับเข้า / the bag was voided at receiving | ถุงนั้นถูกตัดออกแล้ว ไม่ต้องคัดแยก / it was written off; it is not sorted |
 | สแกน CTN แล้วไม่เจอ | ใบส่งของยังไม่ *Completed* | คัดแยกได้เฉพาะใบที่ปิดงานแล้ว / only Completed drop-offs can be sorted |

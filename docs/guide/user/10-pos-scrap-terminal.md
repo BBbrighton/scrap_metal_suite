@@ -3,7 +3,36 @@
 > **Status:** Production
 > **Who / ใคร:** POS Operator, POS Manager, System Manager
 > **Where / ที่ไหน:** `/pos` → เลือกการ์ด **Scrap Weighing** → `/pos/terminal?session=SES-…`
-> **Last verified:** 2026-08-21 against `feature/container-redesign`
+> **Last verified:** 2026-08-25 — ทดสอบกับระบบจริง / tested against a live site
+
+---
+
+## ⚡ ฉบับย่อ — อ่านแค่นี้ก็ทำงานได้ / The short version
+
+ถ้าคุณเคยชั่งมาแล้ว อ่านแค่ 8 ข้อนี้พอ
+If you have done this before, these eight steps are the whole job.
+
+| | ทำอะไร / Do this |
+|---|---|
+| **1** | เปิด `/pos` → กดการ์ด **Scrap Weighing** |
+| **2** | เลือกเครื่องชั่ง → กด **ยืนยันเครื่องชั่ง** → เลือกพอร์ตในเบราว์เซอร์ |
+| **3** | พิมพ์หรือสแกนเลขใบส่งของ `DO-…` ในช่องกลาง |
+| **4** | วางถุงบนเครื่องชั่ง |
+| **5** | กดปุ่ม **เกรด** ในช่องซ้าย |
+| **6** | กด **บันทึก & พิมพ์สติ๊กเกอร์** → ติดสติ๊กเกอร์ที่ถุง |
+| **7** | ทำข้อ 4–6 ซ้ำทุกถุง |
+| **8** | ถุงหมดแล้ว กด **เสร็จสิ้น** → ส่งใบชั่งที่พิมพ์ออกมาให้ผู้ขาย |
+
+**3 อย่างที่ต้องจำ / Three things to remember**
+
+1. **ชั่งผิด อย่าลบ** — กด **ชั่งใหม่** หรือ **ยกเลิก** แล้วใส่เหตุผล ระบบเก็บของเดิมไว้เสมอ
+   Weighed it wrong? Never delete — press **Reweigh** or **Void** and give a reason. The old record is always kept.
+2. **เครื่องชั่งไม่ต่อ ก็ทำงานได้** — พิมพ์น้ำหนักเองลงช่องได้เลย
+   Scale not connected? Type the weight in by hand. Work does not stop.
+3. **เลิกงานต้องกด ปิดเซสชัน** — ไม่งั้นคนอื่นใช้เครื่องชั่งตัวนี้ไม่ได้
+   Always press **Close Session** when you finish, or nobody else can use that scale.
+
+รายละเอียดทั้งหมดอยู่ข้างล่าง / Everything below is the detail.
 
 ---
 
@@ -22,7 +51,7 @@ Once the truck has been weighed in and material is being separated by grade.
 **ผลลัพธ์ / What you end up with:**
 - ภาชนะหลายรายการ (`CTN-2608-00001`, `CTN-2608-00002`, …) ผูกกับใบส่งของหนึ่งใบ / many Containers tied to one Drop-off
 - สติ๊กเกอร์หนึ่งใบต่อหนึ่งถุง / one sticker per bag
-- เมื่อกด **เสร็จสิ้น** จะได้ใบชั่งรวม `WGT-260821-00001` สำหรับส่งให้ผู้ขาย / on **Complete**, one combined Scrap Weight receipt for the supplier
+- เมื่อกด **เสร็จสิ้น** จะได้ใบชั่งรวม `SW-SMC-260821-1` สำหรับส่งให้ผู้ขาย / on **Complete**, one combined Scrap Weight receipt for the supplier
 
 ---
 
@@ -151,9 +180,9 @@ The terminal is a **three-pane** layout.
     → ปุ่ม `บันทึก & พิมพ์สติ๊กเกอร์` และ `ถ่ายรูป` เปิดใช้งาน
 13. **ตรวจตัวเลขในช่อง `น้ำหนักสุทธิ`** — check the **น้ำหนักสุทธิ / Net Weight** box
     → ระบบเติมให้อัตโนมัติจากเครื่องชั่ง เช่น `246.70`
-14. **⚠️ คลิกในช่องน้ำหนักแล้วพิมพ์ตัวเลขนั้นซ้ำ** — **click into the weight box and retype the number**
-    → จำเป็นครับ เพราะถ้าปล่อยให้เป็นค่าที่มาจากเครื่องชั่งตรง ๆ การบันทึกจะขึ้น error สีแดง `Entry Method cannot be "Scale"` ดูรายละเอียดที่ [ตาราง §6](#6-what-can-go-wrong--ปัญหาที่พบบ่อย)
-    → Required today: saving a value that came straight off the live scale fails with a red `Entry Method cannot be "Scale"` error. Retyping it flips the field to manual mode and the save succeeds. See [§6](#6-what-can-go-wrong--ปัญหาที่พบบ่อย).
+14. **ถ้าตัวเลขไม่ตรง พิมพ์ทับได้เลย** — if the number is wrong, just type over it
+    → พิมพ์ทับได้ตลอด ระบบจะบันทึกว่าเป็นการกรอกมือแทน / typing over it is always allowed; the system simply records the weight as hand-entered instead of scale-read
+    → ตัวเลขจากเครื่องชั่งบันทึกได้ตรง ๆ **ไม่ต้องพิมพ์ซ้ำ** / a number that came straight off the scale saves fine — **you do not need to retype it**
 15. **เลือก `ประเภทภาชนะ`** — pick the **Container Type**: `ถุง / Bag` (ค่าเริ่มต้น), `ถัง / Bin`, `พาเลท / Pallet`, `อื่น ๆ / Other`
 16. **(ถ้าต้องการ) พิมพ์ `หมายเหตุ`** — optionally type a remark, e.g. `ถุงเปียก`
 17. **กด `บันทึก & พิมพ์สติ๊กเกอร์`** — press **บันทึก & พิมพ์สติ๊กเกอร์ / Save & Print Sticker**
@@ -176,14 +205,14 @@ The terminal is a **three-pane** layout.
 20. **กด `เสร็จสิ้น` / Complete ในแถบปุ่มล่าง** — press **เสร็จสิ้น / Complete**
     → เบราว์เซอร์ถามยืนยัน `เสร็จสิ้น?` กด OK
 21. **ระบบทำ 2 อย่างต่อกัน** — two things happen back to back:
-    → **หนึ่ง** รวมทุกถุงเป็นใบชั่งเดียว `WGT-260821-00001` แล้วสั่งพิมพ์ใบคิวสองภาษาให้ทันที ขึ้นข้อความ "ออกใบชั่ง / Receipt issued"
+    → **หนึ่ง** รวมทุกถุงเป็นใบชั่งเดียว `SW-SMC-260821-1` แล้วสั่งพิมพ์ใบคิวสองภาษาให้ทันที ขึ้นข้อความ "ออกใบชั่ง / Receipt issued"
     → **สอง** ปิดใบส่งของ ขึ้นข้อความ "เสร็จสิ้น / Completed"
 22. **หน้าจอล้างตัวเอง** — the workspace clears
     → การ์ดใบส่งของหาย ช่องขวาว่าง ช่องค้นหาพร้อมรับใบถัดไป
 23. **ส่งใบชั่งที่พิมพ์ออกมาให้ผู้ขาย** — hand the printed receipt to the supplier
 
-**เสร็จแล้วได้อะไร / Result:** ใบส่งของสถานะ `Completed`, ภาชนะทุกใบผูกกับใบนี้, ใบชั่ง `WGT-…` หนึ่งใบที่ยื่นแล้ว
-The Drop-off is `Completed`, every container is attached to it, and one submitted `WGT-…` receipt exists.
+**เสร็จแล้วได้อะไร / Result:** ใบส่งของสถานะ `Completed`, ภาชนะทุกใบผูกกับใบนี้, ใบชั่ง `SW-…` หนึ่งใบที่ยื่นแล้ว
+The Drop-off is `Completed`, every container is attached to it, and one submitted `SW-…` receipt exists.
 
 **ตรวจยังไง / How to confirm:** ค้นใบส่งของนั้นซ้ำในช่องค้นหา — การ์ดจะขึ้นสถานะ `Completed` และช่องกลางจะแทนที่ด้วยแบนเนอร์ "ใบดร็อปออฟเสร็จสิ้นแล้ว กดเปิดใหม่ด้านบนเพื่อเพิ่มถุง"
 
@@ -220,8 +249,8 @@ Use when: the scale won't connect, there is no cable, the browser is unsupported
 6. **พิมพ์น้ำหนักลงช่อง `น้ำหนักสุทธิ` เอง** เช่น `246.7`
 7. เลือกประเภทภาชนะ แล้วกด `บันทึก & พิมพ์สติ๊กเกอร์` ตามปกติ
 
-> ข้อดีของทางนี้: ไม่เจอปัญหา error `Entry Method cannot be "Scale"` เลย เพราะไม่มีค่ามาจากเครื่องชั่ง
-> Upside: the `Entry Method cannot be "Scale"` failure cannot happen on this path, because no value ever comes from the live stream.
+> ทางนี้ช้ากว่านิดหน่อย แต่บันทึกได้ครบทุกอย่างเหมือนกัน และงานไม่หยุดรอช่าง
+> This path is a little slower but records everything the same way, and it means a broken cable never stops the yard.
 
 ---
 
@@ -300,7 +329,7 @@ Use when: a bag turns up after you already pressed Complete.
 2. **กด `เปิดใหม่`**
    → เบราว์เซอร์ถาม `เหตุผลในการเปิดใบนี้ใหม่:` — **ต้องกรอก** ถ้าปล่อยว่างหรือกด Cancel จะไม่ทำอะไร
 3. **พิมพ์เหตุผล** เช่น `เจอถุงตกหล่น 1 ใบ` แล้วกด OK
-   → ขึ้นข้อความส้ม บอกว่าใบชั่งเดิม `WGT-260821-00001` ถูก **ยกเลิก** แล้ว
+   → ขึ้นข้อความส้ม บอกว่าใบชั่งเดิม `SW-SMC-260821-1` ถูก **ยกเลิก** แล้ว
    → สถานะกลับเป็น `In Progress` การ์ดชั่งกลับมา
 4. **ชั่งถุงที่ตกหล่นตามปกติ** (ข้อ 11–18 ใน §4.3)
 5. **กด `เสร็จสิ้น` อีกครั้ง**
@@ -415,7 +444,6 @@ Use when: a new scale, a changed cable, repeated connection failures, or reading
 
 | อาการ / Symptom | สาเหตุ / Cause | แก้ยังไง / Fix |
 |---|---|---|
-| กด `บันทึก & พิมพ์สติ๊กเกอร์` แล้วขึ้นกล่องแดง **`Entry Method cannot be "Scale"`** / red error box on save | **ข้อบกพร่องของระบบ** ค่าที่มาจากเครื่องชั่งโดยตรงถูกส่งเป็นรหัสที่ระบบไม่รู้จัก / **known defect** — a weight taken straight from the live stream is sent with an invalid code | **คลิกในช่อง `น้ำหนักสุทธิ` แล้วพิมพ์ตัวเลขนั้นซ้ำ** แล้วกดบันทึกอีกครั้ง / **click into the Net Weight box and retype the number**, then save again. แจ้งผู้ดูแลระบบด้วย / report it to your admin |
 | หน้าต่าง `เลือกเครื่องชั่ง` ปิดไม่ได้ / the Select Scale dialog has no ✕ | ตั้งใจให้เป็นแบบนั้น ต้องมีเครื่องชั่งก่อนถึงชั่งได้ / by design — no scale, no weighing | เลือกเครื่องชั่ง แล้วกดปุ่มใดปุ่มหนึ่งใน 2 ปุ่มล่าง / pick one and press either footer button |
 | เครื่องชั่งที่ต้องการขึ้น `(กำลังใช้งาน)` กดไม่ได้ / greyed out as *In Use* | มีกะอื่นถือเครื่องนี้อยู่ / another session holds the lock | ให้คนนั้นกด `ปิดเซสชัน` หรือรอ 90 นาทีให้ระบบปิดเอง / have them close it, or wait for the idle sweep |
 | เครื่องชั่งขึ้น `(ไม่พร้อมใช้งาน)` / *Not Active* | ถูกปิดใช้งานในระบบ / `Is Active` is unchecked | แจ้งผู้ดูแลระบบให้เปิดใช้งาน / ask an admin to re-enable it |
@@ -491,7 +519,10 @@ Use when: a new scale, a changed cable, repeated connection failures, or reading
 | `SES-260821-00010` | กะ / Session |
 | `DO-260821-00003` | ใบส่งของ / Drop-off |
 | `CTN-2608-00001` | ภาชนะ 1 ใบ / one Container (บนสติ๊กเกอร์ / on the sticker) |
-| `WGT-260821-00001` | ใบชั่งรวมที่ให้ผู้ขาย / the combined receipt |
+| `SW-SMC-260821-1` | ใบชั่งรวมที่ให้ผู้ขาย / the combined receipt |
+
+> **ใบเก่าขึ้นต้นด้วย `WGT-`** เช่น `WGT-2026-00035` — เป็นเลขรุ่นเก่าก่อนเปลี่ยนระบบ ใช้อ้างอิงได้ปกติ ใบใหม่ทุกใบเป็น `SW-` แล้ว
+> Older receipts start with `WGT-`. That is the pre-migration series and is still valid to quote. Everything issued now is `SW-`.
 
 ### ทางลัด / Shortcuts
 

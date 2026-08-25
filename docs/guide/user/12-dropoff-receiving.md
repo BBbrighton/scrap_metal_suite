@@ -3,7 +3,29 @@
 > **Status:** Production
 > **Who / ใคร:** POS Operator (ผู้ชั่งของ), Manager / System Manager (สำหรับการข้ามการตรวจสอบ)
 > **Where / ที่ไหน:** `/pos` → เปิดกะ → `/pos/terminal?session=SES-…` (หน้าจอชั่งของ)
-> **Last verified:** 2026-08-21 against `feature/container-redesign`
+> **Last verified:** 2026-08-25 — ทดสอบกับระบบจริง / tested against a live site
+
+---
+
+## ⚡ ฉบับย่อ — งานทั้งวันสรุปได้เท่านี้ / The short version
+
+| | ทำอะไร / Do this |
+|---|---|
+| **1** | ค้นหาใบส่งมอบ `DO-…` (พิมพ์ สแกน หรือใส่ทะเบียนรถ) |
+| **2** | วางถุง → กดเกรด → กด **บันทึก & พิมพ์สติ๊กเกอร์** |
+| **3** | ติดสติ๊กเกอร์ที่ถุง ยกลง แล้วทำถุงต่อไป |
+| **4** | ครบทุกถุงแล้ว กด **เสร็จสิ้น** |
+| **5** | ส่งใบชั่งที่พิมพ์ออกมาให้ผู้ขาย |
+
+**กฎ 2 ข้อของงานนี้ / The two rules**
+
+1. **ถุงแก้ไขไม่ได้** — ผิดแล้วต้อง **ชั่งใหม่** หรือ **ยกเลิก** พร้อมเหตุผล ของเดิมไม่หาย
+   A bag is never edited. Reweigh or void it with a reason; the original stays on record.
+2. **ทุกใบส่งมอบต้องมีใบสั่งซื้ออยู่แล้ว** — ไม่มีลูกค้าวอล์กอิน ถ้ารถมาโดยไม่มีใบ ให้ออฟฟิศออกใบยืนยันราคาก่อน
+   Every drop-off is pre-linked to an order. No walk-ins — the office issues a Price Lock first.
+
+**ถ้าติดตรงไหน** ข้าม ไป [ข้อ 12 ปัญหาที่พบบ่อย](#12-ปัญหาที่พบบ่อย--what-can-go-wrong)
+**Stuck?** Jump to §12.
 
 ---
 
@@ -177,8 +199,8 @@ Truck `82-4471 ปทุมธานี` arrives. Drop-off `DO-SMC-260821-1` dec
    → ถ้าตาชั่งต่ออยู่: ช่อง **น้ำหนักสุทธิ** เติมเองเป็น `125.40` และขึ้นคำว่า `stable`
    → ถ้าไม่ต่อ: พิมพ์ `125.40` เอง
 
-   > ⚠️ **ทำแบบนี้ก่อนกดบันทึกทุกครั้ง / Do this before every save:** แตะช่องน้ำหนักแล้วพิมพ์ตัวเลขซ้ำหนึ่งครั้ง ดูข้อ 12 หัวข้อ *"บันทึกไม่ผ่านตอนตาชั่งต่ออยู่"*
-   > Touch the weight box and retype the number. See §12 "Save fails while the scale is connected".
+   > ตัวเลขจากตาชั่งบันทึกได้ตรง ๆ ไม่ต้องพิมพ์ซ้ำ ถ้าไม่ถูกก็พิมพ์ทับได้เลย
+   > A scale reading saves as-is — no need to retype it. If it looks wrong, just type over it.
 
 7. **เลือกประเภทภาชนะ / Pick the container type** — `ถุง / Bag` (ค่าเริ่มต้น) หรือ `ถัง / Bin`, `พาเลท / Pallet`, `อื่น ๆ / Other`
 
@@ -436,17 +458,6 @@ A manager opens the drop-off in the desk UI and presses **Mark Verified (Overrid
 ---
 
 ## 12. ปัญหาที่พบบ่อย / What can go wrong
-
-### บันทึกไม่ผ่านตอนตาชั่งต่ออยู่ / Save fails while the scale is connected
-
-**อาการ:** กด **บันทึก & พิมพ์** แล้วขึ้นข้อความว่า *Entry Method cannot be "Scale". It should be one of "Scale (Auto)", "Manual Entry"* — ถุงไม่ถูกบันทึก
-
-**สาเหตุ:** บั๊กที่รู้แล้ว หน้าจอส่งค่าโหมดผิดเมื่อน้ำหนักมาจากตาชั่งโดยตรง
-
-**วิธีแก้เดี๋ยวนี้ / Workaround:** คลิกในช่อง **น้ำหนักสุทธิ** แล้วพิมพ์ตัวเลขเดิมซ้ำ (หรือลบตัวท้ายแล้วพิมพ์ใหม่) จากนั้นกดบันทึก จะผ่าน
-Click into the **Net Weight** box and retype the number, then save. It goes through.
-
-**สิ่งที่ต้องแจ้ง:** บอกผู้ดูแลระบบ นี่ต้องแก้ที่โค้ด
 
 ### ระบบบอกว่าใบส่งมอบนี้ถูกล็อกกับกะอื่น / "Dropoff is locked to session …"
 

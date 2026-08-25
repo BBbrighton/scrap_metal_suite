@@ -3,7 +3,7 @@
 > **Status:** Production
 > **Who / ใคร:** `SMT Manager` หรือ `System Manager` — ดูข้อ 1a / `SMT Manager` or `System Manager` — see §1a
 > **Where / ที่ไหน:** Desk — `/app/dropoff/new`
-> **Last verified:** 2026-08-21
+> **Last verified:** 2026-08-25 — ทดสอบกับระบบจริง / tested against a live site
 
 นี่คือขั้นตอนที่เชื่อมราคาเข้ากับลาน ถ้าไม่ทำขั้นตอนนี้ รถมาถึงแล้วชั่งไม่ได้
 This is the step that connects a price to the yard. Without it, a truck arrives and cannot be weighed.
