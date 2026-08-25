@@ -23,6 +23,8 @@
   "entry_method",
   "section_break_status",
   "status",
+  "sorting_status",
+  "sorted_in",
   "is_reweight",
   "reweighed_from",
   "section_break_voiding",
@@ -173,6 +175,25 @@
    "label": "Status",
    "options": "Active\nReweighed\nVoided",
    "reqd": 1
+  },
+  {
+   "fieldname": "sorting_status",
+   "fieldtype": "Select",
+   "label": "Sorting Status",
+   "options": "Not Sorted\nSorted",
+   "default": "Not Sorted",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Whether production sorting has consumed this bag. Separate from `status`, which records whether the bag physically exists and counts toward the received weight — sorting does not change that."
+  },
+  {
+   "fieldname": "sorted_in",
+   "fieldtype": "Link",
+   "label": "Sorted In",
+   "options": "Production Sorting",
+   "read_only": 1,
+   "description": "The submitted Production Sorting that consumed this bag. Cleared if that sorting is cancelled."
   },
   {
    "default": "0",
