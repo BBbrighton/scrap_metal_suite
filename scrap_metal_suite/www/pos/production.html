@@ -81,6 +81,7 @@ body {
                 <span id="langLabel">EN</span>
             </button>
             {% if active_session %}
+            <button class="btn-header" onclick="reprintLastSorting()" title="Reprint last sorting slip">&#x1F5B6; Print</button>
             <button class="btn-header btn-danger" onclick="confirmCloseSession()">Close Session</button>
             {% else %}
             <button class="btn-header btn-primary" onclick="startSession()">Start Session</button>

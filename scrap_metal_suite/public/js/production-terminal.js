@@ -18,6 +18,7 @@ function escapeHtml(str) {
 let currentSession = null;
 let currentDropoff = null;
 let currentContainer = null;   // the bag being sorted right now
+let lastSortingName = null;    // for reprint
 let currentItemType = 'good';
 let currentWeight = 0;
 let currentSelectedItem = null;
@@ -741,6 +742,46 @@ function updateSubmitButton() {
     submitBtn.disabled = !((goodItems.length > 0 || unwantedItems.length > 0) && currentDropoff);
 }
 
+
+/**
+ * Print an 80mm thermal slip for a sorting record.
+ *
+ * Same hidden-iframe approach as the scrap and truck terminals: the operator
+ * gets the browser's print dialog with the slip already loaded, so it lands on
+ * the thermal printer without a download step. Falls back to a new tab if the
+ * iframe is blocked.
+ */
+function printSortingSlip(sortingName) {
+    if (!sortingName) return;
+    lastSortingName = sortingName;
+
+    const url = '/printview?doctype=Production%20Sorting&name=' +
+                encodeURIComponent(sortingName) +
+                '&format=Production%20Sorting%20Thermal&no_letterhead=1';
+
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    iframe.src = url;
+    iframe.onload = function () {
+        try { iframe.contentWindow.print(); }
+        catch (e) { window.open(url + '&trigger_print=1', '_blank'); }
+        setTimeout(function () { iframe.remove(); }, 10000);
+    };
+    document.body.appendChild(iframe);
+}
+
+/** Reprint the last slip — the operator's recovery when paper jams or runs out. */
+function reprintLastSorting() {
+    if (!lastSortingName) {
+        frappe.show_alert({
+            message: POS_I18N.t('noRecentSorting') || 'No sorting slip to reprint yet',
+            indicator: 'orange'
+        }, 3);
+        return;
+    }
+    printSortingSlip(lastSortingName);
+}
+
 async function submitSorting() {
     if (!currentDropoff) {
         frappe.msgprint(POS_I18N.t('selectDropoffFirst') || 'Please select a Dropoff first');
@@ -773,10 +814,17 @@ async function submitSorting() {
                         indicator: 'green'
                     });
 
+                    // Print the thermal slip straight away, as the scrap
+                    // terminal does on save. Fired before the reset below so
+                    // the name is still in hand.
+                    printSortingSlip(response.message.name);
+
                     // Reset
                     goodItems = [];
                     unwantedItems = [];
                     currentDropoff = null;
+                    currentContainer = null;
+                    renderContainerWorklist();
 
                     document.getElementById('dropoffDetails').style.display = 'none';
                     document.getElementById('dropoffSearch').value = '';
