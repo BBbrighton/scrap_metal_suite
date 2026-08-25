@@ -34,6 +34,19 @@ class DropoffFinal(Document):
 		# Clear existing items
 		self.good_items = []
 		self.unwanted_items = []
+		self.container_items = []
+
+		# Received side, read live from the containers. These are immutable —
+		# sorting never restates what the supplier delivered — so this is a
+		# lookup, not a stored snapshot that could drift.
+		received = {
+			c.name: c
+			for c in frappe.get_all(
+				"Scrap Weight Container",
+				filters={"dropoff": self.dropoff},
+				fields=["name", "container_type", "item_code", "item_name", "net_weight"],
+			)
+		}
 
 		# Dictionaries to aggregate by item_code
 		good_items_dict = {}
@@ -42,6 +55,31 @@ class DropoffFinal(Document):
 		# Aggregate from each sorting session
 		for sorting_rec in sortings:
 			sorting = frappe.get_doc("Production Sorting", sorting_rec.name)
+
+			# Per-container detail: one received bag can produce several rows
+			# (90 kg Grade A + 9 kg Grade B + 1 kg tare from a single 100 kg
+			# bag), so this table is deliberately NOT aggregated. The per-grade
+			# tables below still are, and settlement continues to read those.
+			for classification, rows in (("Good", sorting.good_items),
+			                             ("Unwanted", sorting.unwanted_items)):
+				for item in rows:
+					if not item.get("container"):
+						continue
+					src = received.get(item.container)
+					self.append("container_items", {
+						"container": item.container,
+						"container_type": src.container_type if src else None,
+						"received_item_code": src.item_code if src else None,
+						"received_item_name": src.item_name if src else None,
+						"received_weight": flt(src.net_weight) if src else 0,
+						"sorted_item_code": item.item_code,
+						"sorted_item_name": item.item_name,
+						"sorted_weight": flt(item.weight),
+						"classification": classification,
+						"return_reason": item.get("return_reason"),
+						"production_sorting": sorting.name,
+						"remarks": item.get("remarks"),
+					})
 
 			# Aggregate good items
 			for item in sorting.good_items:

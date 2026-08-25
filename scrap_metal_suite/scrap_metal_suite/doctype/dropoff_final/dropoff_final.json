@@ -18,6 +18,8 @@
   "column_break_dropoff",
   "sorting_sessions",
   "section_good_items",
+  "section_break_containers",
+  "container_items",
   "good_items",
   "section_unwanted_items",
   "unwanted_items",
@@ -132,6 +134,19 @@
    "fieldname": "section_good_items",
    "fieldtype": "Section Break",
    "label": "Good Items (Payable)"
+  },
+  {
+   "fieldname": "section_break_containers",
+   "fieldtype": "Section Break",
+   "label": "Container Detail",
+   "collapsible": 0
+  },
+  {
+   "fieldname": "container_items",
+   "fieldtype": "Table",
+   "label": "Containers (received vs sorted)",
+   "options": "Dropoff Final Container Item",
+   "description": "Per-bag detail. Received side is read from the immutable Scrap Weight Container; sorted side comes from the Production Sorting rows tagged with that container."
   },
   {
    "fieldname": "good_items",

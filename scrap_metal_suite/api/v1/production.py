@@ -340,6 +340,35 @@ def get_allowed_items():
     }
 
 
+
+def _resolve_container(value, dropoff):
+    """Validate a container reference on a sorting row.
+
+    The sorter works bag by bag, so every output row names the container it came
+    from. Guard two things the UI cannot be trusted to get right:
+
+      * the container exists, and
+      * it belongs to THIS dropoff — a mistyped or mis-scanned CTN from another
+        supplier's load would otherwise silently attribute their material to
+        this settlement.
+
+    Returns the container name, or None when the row carries no container
+    (rows created before per-container sorting, and any caller that has not
+    been updated, must keep working).
+    """
+    if not value:
+        return None
+
+    parent = frappe.db.get_value("Scrap Weight Container", value, "dropoff")
+    if not parent:
+        frappe.throw(_("Container {0} does not exist").format(value))
+    if parent != dropoff:
+        frappe.throw(
+            _("Container {0} belongs to Dropoff {1}, not {2}.").format(value, parent, dropoff)
+        )
+    return value
+
+
 @frappe.whitelist()
 def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
     """Create a new Production Sorting record with good and unwanted items."""
@@ -389,6 +418,7 @@ def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
                 item.get("item_code")))
 
         good_items_list.append({
+            "container": _resolve_container(item.get("container"), dropoff),
             "item_code": item.get("item_code"),
             "uom": item.get("uom", "Kg"),
             "weight": weight,
@@ -404,6 +434,7 @@ def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
                 item.get("item_code")))
 
         unwanted_items_list.append({
+            "container": _resolve_container(item.get("container"), dropoff),
             "item_code": item.get("item_code"),
             "uom": item.get("uom", "Kg"),
             "weight": weight,

@@ -1,0 +1,134 @@
+{
+ "actions": [],
+ "creation": "2026-08-25 20:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "container",
+  "container_type",
+  "received_item_code",
+  "received_item_name",
+  "received_weight",
+  "column_break_1",
+  "sorted_item_code",
+  "sorted_item_name",
+  "sorted_weight",
+  "classification",
+  "return_reason",
+  "section_break_ref",
+  "production_sorting",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "container",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Container",
+   "options": "Scrap Weight Container",
+   "read_only": 1,
+   "description": "The bag as received. Immutable — receiving is never restated by sorting."
+  },
+  {
+   "fieldname": "container_type",
+   "fieldtype": "Data",
+   "label": "Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "received_item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Received Grade",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "received_item_name",
+   "fieldtype": "Data",
+   "label": "Received Grade Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "received_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Received (kg)",
+   "precision": "3",
+   "read_only": 1,
+   "description": "Weight recorded at receiving. Repeated on every row for one container — sum the distinct containers, not the rows."
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sorted_item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sorted Grade",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sorted_item_name",
+   "fieldtype": "Data",
+   "label": "Sorted Grade Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sorted_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Sorted (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "classification",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Outcome",
+   "options": "Good\nUnwanted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "return_reason",
+   "fieldtype": "Data",
+   "label": "Return Reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_ref",
+   "fieldtype": "Section Break",
+   "collapsible": 1,
+   "label": "Reference"
+  },
+  {
+   "fieldname": "production_sorting",
+   "fieldtype": "Link",
+   "label": "Production Sorting",
+   "options": "Production Sorting",
+   "read_only": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-25 20:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "Dropoff Final Container Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

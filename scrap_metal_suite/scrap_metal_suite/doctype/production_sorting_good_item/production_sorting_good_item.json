@@ -5,6 +5,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "container",
   "item_code",
   "item_name",
   "column_break_1",
@@ -14,6 +15,14 @@
   "remarks"
  ],
  "fields": [
+  {
+   "fieldname": "container",
+   "fieldtype": "Link",
+   "label": "Container",
+   "options": "Scrap Weight Container",
+   "in_list_view": 1,
+   "description": "The received bag this sorted output came from. One container can produce several rows — a bag received as one grade may sort into several grades plus tare."
+  },
   {
    "fieldname": "item_code",
    "fieldtype": "Link",
