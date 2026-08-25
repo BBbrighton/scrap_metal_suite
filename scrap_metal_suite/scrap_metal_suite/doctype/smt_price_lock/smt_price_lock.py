@@ -46,6 +46,11 @@ class SMTPriceLock(Document):
 		pos_order.order_date = self.po_date
 		pos_order.smt_price_lock = self.name
 		pos_order.status = "Pending"
+		# Carry the operator's notes across. The POS Order is what the yard
+		# actually works from — leaving this behind meant anything the office
+		# wrote when locking the price (delivery arrangements, grade caveats)
+		# was invisible to whoever received the material.
+		pos_order.notes = self.notes
 
 		for row in self.items:
 			pos_order.append("order_items", {
