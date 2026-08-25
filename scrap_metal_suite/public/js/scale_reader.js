@@ -27,6 +27,39 @@
  *   await reader.disconnect();
  */
 
+/**
+ * Assert WebSerial is usable, and say *why* when it is not.
+ *
+ * `navigator.serial` is absent for two very different reasons, and reporting
+ * both as "browser not supported" sends people to reinstall a browser that was
+ * never the problem:
+ *
+ *   1. The browser genuinely lacks WebSerial (Firefox, Safari).
+ *   2. The browser has it, but the page is not a **secure context**. WebSerial,
+ *      like getUserMedia, is gated on HTTPS or localhost. Served over plain
+ *      http:// on a custom hostname — http://smt.local:8000, the usual dev
+ *      setup here — the API is simply not exposed.
+ *
+ * Production (https://smt.x-desk.tech) is a secure context, so case 2 is a
+ * dev-only trap. It has already cost this project once: the device-webcam
+ * capture was removed after getUserMedia failed the same way.
+ */
+function assertWebSerial() {
+    if ('serial' in navigator) return;
+
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+        throw new Error(
+            'WebSerial needs a secure context. This page is served over ' +
+            (window.location ? window.location.origin : 'http') +
+            ' — use https://, or http://localhost, or allow this origin under ' +
+            'chrome://flags/#unsafely-treat-insecure-origin-as-secure. ' +
+            'The browser itself is fine.'
+        );
+    }
+
+    throw new Error('WebSerial API not supported in this browser. Use Chrome/Edge.');
+}
+
 class ScaleReader {
     constructor() {
         this.port = null;
@@ -96,10 +129,8 @@ class ScaleReader {
      * @returns {Object} Configuration that worked
      */
     async connectWithConfig(preferredConfig, onProgress = null) {
-        // Check if WebSerial is supported
-        if (!('serial' in navigator)) {
-            throw new Error('WebSerial API not supported in this browser. Use Chrome/Edge.');
-        }
+        // Throws with the actual reason (missing API vs insecure context)
+        assertWebSerial();
 
         // Prompt user to select serial port
         try {
@@ -256,10 +287,8 @@ class ScaleReader {
      * @returns {Object} Detected configuration or null
      */
     async autoDetect(onProgress = null) {
-        // Check if WebSerial is supported
-        if (!('serial' in navigator)) {
-            throw new Error('WebSerial API not supported in this browser. Use Chrome/Edge.');
-        }
+        // Throws with the actual reason (missing API vs insecure context)
+        assertWebSerial();
 
         // Prompt user to select serial port
         try {
@@ -709,10 +738,8 @@ class ScaleReader {
             throw new Error('Already connected. Disconnect first.');
         }
 
-        // Check if WebSerial is supported
-        if (!('serial' in navigator)) {
-            throw new Error('WebSerial API not supported in this browser. Use Chrome/Edge.');
-        }
+        // Throws with the actual reason (missing API vs insecure context)
+        assertWebSerial();
 
         // If no port selected yet, prompt user
         if (!this.port) {
