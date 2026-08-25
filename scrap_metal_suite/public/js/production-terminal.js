@@ -367,19 +367,6 @@ function selectWorkContainer(ctn) {
     const c = ((currentDropoff && currentDropoff.containers) || [])
         .find(function (x) { return x.name === ctn; });
 
-    // Re-sorting a finished bag is allowed — a correction may be needed — but
-    // it must be a decision, not an accident. Sorting twice adds the weight
-    // twice to Dropoff Final.
-    if (c && c.fully_sorted) {
-        if (!window.confirm(
-                (POS_I18N.t('alreadyFullySorted') ||
-                 'Container {0} has already been fully sorted ({1} kg). Sorting it again ADDS to what is recorded. Continue?')
-                .replace('{0}', ctn)
-                .replace('{1}', parseFloat(c.already_sorted || 0).toFixed(1)))) {
-            return;
-        }
-    }
-
     currentContainer = ctn;
     renderContainerWorklist();
     updateSubmitButton();
@@ -447,6 +434,56 @@ function renderContainerWorklist() {
         }).join('');
 }
 
+
+/**
+ * Reopen a dropoff whose sorting was already submitted.
+ *
+ * Same shape as the scrap terminal's reopen: submitted work is locked server
+ * side, and getting past it is an explicit, reasoned act. Cancels the
+ * submitted sorting so its rows leave the Dropoff Final aggregate, then the
+ * load is sorted afresh.
+ */
+async function reopenSorting() {
+    if (!currentDropoff) return;
+
+    const reason = window.prompt(
+        POS_I18N.t('promptReopenSortingReason') || 'Reason to reopen this sorting:',
+        ''
+    );
+    if (!reason || !reason.trim()) return;
+
+    try {
+        const res = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.production.reopen_sorting',
+            args: { dropoff: currentDropoff.name, reason: reason.trim() }
+        });
+        const msg = res.message || {};
+        frappe.show_alert({
+            message: (POS_I18N.t('sortingReopened') || 'Sorting reopened — {0} cancelled')
+                .replace('{0}', (msg.cancelled_sortings || []).join(', ')),
+            indicator: 'orange'
+        }, 5);
+
+        // Reload so the worklist reflects the cleared aggregate.
+        await selectDropoff(currentDropoff.name);
+    } catch (err) {
+        frappe.msgprint({
+            title: POS_I18N.t('error') || 'Error',
+            indicator: 'red',
+            message: (err && err.message) || 'Failed to reopen sorting'
+        });
+    }
+}
+
+/** Show the Reopen control only when there is submitted work to reopen. */
+function updateReopenButton() {
+    const btn = document.getElementById('btnReopenSorting');
+    if (!btn) return;
+    const locked = !!(currentDropoff && (currentDropoff.containers || [])
+        .some(function (c) { return (c.already_sorted || 0) > 0; }));
+    btn.style.display = locked ? '' : 'none';
+}
+
 async function selectDropoff(dropoffId) {
     try {
         const response = await frappe.call({
@@ -479,6 +516,7 @@ async function selectDropoff(dropoffId) {
 
         currentContainer = null;
         renderContainerWorklist();
+        updateReopenButton();
 
         document.getElementById('dropoffDetails').style.display = 'block';
         document.getElementById('dropoffResults').innerHTML = '';

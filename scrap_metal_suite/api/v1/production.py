@@ -486,6 +486,70 @@ def _resolve_container(value, dropoff):
     return value
 
 
+
+@frappe.whitelist()
+def reopen_sorting(dropoff, reason):
+    """Reopen a dropoff whose sorting was already submitted.
+
+    Mirrors dropoff.reopen_dropoff: submitted work is locked, and reopening is
+    an explicit, reasoned act rather than something that can happen by
+    clicking. Sorting a dropoff twice adds the weight twice to Dropoff Final,
+    and Dropoff Final is what settlement pays against.
+
+    Cancels the submitted Production Sorting records for this dropoff, which
+    removes their rows from the Dropoff Final aggregate. The sorter then
+    re-enters the load and a fresh sorting is submitted.
+
+    Reason is required for audit and is written to the cancelled records.
+    """
+    check_production_operator()
+
+    reason = (reason or "").strip()
+    if not reason:
+        frappe.throw(_("Reason required to reopen sorting"))
+
+    submitted = frappe.get_all(
+        "Production Sorting",
+        filters={"dropoff": dropoff, "docstatus": 1},
+        pluck="name",
+    )
+    if not submitted:
+        frappe.throw(
+            _("Nothing to reopen: Dropoff {0} has no submitted sorting.").format(dropoff)
+        )
+
+    cancelled = []
+    for name in submitted:
+        doc = frappe.get_doc("Production Sorting", name)
+        doc.cancel()
+        # Keep the why on the record itself, not only in the response — the
+        # audit question is asked months later, of the document.
+        frappe.db.set_value(
+            "Production Sorting", name,
+            {"cancellation_reason": reason, "cancelled_by": frappe.session.user,
+             "cancelled_at": now_datetime()},
+            update_modified=False,
+        )
+        cancelled.append(name)
+
+    # Rebuild the Dropoff Final so the cancelled rows leave the aggregate
+    # immediately, rather than lingering until the next submission.
+    df = frappe.db.get_value("Dropoff Final", {"dropoff": dropoff}, "name")
+    if df:
+        final = frappe.get_doc("Dropoff Final", df)
+        final.aggregate_from_sortings()
+        final.save(ignore_permissions=True)
+
+    frappe.db.commit()
+
+    return {
+        "success": True,
+        "cancelled_sortings": cancelled,
+        "dropoff_final": df,
+        "reason": reason,
+    }
+
+
 @frappe.whitelist()
 def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
     """Create a new Production Sorting record with good and unwanted items."""
@@ -525,6 +589,21 @@ def create_sorting(session, dropoff, good_items=None, unwanted_items=None):
         frappe.throw(_("Dropoff {0} not found").format(dropoff))
     if dropoff_data.status != "Completed":
         frappe.throw(_("Dropoff {0} is not in Completed status").format(dropoff))
+
+    # Submitted sorting locks the dropoff. Sorting it again would add the same
+    # material to Dropoff Final a second time, and settlement pays against
+    # Dropoff Final. Reopening is deliberate and reasoned — see reopen_sorting.
+    already = frappe.get_all(
+        "Production Sorting",
+        filters={"dropoff": dropoff, "docstatus": 1},
+        pluck="name",
+    )
+    if already:
+        frappe.throw(
+            _("Dropoff {0} has already been sorted ({1}). Reopen it with a reason before sorting again.")
+            .format(dropoff, ", ".join(already)),
+            title=_("Sorting Already Submitted"),
+        )
 
     # Build good items
     good_items_list = []
