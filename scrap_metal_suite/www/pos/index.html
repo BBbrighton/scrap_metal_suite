@@ -294,61 +294,54 @@ async function findActiveSession() {
  */
 function offerSessionRecovery(session, terminalType) {
     const route = terminalType === 'truck' ? '/pos/truck' : '/pos/terminal';
-    const opened = session.opening_time || '';
     const scaleNote = session.scale
         ? 'Scale: ' + session.scale
         : 'No scale was selected for this session.';
 
-    const d = new frappe.ui.Dialog({
-        title: 'You already have an open session',
-        fields: [{
-            fieldtype: 'HTML',
-            options:
-                '<p><b>' + session.name + '</b><br>' +
-                '<span style="color:#6b7280;font-size:12px;">' +
-                scaleNote + (opened ? ' &middot; opened ' + opened : '') +
-                '</span></p>' +
-                '<p style="margin-top:10px;">Resume it, or close it and start fresh.</p>'
-        }],
-        primary_action_label: 'Resume',
-        primary_action() {
-            window.location.href = route + '?session=' + encodeURIComponent(session.name);
-        },
-        secondary_action_label: 'Close Session',
-        secondary_action() {
-            d.hide();
-            closeActiveSession(session.name);
-        }
-    });
-    d.show();
+    // Deliberately window.confirm and not frappe.confirm / frappe.ui.Dialog.
+    // This is the rescue path for an operator who is already stuck, so it must
+    // not depend on page CSS or desk JS being intact — pos.css previously
+    // restyled Frappe's dialogs into unreadable dark-on-dark and left a
+    // click-blocking overlay behind. A native dialog cannot be broken that way.
+    const resume = window.confirm(
+        'You already have an open session: ' + session.name + '\n\n' +
+        scaleNote + '\n\n' +
+        'OK  — resume that session\n' +
+        'Cancel — close it and start fresh'
+    );
+
+    if (resume) {
+        window.location.href = route + '?session=' + encodeURIComponent(session.name);
+        return;
+    }
+    closeActiveSession(session.name, true);
 }
 
-/** Close the operator's session from the landing page. */
-async function closeActiveSession(sessionName) {
+/**
+ * Close the operator's session from the landing page.
+ * @param {string} sessionName
+ * @param {boolean} skipConfirm - already confirmed by the recovery prompt
+ */
+async function closeActiveSession(sessionName, skipConfirm) {
     if (!sessionName) return;
 
-    frappe.confirm(
-        'Close session <b>' + sessionName + '</b>?<br>You can then start a new one.',
-        async () => {
-            const btn = document.getElementById('closeSessionBtn');
-            if (btn) btn.disabled = true;
-            try {
-                await frappe.call({
-                    method: 'scrap_metal_suite.api.v1.pos.close_session',
-                    args: { session: sessionName }
-                });
-                frappe.show_alert({ message: 'Session closed', indicator: 'green' }, 3);
-                setTimeout(() => window.location.reload(), 600);
-            } catch (e) {
-                if (btn) btn.disabled = false;
-                frappe.msgprint({
-                    title: 'Error',
-                    indicator: 'red',
-                    message: (e && e.message) || 'Could not close the session'
-                });
-            }
-        }
-    );
+    if (!skipConfirm && !window.confirm(
+            'Close session ' + sessionName + '?\nYou can then start a new one.')) {
+        return;
+    }
+
+    const btn = document.getElementById('closeSessionBtn');
+    if (btn) btn.disabled = true;
+    try {
+        await frappe.call({
+            method: 'scrap_metal_suite.api.v1.pos.close_session',
+            args: { session: sessionName }
+        });
+        window.location.reload();
+    } catch (e) {
+        if (btn) btn.disabled = false;
+        window.alert((e && e.message) || 'Could not close the session');
+    }
 }
 
 // A Back navigation can restore this page from the browser's bfcache with a

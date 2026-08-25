@@ -825,7 +825,17 @@ body.resizing-panes video {
 }
 
 /* ===== Modals ===== */
-.modal {
+/* NOTE: these class names collide with Bootstrap's, which Frappe's dialogs use.
+   pos.css is loaded on every web page via hooks.web_include_css, so unscoped
+   rules here restyled every frappe.confirm / frappe.msgprint / frappe.ui.Dialog
+   on the site — dark text on a dark panel, unreadable. Worse, `.modal` below
+   sets display:flex unconditionally, while Bootstrap shows/hides by toggling
+   display: a hidden Frappe modal therefore stayed a full-screen, fixed,
+   z-index:1000 overlay that swallowed every click.
+
+   Frappe/Bootstrap modals always carry `.fade`; these POS ones never do, so
+   `:not(.fade)` keeps the POS styling to POS modals and leaves Frappe's alone. */
+.modal:not(.fade) {
     position: fixed;
     top: 0;
     left: 0;
@@ -838,7 +848,7 @@ body.resizing-panes video {
     z-index: 1000;
 }
 
-.modal-content {
+.modal:not(.fade) > .modal-content {
     background: #1e293b;
     border-radius: 16px;
     width: 90%;
@@ -847,11 +857,11 @@ body.resizing-panes video {
     overflow: hidden;
 }
 
-.modal-content.modal-large {
+.modal:not(.fade) > .modal-content.modal-large {
     max-width: 600px;
 }
 
-.modal-header {
+.modal:not(.fade) .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -859,13 +869,13 @@ body.resizing-panes video {
     border-bottom: 1px solid #334155;
 }
 
-.modal-header h3 {
+.modal:not(.fade) .modal-header h3 {
     margin: 0;
     color: #fff;
     font-size: 1.25rem;
 }
 
-.modal-close {
+.modal:not(.fade) .modal-close {
     background: none;
     border: none;
     color: #64748b;
@@ -874,16 +884,16 @@ body.resizing-panes video {
     padding: 4px;
 }
 
-.modal-close:hover {
+.modal:not(.fade) .modal-close:hover {
     color: #fff;
 }
 
-.modal-body {
+.modal:not(.fade) .modal-body {
     padding: 24px;
     overflow-y: auto;
 }
 
-.modal-footer {
+.modal:not(.fade) .modal-footer {
     display: flex;
     gap: 12px;
     padding: 16px 24px;
