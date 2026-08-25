@@ -253,6 +253,12 @@ const POS_I18N = (function() {
             cameraStatusNone: 'No cameras reachable',
             testCameras: 'Test Cameras',
             refresh: 'Refresh',
+            containers: 'Containers',
+            noContainersFound: 'No containers found',
+            alreadySorted: 'sorting started',
+            sortingContainer: 'Sorting',
+            selectContainerFirst: 'Select a container first — pick one from the list on the left.',
+
 
             // ===== Post-weigh photo review =====
             weightRecorded: 'Weight Recorded',
@@ -654,6 +660,12 @@ const POS_I18N = (function() {
             cameraStatusNone: 'ไม่พบกล้องที่เชื่อมต่อได้',
             testCameras: 'ทดสอบกล้อง',
             refresh: 'รีเฟรช',
+            containers: 'ถุงบรรจุ',
+            noContainersFound: 'ไม่พบถุงบรรจุ',
+            alreadySorted: 'เริ่มคัดแยกแล้ว',
+            sortingContainer: 'กำลังคัดแยก',
+            selectContainerFirst: 'กรุณาเลือกถุงบรรจุก่อน — เลือกจากรายการทางซ้าย',
+
 
             // ===== Post-weigh photo review =====
             weightRecorded: 'บันทึกน้ำหนักแล้ว',

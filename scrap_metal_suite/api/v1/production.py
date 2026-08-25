@@ -290,6 +290,55 @@ def search_dropoff(query):
     return lookup_dropoff(query)
 
 
+
+@frappe.whitelist()
+def search_containers(query, limit=25):
+    """Find containers by ID, for the sorter's scan-or-type box.
+
+    The worker is holding a bag and scanning its sticker, so the thing they
+    search for is a container and the thing they expect back is that container —
+    not the dropoff it happens to belong to. Selecting one then opens its whole
+    dropoff, because a bag is never sorted alone.
+
+    Only bags on Completed dropoffs are returned: sorting cannot start while
+    receiving is still in progress.
+
+    Returns:
+        list[dict]: container rows carrying enough dropoff context to choose
+        between them when a partial query matches several loads.
+    """
+    check_production_operator()
+
+    if not query or len(str(query).strip()) < 2:
+        return []
+
+    query = str(query).strip()
+
+    rows = frappe.db.sql("""
+        SELECT c.name, c.item_code, c.item_name, c.net_weight, c.container_type,
+               c.status, c.is_reweight,
+               d.name AS dropoff, d.supplier_name, d.license_plate,
+               d.total_actual_weight
+        FROM `tabScrap Weight Container` c
+        JOIN `tabDropoff` d ON d.name = c.dropoff
+        WHERE d.status = 'Completed' AND c.name LIKE %(q)s
+        ORDER BY (c.name = %(exact)s) DESC, c.name
+        LIMIT %(lim)s
+    """, {"q": f"%{query}%", "exact": query, "lim": int(limit)}, as_dict=True)
+
+    # Flag which dropoffs already have sorting, so the operator is not surprised
+    # by landing on a load someone else has started.
+    seen = {}
+    for r in rows:
+        if r.dropoff not in seen:
+            seen[r.dropoff] = bool(frappe.db.exists(
+                "Production Sorting", {"dropoff": r.dropoff}
+            ))
+        r["has_sorting"] = seen[r.dropoff]
+
+    return rows
+
+
 @frappe.whitelist()
 def get_dropoff_for_sorting(dropoff):
     """Get Dropoff details including item_summary for sorting."""

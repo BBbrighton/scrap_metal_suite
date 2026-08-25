@@ -17,6 +17,7 @@ function escapeHtml(str) {
 // ===== Global State =====
 let currentSession = null;
 let currentDropoff = null;
+let currentContainer = null;   // the bag being sorted right now
 let currentItemType = 'good';
 let currentWeight = 0;
 let currentSelectedItem = null;
@@ -265,6 +266,17 @@ async function searchDropoff(query) {
 
     dropoffSearchTimeout = setTimeout(async () => {
         try {
+            // The sorter scans a bag sticker, so a CTN-shaped query should
+            // return bags, not the loads they belong to. Anything else is a
+            // dropoff search as before.
+            if (/ctn/i.test(query)) {
+                const cres = await frappe.call({
+                    method: 'scrap_metal_suite.api.v1.production.search_containers',
+                    args: { query: query }
+                });
+                displayContainerResults(cres.message || []);
+                return;
+            }
             const response = await frappe.call({
                 method: 'scrap_metal_suite.api.v1.production.search_dropoff',
                 args: { query: query }
@@ -289,6 +301,95 @@ function displayDropoffResults(results) {
         '<div class="result-info">' + escapeHtml(d.supplier_name || d.supplier || '') + ' - ' + escapeHtml(d.total_actual_weight) + ' kg</div>' +
         '</div>'
     ).join('');
+}
+
+
+/** Render container search hits. Selecting one opens its whole dropoff. */
+function displayContainerResults(rows) {
+    const box = document.getElementById('dropoffResults');
+    if (!rows || rows.length === 0) {
+        box.innerHTML = '<div class="no-results">' +
+            (POS_I18N.t('noContainersFound') || 'No containers found') + '</div>';
+        return;
+    }
+    box.innerHTML = rows.map(function (c) {
+        const w = parseFloat(c.net_weight || 0).toFixed(1);
+        const sorted = c.has_sorting
+            ? ' <span style="color:#f59e0b">• ' + (POS_I18N.t('alreadySorted') || 'sorting started') + '</span>'
+            : '';
+        return '<div class="result-item" onclick="selectContainer(\'' +
+            escapeHtml(c.name) + '\',\'' + escapeHtml(c.dropoff) + '\')">' +
+            '<div class="result-id">' + escapeHtml(c.name) + '</div>' +
+            '<div class="result-info">' + escapeHtml(c.item_name || c.item_code || '') +
+            ' — ' + w + ' kg<br>' + escapeHtml(c.dropoff) + ' · ' +
+            escapeHtml(c.supplier_name || '') + sorted + '</div>' +
+            '</div>';
+    }).join('');
+}
+
+/** Scanned or picked a bag: open its dropoff, then focus that bag. */
+async function selectContainer(ctn, dropoffId) {
+    await selectDropoff(dropoffId);
+    selectWorkContainer(ctn);
+}
+
+/** Make one bag the active one. Everything added is tagged to it. */
+function selectWorkContainer(ctn) {
+    currentContainer = ctn;
+    renderContainerWorklist();
+    updateSubmitButton();
+
+    const c = ((currentDropoff && currentDropoff.containers) || [])
+        .find(function (x) { return x.name === ctn; });
+    if (c) {
+        frappe.show_alert({
+            message: (POS_I18N.t('sortingContainer') || 'Sorting') + ' ' + ctn +
+                     ' (' + parseFloat(c.net_weight || 0).toFixed(1) + ' kg)',
+            indicator: 'blue'
+        }, 3);
+    }
+}
+
+/**
+ * The dropoff's bags, as a worklist. The active bag is highlighted and shows
+ * how much has been booked against it so far, so the sorter can see when a bag
+ * is fully accounted for without doing the arithmetic themselves.
+ */
+function renderContainerWorklist() {
+    const box = document.getElementById('containerWorklist');
+    if (!box) return;
+
+    const containers = (currentDropoff && currentDropoff.containers) || [];
+    if (!containers.length) {
+        box.innerHTML = '';
+        return;
+    }
+
+    const booked = {};
+    goodItems.concat(unwantedItems).forEach(function (i) {
+        if (i.container) booked[i.container] = (booked[i.container] || 0) + parseFloat(i.weight || 0);
+    });
+
+    box.innerHTML =
+        '<div class="dropoff-items-header">' +
+            (POS_I18N.t('containers') || 'Containers') + ' (' + containers.length + ')' +
+        '</div>' +
+        containers.map(function (c) {
+            const recv = parseFloat(c.net_weight || 0);
+            const out = booked[c.name] || 0;
+            const active = (c.name === currentContainer);
+            const done = out > 0 && Math.abs(recv - out) < 0.0005;
+            const colour = done ? '#22c55e' : (out > 0 ? '#f59e0b' : '#94a3b8');
+            return '<div class="dropoff-item-row" style="cursor:pointer;' +
+                (active ? 'outline:2px solid #2563eb;border-radius:6px;' : '') + '"' +
+                ' onclick="selectWorkContainer(\'' + escapeHtml(c.name) + '\')">' +
+                '<span class="dropoff-item-name">' + escapeHtml(c.name) +
+                '<br><span style="font-size:.7rem;opacity:.7">' +
+                escapeHtml(c.item_name || c.item_code || '') + '</span></span>' +
+                '<span class="dropoff-item-weight" style="color:' + colour + '">' +
+                out.toFixed(1) + ' / ' + recv.toFixed(1) + ' kg</span>' +
+                '</div>';
+        }).join('');
 }
 
 async function selectDropoff(dropoffId) {
@@ -321,6 +422,9 @@ async function selectDropoff(dropoffId) {
         }
         document.getElementById('dropoffItemsList').innerHTML = itemsHtml;
 
+        currentContainer = null;
+        renderContainerWorklist();
+
         document.getElementById('dropoffDetails').style.display = 'block';
         document.getElementById('dropoffResults').innerHTML = '';
         document.getElementById('dropoffSearch').value = currentDropoff.name;
@@ -345,6 +449,8 @@ async function selectDropoff(dropoffId) {
 
 function clearDropoff() {
     currentDropoff = null;
+    currentContainer = null;
+    renderContainerWorklist();
     // Hide "From Dropoff" tab and reset to All
     var fromTab = document.getElementById('fromDropoffTab');
     if (fromTab) fromTab.style.display = 'none';
@@ -481,8 +587,18 @@ function addItem() {
         return;
     }
 
+    // Sorting is per bag: every output has to say which container it came from,
+    // or Dropoff Final cannot show received-vs-sorted and the weight is
+    // unattributable.
+    if (!currentContainer) {
+        frappe.msgprint(POS_I18N.t('selectContainerFirst') ||
+            'Select a container first — pick one from the list on the left.');
+        return;
+    }
+
     const remarks = document.getElementById('remarks');
     const item = {
+        container: currentContainer,
         item_code: currentSelectedItem.code,
         item_name: currentSelectedItem.name,
         weight: currentWeight,
@@ -492,8 +608,10 @@ function addItem() {
 
     if (currentItemType === 'good') {
         goodItems.push(item);
+    renderContainerWorklist();
     } else {
         unwantedItems.push(item);
+    renderContainerWorklist();
     }
 
     // Reset
@@ -521,6 +639,7 @@ function removeItem(type, index) {
     } else {
         unwantedItems.splice(index, 1);
     }
+    renderContainerWorklist();
     updateItemsList();
     updateSummary();
     updateSubmitButton();
