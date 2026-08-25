@@ -3,10 +3,28 @@
 import frappe
 from frappe import _
 
+from scrap_metal_suite.utils.assets import asset_version
+
 no_cache = 1
+
+# Assets this page hand-links via plain <link>/<script> tags, relative to
+# the app's public/ dir. Kept in sync with the tags in the template.
+_LINKED_ASSETS = (
+    "css/pos.css",
+    "css/pos-fullscreen.css",
+    "js/pos-translations.js",
+    "js/container-translations.js",
+    "js/pos-core.js",
+    "js/html5-qrcode.min.js",
+    "js/pos-scanner.js",
+    "js/scale_reader.js",
+    "js/camera_client.js",
+    "js/pos-resizer.js",
+)
 
 
 def get_context(context):
+    context.asset_v = asset_version(_LINKED_ASSETS)
     context.title = "Truck Scale Terminal"
 
     # Check if user is logged in

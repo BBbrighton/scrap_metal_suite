@@ -3,10 +3,23 @@
 import frappe
 from frappe import _
 
+from scrap_metal_suite.utils.assets import asset_version
+
 no_cache = 1
+
+# Assets this page hand-links via plain <link>/<script> tags, relative to
+# the app's public/ dir. Kept in sync with the tags in the template.
+_LINKED_ASSETS = (
+    "css/pos.css",
+    "css/production-theme.css",
+    "js/pos-translations.js",
+    "js/scale_reader.js",
+    "js/production-terminal.js",
+)
 
 
 def get_context(context):
+    context.asset_v = asset_version(_LINKED_ASSETS)
     context.title = "Production Sorting"
 
     if frappe.session.user == "Guest":

@@ -3,10 +3,10 @@
 {% block title %}Production Sorting{% endblock %}
 
 {% block head_include %}
-<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css">
-<link rel="stylesheet" href="/assets/scrap_metal_suite/css/production-theme.css">
-<script src="/assets/scrap_metal_suite/js/pos-translations.js"></script>
-<script src="/assets/scrap_metal_suite/js/scale_reader.js"></script>
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css?v={{ asset_v }}">
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/production-theme.css?v={{ asset_v }}">
+<script src="/assets/scrap_metal_suite/js/pos-translations.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/scale_reader.js?v={{ asset_v }}"></script>
 {% endblock %}
 
 {% block style %}
@@ -366,5 +366,5 @@ window.addEventListener("DOMContentLoaded", function() {
     }
 });
 </script>
-<script src="/assets/scrap_metal_suite/js/production-terminal.js"></script>
+<script src="/assets/scrap_metal_suite/js/production-terminal.js?v={{ asset_v }}"></script>
 {% endblock %}

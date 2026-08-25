@@ -1,9 +1,9 @@
 """POS Terminal - Main weight recording interface"""
 
-import os
-
 import frappe
 from frappe import _
+
+from scrap_metal_suite.utils.assets import asset_version
 
 no_cache = 1
 
@@ -22,35 +22,8 @@ _LINKED_ASSETS = (
 
 
 def get_asset_version():
-    """Cache-busting token for this page's hand-linked assets.
-
-    Frappe's hashed-bundle cache busting does not apply here: these are plain
-    `/assets/scrap_metal_suite/...` paths, served with `Cache-Control:
-    max-age=43200`. With no version in the URL a browser keeps the old file for
-    12 hours, and neither `bench clear-cache` nor `bench build` can dislodge it
-    — those clear server state, not the browser's HTTP cache.
-
-    `get_build_version()` is not enough on its own: it is the mtime of
-    sites/assets/assets.json, which only moves on `bench build`. The app's
-    public/ dir is symlinked into sites/assets, so editing pos.css changes the
-    file the browser gets while leaving assets.json untouched — the token would
-    not move and the stale copy would survive.
-
-    So stamp the newest mtime of the files actually linked. That is correct in
-    both directions: it moves the moment a file is edited locally, and it moves
-    on deploy when `git pull` rewrites them. `get_build_version()` remains the
-    fallback for the case where none of the files can be stat'd.
-    """
-    base = frappe.get_app_path("scrap_metal_suite", "public")
-    newest = 0
-    for rel in _LINKED_ASSETS:
-        try:
-            newest = max(newest, os.path.getmtime(os.path.join(base, rel)))
-        except OSError:
-            continue
-    if newest:
-        return str(int(newest))
-    return frappe.utils.get_build_version()
+    """Cache-busting token for this page's hand-linked assets."""
+    return asset_version(_LINKED_ASSETS)
 
 
 def get_context(context):

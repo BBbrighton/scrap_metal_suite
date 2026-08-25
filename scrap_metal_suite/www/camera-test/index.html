@@ -3,9 +3,9 @@
 {% block title %}Camera Configuration{% endblock %}
 
 {% block head_include %}
-<script src="/assets/scrap_metal_suite/js/pos-translations.js"></script>
-<script src="/assets/scrap_metal_suite/js/pos-core.js"></script>
-<script src="/assets/scrap_metal_suite/js/camera_client.js"></script>
+<script src="/assets/scrap_metal_suite/js/pos-translations.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/pos-core.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/camera_client.js?v={{ asset_v }}"></script>
 <script>
     window.SMT_CAMERA_AGENT_URL = "{{ camera_agent_url or '' }}";
 </script>

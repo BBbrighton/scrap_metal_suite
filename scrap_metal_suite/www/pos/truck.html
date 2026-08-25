@@ -3,16 +3,16 @@
 {% block title %}Truck Scale Terminal{% endblock %}
 
 {% block head_include %}
-<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css">
-<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos-fullscreen.css">
-<script src="/assets/scrap_metal_suite/js/pos-translations.js"></script>
-<script src="/assets/scrap_metal_suite/js/container-translations.js"></script>
-<script src="/assets/scrap_metal_suite/js/pos-core.js"></script>
-<script src="/assets/scrap_metal_suite/js/html5-qrcode.min.js"></script>
-<script src="/assets/scrap_metal_suite/js/pos-scanner.js"></script>
-<script src="/assets/scrap_metal_suite/js/scale_reader.js"></script>
-<script src="/assets/scrap_metal_suite/js/camera_client.js"></script>
-<script src="/assets/scrap_metal_suite/js/pos-resizer.js"></script>
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos.css?v={{ asset_v }}">
+<link rel="stylesheet" href="/assets/scrap_metal_suite/css/pos-fullscreen.css?v={{ asset_v }}">
+<script src="/assets/scrap_metal_suite/js/pos-translations.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/container-translations.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/pos-core.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/html5-qrcode.min.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/pos-scanner.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/scale_reader.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/camera_client.js?v={{ asset_v }}"></script>
+<script src="/assets/scrap_metal_suite/js/pos-resizer.js?v={{ asset_v }}"></script>
 <script>
     // CCTV transport: set on the cloud site (where the server can't reach the
     // camera LAN) so CameraClient talks to the on-site agent; empty in dev,
