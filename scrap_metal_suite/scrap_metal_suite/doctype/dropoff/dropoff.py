@@ -23,6 +23,18 @@ class Dropoff(Document):
     """
 
     def autoname(self):
+        # The docname embeds Supplier.short_code, but `supplier` is derived from
+        # the linked POS Order rather than typed — there is no supplier field to
+        # fill in on the form, by design. That derivation lives in before_save(),
+        # which Frappe runs *after* autoname(), so on a new record `self.supplier`
+        # is still empty here and naming failed with "Supplier is required to
+        # generate a document ID."
+        #
+        # Derive it now as well. set_supplier_from_orders() is a no-op when
+        # supplier is already set, so before_save() stays correct and this is
+        # safe to call twice.
+        self.set_supplier_from_orders()
+
         # Use scheduled-start date when set; otherwise current time.
         on_date = self.dropoff_scheduled_start or None
         self.name = supplier_daily_name("DO", self.supplier, on_date=on_date)
