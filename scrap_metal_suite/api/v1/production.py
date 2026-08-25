@@ -206,6 +206,30 @@ def lookup_dropoff(query):
         ))
         return [exact]
 
+    # A container ID resolves to the Dropoff it belongs to.
+    #
+    # On the floor the worker is holding a bag with a CTN sticker on it, not a
+    # dropoff docket — the sticker is what the scanner sees. Matching only
+    # Dropoff name / plate / supplier meant scanning a bag found nothing at all,
+    # with no hint that the ID was valid but the wrong kind of thing.
+    #
+    # Exact match only: CTN codes come from a scanner or are typed in full, and
+    # a partial container match would be ambiguous against dropoff fields.
+    if frappe.db.exists("Scrap Weight Container", query):
+        parent = frappe.db.get_value("Scrap Weight Container", query, "dropoff")
+        if parent:
+            via_container = frappe.db.get_value(
+                "Dropoff", {"name": parent, "status": "Completed"}, fields, as_dict=True
+            )
+            if via_container:
+                via_container["has_sorting"] = bool(frappe.db.exists(
+                    "Production Sorting", {"dropoff": via_container.name}
+                ))
+                # Tell the UI why it landed here, so it can say "CTN-… → DO-…"
+                # rather than silently showing a different document.
+                via_container["matched_container"] = query
+                return [via_container]
+
     # Partial search
     results = frappe.db.sql("""
         SELECT name, supplier, supplier_name, license_plate,
@@ -255,6 +279,17 @@ def get_dropoff_for_sorting(dropoff):
         ["name", "status", "verification_status"], as_dict=True
     )
 
+    # The individual bags behind the aggregated source_items. A dropoff is
+    # many containers, and the sorter works bag by bag — they need to see which
+    # ones they are holding, not only the per-grade totals.
+    containers = frappe.get_all(
+        "Scrap Weight Container",
+        filters={"dropoff": dropoff},
+        fields=["name", "item_code", "item_name", "net_weight", "status",
+                "is_reweight", "reweighed_from"],
+        order_by="creation asc",
+    )
+
     return {
         "name": doc.name,
         "supplier": doc.supplier,
@@ -263,6 +298,8 @@ def get_dropoff_for_sorting(dropoff):
         "total_actual_weight": flt(doc.total_actual_weight),
         "status": doc.status,
         "source_items": source_items,
+        "containers": containers,
+        "container_count": len([c for c in containers if c.status == "Active"]),
         "existing_sorting": existing_sorting
     }
 
