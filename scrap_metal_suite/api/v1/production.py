@@ -322,10 +322,15 @@ def search_containers(query, limit=25):
         FROM `tabScrap Weight Container` c
         JOIN `tabDropoff` d ON d.name = c.dropoff
         WHERE d.status = 'Completed' AND c.name LIKE %(q)s
-        ORDER BY (c.name = %(exact)s) DESC, c.name
+        ORDER BY (c.status = 'Active') DESC, (c.name = %(exact)s) DESC, c.name
         LIMIT %(lim)s
     """, {"q": f"%{query}%", "exact": query, "lim": int(limit)}, as_dict=True)
 
+    # Voided and Reweighed bags are returned rather than hidden: someone
+    # scanning a sticker off a written-off bag deserves "this was voided", not
+    # "not found", which reads as a broken scanner. `sortable` lets the UI show
+    # them greyed and refuse the selection. Active bags sort first.
+    #
     # Flag which dropoffs already have sorting, so the operator is not surprised
     # by landing on a load someone else has started.
     seen = {}
@@ -335,6 +340,7 @@ def search_containers(query, limit=25):
                 "Production Sorting", {"dropoff": r.dropoff}
             ))
         r["has_sorting"] = seen[r.dropoff]
+        r["sortable"] = (r.status == "Active")
 
     return rows
 
@@ -363,9 +369,14 @@ def get_dropoff_for_sorting(dropoff):
     # The individual bags behind the aggregated source_items. A dropoff is
     # many containers, and the sorter works bag by bag — they need to see which
     # ones they are holding, not only the per-grade totals.
+    # Active bags only. A Voided bag was written off and a Reweighed one has
+    # been superseded by its replacement — neither physically exists, so sorting
+    # either would book weight against material that is not there. The voided
+    # history stays on the container records for audit; it just has no place on
+    # a worklist of things to pick up.
     containers = frappe.get_all(
         "Scrap Weight Container",
-        filters={"dropoff": dropoff},
+        filters={"dropoff": dropoff, "status": "Active"},
         fields=["name", "item_code", "item_name", "net_weight", "status",
                 "is_reweight", "reweighed_from"],
         order_by="creation asc",
@@ -380,7 +391,7 @@ def get_dropoff_for_sorting(dropoff):
         "status": doc.status,
         "source_items": source_items,
         "containers": containers,
-        "container_count": len([c for c in containers if c.status == "Active"]),
+        "container_count": len(containers),
         "existing_sorting": existing_sorting
     }
 

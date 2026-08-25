@@ -317,6 +317,23 @@ function displayContainerResults(rows) {
         const sorted = c.has_sorting
             ? ' <span style="color:#f59e0b">• ' + (POS_I18N.t('alreadySorted') || 'sorting started') + '</span>'
             : '';
+
+        // A voided or superseded bag is shown, not hidden — scanning its
+        // sticker should say why it cannot be used rather than "not found" —
+        // but it is greyed and cannot be selected.
+        if (c.sortable === false) {
+            return '<div class="result-item" style="opacity:.55;cursor:not-allowed"' +
+                ' onclick="notSortable(\'' + escapeHtml(c.name) + '\',\'' +
+                escapeHtml(c.status || '') + '\')">' +
+                '<div class="result-id">' + escapeHtml(c.name) +
+                ' <span style="color:#ef4444;font-size:.75rem">• ' +
+                escapeHtml(c.status || '') + '</span></div>' +
+                '<div class="result-info">' + escapeHtml(c.item_name || c.item_code || '') +
+                ' — ' + w + ' kg<br>' + escapeHtml(c.dropoff) + ' · ' +
+                escapeHtml(c.supplier_name || '') + '</div>' +
+                '</div>';
+        }
+
         return '<div class="result-item" onclick="selectContainer(\'' +
             escapeHtml(c.name) + '\',\'' + escapeHtml(c.dropoff) + '\')">' +
             '<div class="result-id">' + escapeHtml(c.name) + '</div>' +
@@ -325,6 +342,17 @@ function displayContainerResults(rows) {
             escapeHtml(c.supplier_name || '') + sorted + '</div>' +
             '</div>';
     }).join('');
+}
+
+/** Explain why a written-off bag cannot be sorted. */
+function notSortable(ctn, status) {
+    frappe.msgprint({
+        title: POS_I18N.t('cannotSort') || 'Cannot sort this container',
+        indicator: 'orange',
+        message: (POS_I18N.t('containerNotActive') ||
+            'Container {0} is {1}. It was written off during receiving and is not available for sorting.')
+            .replace('{0}', ctn).replace('{1}', status)
+    });
 }
 
 /** Scanned or picked a bag: open its dropoff, then focus that bag. */
