@@ -352,7 +352,7 @@ async function testOne(name) {
         log('OK   ' + name + ' — ' +
             (r.channel ? 'channel ' + r.channel + ', ' : '') +
             r.bytes + ' bytes (via ' + r.via + ')');
-        measure(name);
+        measure(name, r.channel);
     } else {
         log('FAIL ' + name + ' — ' + (r.error || 'unknown error'));
     }
@@ -360,11 +360,14 @@ async function testOne(name) {
     renderCameras();
 }
 
-// Pull one frame purely to report the pixel dimensions
-async function measure(name) {
+// Pull one frame purely to report the pixel dimensions.
+// Must request the SAME channel the capture used, or we would report the
+// sub-stream's size against the main stream's label.
+async function measure(name, channel) {
     try {
         const response = await POS_CORE.callAPI(
-            'scrap_metal_suite.api.v1.camera.live_frame', { camera: name });
+            'scrap_metal_suite.api.v1.camera.live_frame',
+            { camera: name, channel: channel || null });
         const src = response.message && response.message.image;
         if (!src) return;
 

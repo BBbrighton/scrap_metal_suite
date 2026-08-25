@@ -32,16 +32,24 @@ def get_cameras(usage_type=None):
 
 
 @frappe.whitelist()
-def live_frame(camera):
-    """One preview frame as a data URI. Polled by CameraClient.startPreview()."""
+def live_frame(camera, channel=None):
+    """One preview frame as a data URI. Polled by CameraClient.startPreview().
+
+    `channel` overrides the camera's configured channel. Preview leaves it unset
+    (the sub-stream is what you want for polling), but callers that need the
+    frame to correspond to a *specific* channel - e.g. reporting the resolution
+    of the channel a capture actually used - must pass it, or they will report
+    the sub-stream's dimensions against the main stream's label.
+    """
     check_pos_operator()
 
     doc = service.get_camera(camera)
-    content = service.fetch_snapshot(doc, timeout=service.PREVIEW_TIMEOUT)
+    content = service.fetch_snapshot(doc, channel=channel, timeout=service.PREVIEW_TIMEOUT)
 
     return {
         "success": True,
         "camera": doc.name,
+        "channel": channel or doc.channel,
         "image": "data:image/jpeg;base64," + base64.b64encode(content).decode("ascii"),
         "ts": now_datetime(),
     }
