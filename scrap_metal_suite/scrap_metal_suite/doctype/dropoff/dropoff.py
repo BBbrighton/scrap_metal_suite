@@ -797,11 +797,30 @@ class Dropoff(Document):
             )
 
         if self.weighing_session and self.weighing_session != session:
-            frappe.throw(
-                _("Dropoff {0} is locked to session {1}. Pause and resume to switch.").format(
-                    self.name, self.weighing_session
+            # A lock held by a session that is no longer Open is stale, not a
+            # conflict. Nothing releases the lock when a session simply closes —
+            # pause_weighing / reassign_session / void_weighing do, but
+            # close_session and the idle auto-close do not — so an operator who
+            # closes a session (or is auto-closed after 90 idle minutes) is
+            # locked out of their own dropoff by a session that no longer
+            # exists. The advice in the old message, "pause and resume", was
+            # unreachable: pausing is itself a weighing action on a dropoff
+            # they can no longer touch.
+            #
+            # Nobody is weighing under a closed session, so take it over.
+            holder_open = frappe.db.get_value(
+                "POS Session", self.weighing_session, "status"
+            ) == "Open"
+
+            if holder_open:
+                frappe.throw(
+                    _("Dropoff {0} is locked to session {1}. Pause and resume to switch.").format(
+                        self.name, self.weighing_session
+                    )
                 )
-            )
+
+            self.weighing_session = None
+            self.weighing_scale = None
 
         if self.weighing_session:
             scale_of_session = frappe.db.get_value("POS Session", session, "scale")
