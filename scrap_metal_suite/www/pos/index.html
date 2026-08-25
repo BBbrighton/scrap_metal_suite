@@ -113,6 +113,10 @@ body {
         <div class="session-info-bar">
             <span class="info-item">Profile: {{ active_session.pos_profile }}</span>
             <span class="info-item">Opened: {{ frappe.utils.format_datetime(active_session.opening_time, "hh:mm a") }}</span>
+            <button class="btn-setting" onclick="closeActiveSession('{{ active_session.name }}')"
+                    title="Close this session" id="closeSessionBtn">
+                &#9209; <span data-i18n="closeSession">Close Session</span>
+            </button>
         </div>
         {% endif %}
 
@@ -252,6 +256,17 @@ async function startSession(terminalType) {
             }
         }
     } catch (error) {
+        // An operator may hold only one open session. If one already exists,
+        // this page is out of date - typically a Back navigation after the
+        // session was created. Don't dead-end the operator with an error they
+        // cannot act on: find the real session and offer the two things they
+        // can actually do with it.
+        const existing = await findActiveSession();
+        if (existing) {
+            offerSessionRecovery(existing, terminalType);
+            return;
+        }
+
         frappe.msgprint({
             title: 'Error',
             indicator: 'red',
@@ -259,5 +274,88 @@ async function startSession(terminalType) {
         });
     }
 }
+
+/** The operator's open session, or null. Never throws. */
+async function findActiveSession() {
+    try {
+        const r = await frappe.call({
+            method: 'scrap_metal_suite.api.v1.pos.get_active_session'
+        });
+        return (r && r.message) ? r.message : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * Dead-end recovery. Reached when the page offered "start" but a session
+ * already exists. Resume is the common case; closing is the escape hatch for
+ * a session abandoned before a scale was ever chosen.
+ */
+function offerSessionRecovery(session, terminalType) {
+    const route = terminalType === 'truck' ? '/pos/truck' : '/pos/terminal';
+    const opened = session.opening_time || '';
+    const scaleNote = session.scale
+        ? 'Scale: ' + session.scale
+        : 'No scale was selected for this session.';
+
+    const d = new frappe.ui.Dialog({
+        title: 'You already have an open session',
+        fields: [{
+            fieldtype: 'HTML',
+            options:
+                '<p><b>' + session.name + '</b><br>' +
+                '<span style="color:#6b7280;font-size:12px;">' +
+                scaleNote + (opened ? ' &middot; opened ' + opened : '') +
+                '</span></p>' +
+                '<p style="margin-top:10px;">Resume it, or close it and start fresh.</p>'
+        }],
+        primary_action_label: 'Resume',
+        primary_action() {
+            window.location.href = route + '?session=' + encodeURIComponent(session.name);
+        },
+        secondary_action_label: 'Close Session',
+        secondary_action() {
+            d.hide();
+            closeActiveSession(session.name);
+        }
+    });
+    d.show();
+}
+
+/** Close the operator's session from the landing page. */
+async function closeActiveSession(sessionName) {
+    if (!sessionName) return;
+
+    frappe.confirm(
+        'Close session <b>' + sessionName + '</b>?<br>You can then start a new one.',
+        async () => {
+            const btn = document.getElementById('closeSessionBtn');
+            if (btn) btn.disabled = true;
+            try {
+                await frappe.call({
+                    method: 'scrap_metal_suite.api.v1.pos.close_session',
+                    args: { session: sessionName }
+                });
+                frappe.show_alert({ message: 'Session closed', indicator: 'green' }, 3);
+                setTimeout(() => window.location.reload(), 600);
+            } catch (e) {
+                if (btn) btn.disabled = false;
+                frappe.msgprint({
+                    title: 'Error',
+                    indicator: 'red',
+                    message: (e && e.message) || 'Could not close the session'
+                });
+            }
+        }
+    );
+}
+
+// A Back navigation can restore this page from the browser's bfcache with a
+// stale view of whether a session exists. Re-render on restore so the page
+// never offers "start" for an operator who already has one open.
+window.addEventListener('pageshow', function (e) {
+    if (e.persisted) window.location.reload();
+});
 </script>
 {% endblock %}
