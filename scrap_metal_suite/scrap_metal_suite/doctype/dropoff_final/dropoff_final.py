@@ -60,11 +60,15 @@ class DropoffFinal(Document):
 			# (90 kg Grade A + 9 kg Grade B + 1 kg tare from a single 100 kg
 			# bag), so this table is deliberately NOT aggregated. The per-grade
 			# tables below still are, and settlement continues to read those.
-			for classification, rows in (("Good", sorting.good_items),
-			                             ("Unwanted", sorting.unwanted_items)):
-				for item in rows:
-					if not item.get("container"):
-						continue
+			# Grouped by container, not by classification. A bag's outputs
+			# belong together — both for reading and because anything counting
+			# "the first row of a container" (the print format does) needs them
+			# consecutive.
+			tagged = [("Good", i) for i in sorting.good_items if i.get("container")]
+			tagged += [("Unwanted", i) for i in sorting.unwanted_items if i.get("container")]
+			tagged.sort(key=lambda pair: (pair[1].container, pair[0]))
+
+			for classification, item in tagged:
 					src = received.get(item.container)
 					self.append("container_items", {
 						"container": item.container,

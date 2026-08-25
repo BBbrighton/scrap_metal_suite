@@ -364,12 +364,26 @@ async function selectContainer(ctn, dropoffId) {
 
 /** Make one bag the active one. Everything added is tagged to it. */
 function selectWorkContainer(ctn) {
+    const c = ((currentDropoff && currentDropoff.containers) || [])
+        .find(function (x) { return x.name === ctn; });
+
+    // Re-sorting a finished bag is allowed — a correction may be needed — but
+    // it must be a decision, not an accident. Sorting twice adds the weight
+    // twice to Dropoff Final.
+    if (c && c.fully_sorted) {
+        if (!window.confirm(
+                (POS_I18N.t('alreadyFullySorted') ||
+                 'Container {0} has already been fully sorted ({1} kg). Sorting it again ADDS to what is recorded. Continue?')
+                .replace('{0}', ctn)
+                .replace('{1}', parseFloat(c.already_sorted || 0).toFixed(1)))) {
+            return;
+        }
+    }
+
     currentContainer = ctn;
     renderContainerWorklist();
     updateSubmitButton();
 
-    const c = ((currentDropoff && currentDropoff.containers) || [])
-        .find(function (x) { return x.name === ctn; });
     if (c) {
         frappe.show_alert({
             message: (POS_I18N.t('sortingContainer') || 'Sorting') + ' ' + ctn +
@@ -394,7 +408,13 @@ function renderContainerWorklist() {
         return;
     }
 
+    // Booked = what earlier submitted sessions already recorded, plus what is
+    // staged in this one. Without the prior part a bag sorted yesterday looks
+    // untouched and gets weighed again, doubling it into Dropoff Final.
     const booked = {};
+    containers.forEach(function (c) {
+        booked[c.name] = parseFloat(c.already_sorted || 0);
+    });
     goodItems.concat(unwantedItems).forEach(function (i) {
         if (i.container) booked[i.container] = (booked[i.container] || 0) + parseFloat(i.weight || 0);
     });
@@ -409,12 +429,18 @@ function renderContainerWorklist() {
             const active = (c.name === currentContainer);
             const done = out > 0 && Math.abs(recv - out) < 0.0005;
             const colour = done ? '#22c55e' : (out > 0 ? '#f59e0b' : '#94a3b8');
+            const priorNote = c.already_sorted > 0
+                ? '<br><span style="font-size:.65rem;color:#f59e0b">' +
+                  (POS_I18N.t('sortedEarlier') || 'sorted earlier') + ': ' +
+                  parseFloat(c.already_sorted).toFixed(1) + ' kg</span>'
+                : '';
             return '<div class="dropoff-item-row" style="cursor:pointer;' +
-                (active ? 'outline:2px solid #2563eb;border-radius:6px;' : '') + '"' +
+                (active ? 'outline:2px solid #2563eb;border-radius:6px;' : '') +
+                (c.fully_sorted ? 'opacity:.65;' : '') + '"' +
                 ' onclick="selectWorkContainer(\'' + escapeHtml(c.name) + '\')">' +
                 '<span class="dropoff-item-name">' + escapeHtml(c.name) +
                 '<br><span style="font-size:.7rem;opacity:.7">' +
-                escapeHtml(c.item_name || c.item_code || '') + '</span></span>' +
+                escapeHtml(c.item_name || c.item_code || '') + '</span>' + priorNote + '</span>' +
                 '<span class="dropoff-item-weight" style="color:' + colour + '">' +
                 out.toFixed(1) + ' / ' + recv.toFixed(1) + ' kg</span>' +
                 '</div>';

@@ -382,6 +382,31 @@ def get_dropoff_for_sorting(dropoff):
         order_by="creation asc",
     )
 
+    # How much of each bag previous sessions already booked.
+    #
+    # A dropoff can legitimately be sorted across several sessions — Dropoff
+    # Final aggregates them — so re-opening one is not an error. But without
+    # this the worklist shows every bag as untouched, and a second sorter would
+    # weigh the same material again and double it into Dropoff Final.
+    prior = {}
+    for table in ('Production Sorting Good Item', 'Production Sorting Unwanted Item'):
+        for row in frappe.db.sql(
+            """
+            SELECT i.container AS container, SUM(i.weight) AS weight
+            FROM `tab{table}` i
+            JOIN `tabProduction Sorting` p ON p.name = i.parent
+            WHERE p.dropoff = %s AND p.docstatus = 1 AND IFNULL(i.container, '') != ''
+            GROUP BY i.container
+            """.format(table=table),
+            dropoff,
+            as_dict=True,
+        ):
+            prior[row.container] = prior.get(row.container, 0) + flt(row.weight)
+
+    for c in containers:
+        c['already_sorted'] = flt(prior.get(c['name'], 0))
+        c['fully_sorted'] = abs(flt(c['net_weight']) - c['already_sorted']) < 0.0005
+
     return {
         "name": doc.name,
         "supplier": doc.supplier,
