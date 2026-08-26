@@ -22,8 +22,9 @@ Your job has only two moments: **before the material arrives**, and **after sort
 
 **กฎที่ห้ามลืม / The rules that will stop you**
 
-1. **ของดีทุกกิโลต้องมีที่ไป** — จัดสรรไม่ครบ = Submit ไม่ได้ ปิดครึ่ง ๆ ไม่ได้
-   Every kilo must be allocated. Partial closure is impossible.
+1. **จ่ายบางส่วนได้** — ไม่ต้องปิด Dropoff Final ทั้งใบในครั้งเดียว จ่ายเท่าไหร่ก็ตัดเท่านั้น ที่เหลือรอใบสั่งซื้อรอบหน้า แต่ห้ามเกินของที่รับมา
+   You may settle **part** of a Dropoff Final. Draw what you are paying for now; the rest stays available for a later ใบสั่งซื้อ. You simply cannot draw more than was received.
+   *(เปลี่ยนเมื่อ 26 ส.ค. 2026 — เดิมต้องจัดสรรครบทุกกิโล / Changed 26 Aug 2026 — this previously had to be all-or-nothing.)*
 2. **ราคาจาก `PO` แก้ไม่ได้** — จะจ่ายราคาอื่นต้องใช้ `Spot`
    A `PO` rate comes from the lock and cannot be typed over. Use `Spot` for anything else.
 3. **1 ใบสั่งซื้อ = 1 ผู้ขาย** — ผสมผู้ขายไม่ได้
@@ -318,10 +319,18 @@ A `Partially Settled` lock is **never auto-expired**, even past its expiry date,
    → ถ้ากรอก ข้อความที่กรอกจะกลายเป็น **ชื่อเอกสาร** แทนเลขอัตโนมัติ ใช้เมื่อต้องอ้างอิงเลขของผู้ขาย ระวังชื่อซ้ำ
    → If filled, whatever you type **becomes the document name** instead of the auto number. Use it to mirror a supplier's own reference. Duplicates will fail.
 5. **Dropoff Finals** — เพิ่ม 1 แถว เลือก `DFL-260822-00001`
-   → ตัวเลือกจะกรองให้เหลือเฉพาะของผู้ขายรายนี้ที่สถานะ `Unsettled` เท่านั้น
-   → The picker only offers this supplier's `Unsettled` Dropoff Finals
-   → Weight (kg) เติมเอง = `938.000`
-6. **Allocations** — เพิ่ม 1 แถว / add one row:
+   → ตัวเลือกจะกรองให้เหลือเฉพาะของผู้ขายรายนี้ที่สถานะ `Unsettled` หรือ `Partially Settled`
+   → The picker offers this supplier's `Unsettled` **and `Partially Settled`** Dropoff Finals — a delivery you have already part-paid is still selectable until every kilo is drawn
+   → Total (kg) เติมเอง = `938.000` · Settled Here (kg) จะคำนวณให้หลังใส่แถวจัดสรร / computed once you allocate
+6. **กดปุ่ม “Pull Items from Dropoff Finals”** / click **Pull Items from Dropoff Finals**
+
+   ระบบจะเปิดหน้าต่างแสดง**เฉพาะของดี**ที่ยังเหลืออยู่ (หักของที่ใบสั่งซื้ออื่นตัดไปแล้ว) ติ๊กแถวที่ต้องการ แก้จำนวนให้น้อยลงได้ถ้าจะจ่ายแค่บางส่วน แล้วกด Add
+   A dialog lists the **wanted items only** — returned material is never paid for — with the quantity still available, already net of other settlements. Tick what you want, lower a quantity to pay for part of it now, and the allocation rows are created for you.
+
+   > ปุ่มนี้ **ไม่เลือก Source / PO / Rate ให้** เพราะการเลือกว่าจะตัดใบยืนยันราคาใบไหนเป็นการตัดสินใจของคุณ ไม่ใช่ของระบบ
+   > The button deliberately does **not** fill in Source, PO or Rate. Choosing which price lock to draw down is your judgment, not the system's — it removes the typing, not the decision.
+
+7. **Allocations** — ตรวจแถวที่ได้มา แล้วใส่ Source ให้ครบ / check the rows it created and set the Source on each:
 
    | ช่อง / Field | ใส่อะไร / What to enter |
    |---|---|
@@ -333,8 +342,8 @@ A `Partially Settled` lock is **never auto-expired**, even past its expiry date,
    | Rate (THB) | **เติมเอง = `50.00` แก้ไม่ได้** / **auto-filled, cannot be overridden** |
 
    → Amount = `46,900.00`
-7. **Save** → ชื่อเอกสาร **`SPO-ACME-2608-001`**
-8. ตรวจยอด / Check the totals:
+8. **Save** → ชื่อเอกสาร **`SPO-ACME-2608-001`**
+9. ตรวจยอด / Check the totals:
 
    | ช่อง / Field | ค่า / Value |
    |---|---|
@@ -342,14 +351,14 @@ A `Partially Settled` lock is **never auto-expired**, even past its expiry date,
    | Total Spot Value | `0.00` |
    | **Grand Total** | **`46,900.00`** |
 
-9. **Submit**
+10. **Submit**
 
 **เกิดอะไรขึ้นตอน Submit / What submitting does — four things at once:**
 
 | ผลกระทบ / Effect | รายละเอียด / Detail |
 |---|---|
 | ตัดโควตาใบยืนยันราคา / consumes the lock | `PLO-ACME-2608-001` → `ทองแดงปอก` Settled Qty `0.000` → **`938.000`** · Remaining Qty `1,000.000` → **`62.000`** · Status `Open` → **`Partially Settled`** |
-| ปิด Dropoff Final | `DFL-260822-00001` → Status **`Settled`** · PO Final = `SPO-ACME-2608-001` · บันทึกชื่อคุณและเวลาไว้ / your user and timestamp are stamped on |
+| ปิด Dropoff Final | `DFL-260822-00001` → Status **`Settled`** · PO Final = `SPO-ACME-2608-001` · บันทึกชื่อคุณและเวลาไว้ / your user and timestamp are stamped on<br>⚠️ ที่ขึ้น `Settled` เพราะดึงครบ 938 กก. **ถ้าดึงแค่บางส่วนจะเป็น `Partially Settled`** และยังเลือกมาทำใบสั่งซื้อรอบหน้าได้ / it reads `Settled` only because all 938 kg were drawn — a partial draw leaves it `Partially Settled` and still selectable next time |
 | สร้างใบแจ้งหนี้ / drafts the invoice | **Purchase Invoice** สถานะ `Draft` ยอด `46,900.00` — ลิงก์ไว้ในช่อง Purchase Invoice |
 | ล็อกเอกสาร / locks the document | Status → `Submitted` แก้ไม่ได้แล้ว ต้อง Cancel อย่างเดียว / immutable from here, cancel is the only way back |
 
@@ -461,7 +470,8 @@ Cancel every settlement that references it first, then the lock.
 | Dropoff Final เป็น `Unsettled` แต่ Verification Status เป็น `Needs Review` | ครั้งแรกผ่านเกณฑ์ แล้วมีการคัดแยกเพิ่มทีหลังจนเกินเกณฑ์ สถานะเลยค้าง / it passed once, then later sorting pushed it out of tolerance and the status stayed | ระบบ **จะยอมให้สรุปยอดได้** ทั้งที่ยังไม่ผ่านการตรวจ ให้ดู Verification Status ด้วยตาทุกครั้งก่อนกด Submit / the system **will let you settle it anyway**. Check Verification Status by eye before submitting |
 | *Supplier … has no Short Code* | ผู้ขายยังไม่ได้กรอก Short Code | เปิด Supplier กรอก Short Code (2–8 ตัวอักษร) แล้วลองใหม่ |
 | *Allocation row 1: Total allocation of … exceeds remaining qty …* | จัดสรรเกินโควตาที่เหลือในใบยืนยันราคา | ลดจำนวนลง หรือแยกส่วนเกินไปเป็น `Spot` |
-| *Dropoff Final DFL-…: Item ทองแดงปอก has 938.0 kg but only 900.0 kg allocated. All items must be fully allocated.* | จัดสรรไม่ครบ ระบบบังคับให้ **ของดีทุกกิโลทุกเกรด** ต้องมีที่ไป | เพิ่มแถวให้ครบ ถ้าไม่มีล็อกรองรับให้ใช้ `Spot` — **ปิดครึ่งๆ ไม่ได้** / add rows until every gram is covered. Use `Spot` if no lock backs it. **Partial closure is impossible** |
+| *Dropoff Final …, item …: this document draws 950.0 kg but only 900.0 kg remains (938.0 kg received, 38.0 kg already settled by other PO Finals).* | ดึงเกินของที่เหลือ — อาจมีใบสั่งซื้อใบอื่นตัดไปแล้วบางส่วน | ลดจำนวนลงให้ไม่เกิน Remaining Qty ในหน้า Dropoff Final หรือกดปุ่ม Pull ใหม่ ระบบจะเสนอเฉพาะที่เหลือจริง / lower the qty, or re-run **Pull Items** — it only ever offers what is genuinely left |
+| *Dropoff Final … is listed above but nothing is allocated from it. Pull its items or remove the row.* | ใส่ Dropoff Final ไว้ในตารางแต่ไม่ได้จัดสรรอะไรจากใบนั้นเลย | กดปุ่ม Pull เพื่อดึงรายการ หรือลบแถวนั้นทิ้ง / pull its items, or delete the row |
 | *Row 1: Dropoff Final … is already settled. Cancel the existing PO Final first.* | ใบนั้นถูกสรุปยอดไปแล้ว | หาใบสั่งซื้อเดิมจากช่อง PO Final ในหน้า Dropoff Final แล้ว Cancel ก่อน |
 | *Cannot cancel: Purchase Invoice … is submitted.* | ใบแจ้งหนี้ถูก Submit ไปแล้ว | Cancel Purchase Invoice ก่อน (ถ้ามีการจ่ายเงินแล้ว ต้อง Cancel Payment Entry ก่อนอีกที) แล้วค่อย Cancel ใบสั่งซื้อ |
 | **แก้เอกสารที่ Submit ไปแล้วไม่ได้เลย ปุ่ม Amend ไม่ทำงาน** / **Amend does nothing on submitted documents** | ⚠️ ไม่มีบทบาทไหนมีสิทธิ์ Amend เลย รวมทั้ง System Manager / no role holds the amend permission, System Manager included | Cancel แล้ว **สร้างใหม่ทั้งใบ** — ยอมรับว่าเลขเอกสารจะไม่ต่อเนื่อง / cancel and **create a fresh document**. Accept the gap in numbering |
@@ -522,8 +532,8 @@ type − supplier short code − YYMM − per-supplier monthly counter.
 
 1. **ราคาจากใบยืนยันราคาแก้ไม่ได้** ถ้าตั้ง Source = `PO` ระบบเขียนทับราคาที่คุณพิมพ์ทุกครั้ง จะจ่ายราคาอื่นต้องใช้ `Spot`
    A `PO` allocation's rate is overwritten from the lock every time you save. To pay a different rate you must use `Spot`.
-2. **ของดีทุกกิโลต้องมีที่ไป** ปิด Dropoff Final ครึ่งๆ ไม่ได้ — ทั้งใบหรือไม่ทำเลย
-   Every kilo of good material must be allocated. A Dropoff Final closes in full or not at all.
+2. **จัดสรรเกินของที่รับมาไม่ได้** แต่จัดสรรไม่ครบได้ — Dropoff Final ปิดบางส่วนได้ ที่เหลือรอใบสั่งซื้อรอบหน้า (เปลี่ยนเมื่อ 26 ส.ค. 2026)
+   You cannot allocate MORE than was received, but you may allocate less. A Dropoff Final can be settled in instalments across several ใบสั่งซื้อ. *(Changed 26 Aug 2026 — this was previously all-or-nothing.)*
 3. **ห้ามข้ามผู้ขาย** ทุกอย่างในใบสั่งซื้อใบเดียวต้องเป็นผู้ขายรายเดียวกัน
    Everything on one settlement must belong to one supplier.
 4. **จัดสรรเกินโควตาไม่ได้** ระบบเช็คทั้งตอน Save และตอน Submit

@@ -166,11 +166,21 @@ stateDiagram-v2
     Draft --> InProgress: has items, variance_ok == 0
     Draft --> Unsettled: has items, variance_ok == 1
     InProgress --> Unsettled: a later sorting brings variance inside threshold
-    Unsettled --> Settled: SMT Purchase Order submit
-    Settled --> Unsettled: SMT Purchase Order cancel
+    Unsettled --> PartiallySettled: settlement draws part of it
+    Unsettled --> Settled: settlement draws all of it
+    PartiallySettled --> Settled: a later settlement draws the rest
+    PartiallySettled --> Unsettled: settlement cancel returns every kilo
+    Settled --> PartiallySettled: settlement cancel returns some kilos
     note right of InProgress
       No API and no UI moves this
       to Unsettled by hand. See §11.
+    end note
+    note right of PartiallySettled
+      v2. Every settlement status is
+      derived by apply_settlement_ledger
+      from submitted allocations, never
+      stamped. Cancels land on the right
+      state automatically.
     end note
 ```
 
@@ -306,16 +316,33 @@ Per allocation row:
 4. If `source_type == "Spot"`: `rate > 0` (`:108-112`)
 5. `row.amount = flt(qty * rate, 2)` (`:115`)
 
-Then `validate_dropoff_coverage` (`smt_purchase_order.py:137-180`) enforces exact bidirectional coverage per Dropoff Final:
+Then `validate_dropoff_coverage` enforces an **upper bound** per Dropoff Final:
 
-- Build `dof_item_map` by summing `Dropoff Final Good Item.weight` per `item_code` (`:143-151`)
-- Build `alloc_map` from this settlement's allocation rows for that DOF (`:154-158`)
-- **Every good item must be fully allocated:** `flt(allocated, 3) != flt(expected, 3)` ⇒ throw (`:161-170`). This is an equality test at 3 dp, not a tolerance band.
-- **No phantom items:** any `item_code` in `alloc_map` absent from `dof_item_map` ⇒ throw (`:172-180`)
+- Build `dof_item_map` by summing `Dropoff Final Good Item.weight` per `item_code`
+- Build `alloc_map` from this settlement's allocation rows for that DOF
+- **Nothing may be listed and not drawn:** an empty `alloc_map` for a listed DOF ⇒ throw. Under an upper bound zero is arithmetically valid, but the row would assert a relationship the document does not have — and it would print on ใบสั่งซื้อ as though the delivery were part of this settlement.
+- **No phantom items:** any `item_code` in `alloc_map` absent from `dof_item_map` ⇒ throw
+- **May not exceed what remains:** `this document's draw + Σ(other submitted settlements' draws) > weight` ⇒ throw. `get_settled_elsewhere()` sums submitted `SMT Purchase Order Allocation` rows for that DOF, excluding this document by name. A cancelled settlement has `docstatus = 2` and drops out automatically, which is what returns its share to the pool.
 
-Consequence: a Dropoff Final settles **in full or not at all**. Unwanted items are excluded from `dof_item_map` entirely and therefore must never be allocated.
+> **⚠️ Changed in v2 (2026-08-26).** This was previously an **equality** test at 3 dp — every good item had to be allocated exactly, so a Dropoff Final settled *in full or not at all*. It is now `<=`, which is what lets one delivery be paid for in instalments across several settlements. See `PRICE_LOCK_SETTLEMENT_DESIGN.md` §16.4.
+>
+> A useful side effect: a **partially allocated settlement is now a valid draft**. Under the equality rule `validate()` threw on every save until the last row was filled in, so an accountant halfway through allocating could not save their work at all.
 
-`validate_supplier_consistency` (`:26-51`) additionally requires every referenced Dropoff Final and every referenced lock to belong to `self.supplier`, and rejects any DOF already `Settled`.
+Unwanted items are excluded from `dof_item_map` entirely and therefore must never be allocated.
+
+`validate_supplier_consistency` additionally requires every referenced Dropoff Final and every referenced lock to belong to `self.supplier`, and rejects any DOF already `Settled`. Note it rejects only `Settled` — `Partially Settled` is deliberately still selectable, which is the whole point of v2.
+
+#### The Dropoff Final ledger (v2)
+
+`Dropoff Final Good Item` gained `settled_qty` / `remaining_qty`, mirroring `SMT Price Lock Item`. **They are derived, never stored-and-incremented**, and the distinction is load-bearing:
+
+`DropoffFinal.before_save` calls `aggregate_from_sortings()`, which **clears and rebuilds** `good_items` from the submitted sorting records — on every save, for the life of the document, because Dropoff Final is not submittable. A stored ledger on those rows would be silently destroyed the next time production submitted another sorting session for the same dropoff.
+
+So `apply_settlement_ledger()` recomputes both fields from submitted allocations and **runs last in `before_save`**. The wipe stops being a hazard and becomes the mechanism — rows and their ledger values are always regenerated together. The Price Lock's atomic-increment pattern is correct *there* only because `SMT Price Lock Item` rows are frozen on a submitted document; it is not transplanted here.
+
+Consequences: the ledger cannot drift, live records needed no backfill patch, and `SMTPurchaseOrder.on_submit` / `on_cancel` both reduce to one idempotent `sync_dropoff_finals()` call that merely saves each DOF. That also closed a double-payment hole — the old `revert_dropoff_finals` stamped the whole delivery back to `Unsettled`, so cancelling one of two settlements returned material the other still held a submitted, invoiced claim on.
+
+`SMT Purchase Order Dropoff` also gained `drawn_weight`, computed by `calculate_drawn_weights()`: what **this** document draws, as opposed to the fetched `total_weight`, which is the delivery's entire good weight.
 
 #### Worked example (§4.2)
 

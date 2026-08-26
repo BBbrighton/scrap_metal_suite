@@ -867,3 +867,105 @@ Invoices and several Payment Entries for one truckload**. That is more paperwork
 on both sides, and the supplier reconciles one delivery against multiple
 payments. This was raised explicitly during design and accepted — the timing
 flexibility is worth it.
+
+---
+
+## 17. The ERPNext boundary, and the accounting posture (2026-08-26)
+
+### 17.1 What this app does and does not touch
+
+**It never touches ERPNext's Purchase Order.** There are zero references to that
+doctype anywhere in the codebase. `SMT Price Lock` and `SMT Purchase Order`
+exist precisely to *replace* it — §1 records why: standard PO → Purchase Receipt
+→ Purchase Invoice assumes a near-1:1 order-to-receipt relationship that this
+business does not have.
+
+The complete list of standard Frappe/ERPNext doctypes this app writes to:
+
+| DocType | Where | Transactional? |
+|---|---|---|
+| `Supplier` | registration, master data | no |
+| `Contact`, `Address` | registration | no |
+| **`Purchase Invoice`** | `SMTPurchaseOrder.create_draft_purchase_invoice` | **yes — the only one** |
+
+One document, one hop. The app owns everything up to *"here is what we owe this
+supplier, and why"*; paying them is ERPNext's job. The draft Purchase Invoice is
+the seam between the two, and it is the app's single point of contact with
+accounting.
+
+### 17.2 The app posts nothing to the ledger
+
+Verified 2026-08-26 by grep and by querying the live `metal` site:
+
+- No `make_gl_entries`, no GL Entry, no Stock Ledger Entry, no Purchase Receipt,
+  no Stock Entry anywhere in the app.
+- `create_draft_purchase_invoice` calls `pi.insert()`. **Nothing anywhere calls
+  `.submit()` on a Purchase Invoice.** The only other touchpoint,
+  `handle_purchase_invoice`, *blocks* cancellation if a human submitted one — it
+  protects the accounting, it does not drive it.
+- Site state at the time of writing: 10 PIs created by settlements, **0
+  submitted**, Stock Received But Not Billed balance **0.00**, 0 Purchase
+  Receipts.
+
+A draft Purchase Invoice is `docstatus = 0` and posts no GL entries. So
+submitting an `SMT Purchase Order` moves zero baht in the accounts. That is
+design decision #5 working as intended: the accountant gets a review step before
+anything is booked.
+
+### 17.3 The "Stock Received But Not Billed" warning
+
+Opening one of those drafts raises an ERPNext message:
+
+> Row 1: Expense Head changed to 2210 - Stock Received But Not Billed as no
+> Purchase Receipt is created against Item X. This is done to handle accounting
+> for cases when Purchase Receipt is created after Purchase Invoice.
+
+**What it means.** "Expense Head" is the account debited on that invoice line.
+Stock Received But Not Billed (SRBNB) is not an expense account at all — it is a
+*liability*, and it functions as a waiting room between the two documents
+ERPNext expects when buying stock items:
+
+```
+Purchase Receipt   goods arrive, no bill yet
+                   Dr Stock in Hand / Cr SRBNB          <- value parked
+
+Purchase Invoice   the bill arrives
+                   Dr SRBNB / Cr Creditors              <- value leaves
+```
+
+In healthy books SRBNB hovers at zero; things pass through it. ERPNext found no
+Purchase Receipt for the item, concluded the invoice had arrived first, and
+parked the value in the waiting room to be cleared when the receipt turns up.
+
+**Why the assumption does not hold here.** There is no Purchase Receipt in this
+flow at all, so the receipt it is waiting for never arrives. If one of these
+invoices were submitted it would post `Dr SRBNB / Cr Creditors` — two liabilities,
+with nothing ever clearing SRBNB. The purchase would reach neither inventory nor
+the P&L.
+
+**It has not happened.** The message fires on a draft. No invoice from this app
+has ever been submitted, and SRBNB stands at 0.00. Read it as a weather
+forecast, not a fire alarm.
+
+### 17.4 Standing decision: hands off the accounting
+
+**Decided 2026-08-26.** The app must continue to post **zero** GL entries, and
+the SRBNB warning is to be left exactly as it is.
+
+Four fixes were considered and all four **declined**:
+
+| Option | Effect | Why declined |
+|---|---|---|
+| `update_stock = 1` on the PI | Dr Stock in Hand / Cr Creditors; no SRBNB | changes what lands in the client's books |
+| Generate a Purchase Receipt too | textbook 3-document flow, SRBNB nets to zero | same, plus 2 docs per settlement |
+| `is_stock_item = 0` on scrap items | cost to P&L directly, warning disappears | destroys any future inventory tracking |
+| Override `expense_account` on PI rows | cost to P&L, warning disappears | stopgap; still no inventory |
+
+The reason for declining is not that any of them is wrong — it is that the
+accounting model is **not settled yet**, and each one changes what appears in a
+real company's books. Choosing wrong is far more expensive than a cosmetic
+warning on an unsubmitted draft.
+
+Whichever is eventually chosen belongs to the parked warehouse work
+(`project_warehouse_plan`), not to settlement. **Do not "fix" this warning in
+passing.**
