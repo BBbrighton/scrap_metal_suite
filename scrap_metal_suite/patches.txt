@@ -10,3 +10,4 @@ scrap_metal_suite.patches.v2_0.fix_variance_threshold_defaults
 scrap_metal_suite.patches.v2_0.backfill_settled_value
 scrap_metal_suite.patches.v2_0.backfill_pos_order_status
 scrap_metal_suite.patches.v2_0.backfill_supplier_short_codes
+scrap_metal_suite.patches.v2_0.seed_variance_settings

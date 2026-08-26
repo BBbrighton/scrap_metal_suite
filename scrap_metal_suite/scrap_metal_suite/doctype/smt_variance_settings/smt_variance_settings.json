@@ -1,0 +1,130 @@
+{
+ "actions": [],
+ "creation": "2026-08-26 10:00:00.000000",
+ "description": "Every tolerance the yard is judged against, in one place.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_intro",
+  "intro_html",
+  "section_receiving",
+  "truck_variance_threshold_percent",
+  "indicated_variance_threshold_percent",
+  "column_break_receiving",
+  "container_weight_variance_threshold_pct",
+  "section_sorting",
+  "sorting_variance_threshold_percent",
+  "section_fulfillment",
+  "fulfillment_under_percent",
+  "column_break_fulfillment",
+  "fulfillment_over_percent"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_intro",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "intro_html",
+   "fieldtype": "HTML",
+   "options": "<p style=\"margin:0;color:var(--text-muted)\">These are the <b>defaults for new documents</b>. A Dropoff or Dropoff Final that already exists keeps the threshold it was judged against, so past results stay reproducible. Setting a value to <code>0</code> means <b>an exact match is required</b> — that is a real setting, not “unset”.</p>"
+  },
+  {
+   "fieldname": "section_receiving",
+   "fieldtype": "Section Break",
+   "label": "Receiving / การรับของ"
+  },
+  {
+   "default": "0.1",
+   "description": "Truck net weight vs the sum of the individual bags. Exceeding this flags the Dropoff as Needs Review. / น้ำหนักสุทธิรถ เทียบกับผลรวมถุง",
+   "fieldname": "truck_variance_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Truck Variance Threshold (%)",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "default": "0.1",
+   "description": "What the supplier declared vs what was actually weighed. / น้ำหนักที่ผู้ขายแจ้ง เทียบกับน้ำหนักจริง",
+   "fieldname": "indicated_variance_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Declared vs Actual Threshold (%)",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_receiving",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0.1",
+   "description": "Tolerance used when reconciling container weights during migration and container checks.",
+   "fieldname": "container_weight_variance_threshold_pct",
+   "fieldtype": "Percent",
+   "label": "Container Weight Variance (%)",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_sorting",
+   "fieldtype": "Section Break",
+   "label": "Sorting / การคัดแยก"
+  },
+  {
+   "default": "0.1",
+   "description": "Good + Unwanted vs the weight received. Exceeding this leaves the Dropoff Final at In Progress, which cannot be settled. / ของดี + ของไม่เอา เทียบกับน้ำหนักที่รับเข้า",
+   "fieldname": "sorting_variance_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Sorting Variance Threshold (%)",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_fulfillment",
+   "fieldtype": "Section Break",
+   "label": "Order Fulfilment / การส่งของตามออเดอร์"
+  },
+  {
+   "default": "98",
+   "description": "Below this share of the ordered weight, a POS Order counts as Partial. / ต่ำกว่านี้ถือว่าส่งไม่ครบ",
+   "fieldname": "fulfillment_under_percent",
+   "fieldtype": "Percent",
+   "label": "Fulfilled From (%)",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_fulfillment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "102",
+   "description": "Above this share, a POS Order counts as Over-delivered. / เกินกว่านี้ถือว่าส่งเกิน",
+   "fieldname": "fulfillment_over_percent",
+   "fieldtype": "Percent",
+   "label": "Fulfilled Up To (%)",
+   "non_negative": 1,
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-26 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Scrap Metal Suite",
+ "name": "SMT Variance Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "email": 1, "print": 1, "read": 1, "role": "System Manager", "share": 1, "write": 1},
+  {"create": 1, "email": 1, "print": 1, "read": 1, "role": "SMT Manager", "share": 1, "write": 1},
+  {"create": 1, "email": 1, "print": 1, "read": 1, "role": "Production Manager", "share": 1, "write": 1},
+  {"read": 1, "role": "SMT Accounting Manager"},
+  {"read": 1, "role": "POS Manager"}
+ ],
+ "quick_entry": 0,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -19,11 +19,11 @@
   },
   {
    "default": "0.1",
-   "description": "Maximum allowable variance (%) between dropoff total weight and sorted total weight. Sortings exceeding this threshold require manager approval.",
+   "description": "⚠️ MOVED — no runtime code reads this any more. The sorting tolerance now lives in <b>SMT Variance Settings → Sorting Variance Threshold</b>, alongside every other tolerance. Kept only so the migration patch can read what was configured here.",
    "fieldname": "variance_threshold_percent",
    "fieldtype": "Percent",
    "label": "Variance Threshold (%)",
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "column_break_general",

@@ -720,3 +720,47 @@ Minimum viable dataset to get **one drop-off weighed end to end**. Tick in order
 | `ui_test/fixtures.py` | `_ensure_price_lock_with_order()` — the canonical minimum dataset | `SMT_UI_HEADLESS=1 SMT_UI_ADMIN_PWD=… env/bin/pytest apps/scrap_metal_suite/scrap_metal_suite/ui_test/ -v` |
 
 **Not covered:** no test asserts that any Settings field has an *effect* — which is precisely why the dead fields in §5 survived. A green run proves the fields exist and the transaction chain works, not that configuration is honoured. Nor does any suite exercise a site with no Company, no `Kg` UOM, or an empty `allowed_item_groups`; all three failure modes in this document were reproduced by hand.
+
+---
+
+## Variance thresholds — one page, all of them
+
+> **Where:** `/app/smt-variance-settings` · **Who:** SMT Manager, Production Manager, System Manager
+> **Added:** 2026-08-26
+
+Every tolerance the yard is judged against lives here. Before this, two of them
+existed only as a field default on `Dropoff` with no global at all, one lived on
+`Production Sorting Settings`, one on `Dropoff Container Settings`, and the
+fulfilment band was a literal in `dropoff.py:1063`. A manager could change
+almost none of it without a developer.
+
+| Setting | Default | What it decides |
+|---|---|---|
+| Truck Variance Threshold | 0.1% | Truck net vs the sum of the bags. Over it, the Dropoff is Needs Review. |
+| Declared vs Actual Threshold | 0.1% | What the supplier declared vs what was weighed. |
+| Container Weight Variance | 0.1% | Container reconciliation during migration. |
+| Sorting Variance Threshold | 0.1% | Good + Unwanted vs weight received. Over it, the Dropoff Final stays `In Progress` and **cannot be settled**. |
+| Fulfilled From / Up To | 98% / 102% | The band in which a POS Order counts as `Fulfilled` rather than `Partial` or `Over-delivered`. |
+
+### Two rules that are easy to get wrong
+
+**These are defaults for NEW documents only.** A Dropoff or Dropoff Final stamps
+the threshold onto itself the first time its variance is calculated, and keeps
+that number forever. Raising the global does not re-grade history — a past
+`Verified` cannot silently become `Needs Review`.
+
+**Zero means "require an exact match", and it is honoured.** It is a real
+setting, not "unset". Never-configured is a different state, and falls back to
+the defaults above.
+
+> ⚠️ **Never add a `default` to a threshold field in a doctype JSON.** Frappe
+> applies field defaults at document creation, before `validate()` runs, so the
+> field is never empty and the global becomes unreachable — the setting saves
+> fine and changes nothing. This has now happened twice: on
+> `Dropoff Final.variance_threshold_percent`, and on `Dropoff`'s two thresholds.
+> `api_test/test_variance_threshold.py` asserts all three stay default-free.
+
+Readers must go through `scrap_metal_suite.utils.variance.get_threshold(key)`.
+Do not call `frappe.db.get_single_value` on the settings directly — it returns
+`0.0`, not `None`, for a field that was never configured, which reads as "exact
+match required" and strands every document.

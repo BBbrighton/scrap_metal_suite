@@ -7,6 +7,7 @@ from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
 from scrap_metal_suite.overrides.naming import supplier_daily_name
+from scrap_metal_suite.utils.variance import get_threshold
 
 
 class Dropoff(Document):
@@ -512,7 +513,9 @@ class Dropoff(Document):
         if self.total_truck_weight:
             self.truck_variance = self.total_truck_weight - self.total_scrap_weight
             self.truck_variance_percent = abs(self.truck_variance / self.total_truck_weight * 100)
-            self.truck_variance_ok = self.truck_variance_percent <= flt(self.truck_variance_threshold_percent or 0.1)
+            if not self.truck_variance_threshold_percent:
+                self.truck_variance_threshold_percent = get_threshold("truck_variance_threshold_percent")
+            self.truck_variance_ok = self.truck_variance_percent <= flt(self.truck_variance_threshold_percent)
         else:
             self.truck_variance = 0
             self.truck_variance_percent = 0
@@ -535,7 +538,9 @@ class Dropoff(Document):
         if indicated > 0:
             self.indicated_variance = indicated - actual
             self.indicated_variance_percent = abs(self.indicated_variance / indicated * 100)
-            self.indicated_variance_ok = self.indicated_variance_percent <= flt(self.indicated_variance_threshold_percent or 0.1)
+            if not self.indicated_variance_threshold_percent:
+                self.indicated_variance_threshold_percent = get_threshold("indicated_variance_threshold_percent")
+            self.indicated_variance_ok = self.indicated_variance_percent <= flt(self.indicated_variance_threshold_percent)
         else:
             self.indicated_variance = 0
             self.indicated_variance_percent = 0
@@ -1054,15 +1059,23 @@ def _recalculate_order_fulfillment(pos_order_name):
 
 
 def _get_fulfillment_status(percent):
-    """
-    Determine fulfillment status based on percentage.
+    """Bucket a delivered-vs-ordered percentage into a fulfilment status.
+
+    The 98/102 band used to be written into this function, so nobody could
+    widen or tighten it without a code change. Both edges now come from
+    `SMT Variance Settings`.
+
     Reference: Part 2.5 of DROPOFF_ARCHITECTURE.md
     """
     if percent == 0:
         return "Pending"
-    elif percent < 98:
+
+    under = get_threshold("fulfillment_under_percent")
+    over = get_threshold("fulfillment_over_percent")
+
+    if percent < under:
         return "Partial"
-    elif percent <= 102:
+    elif percent <= over:
         return "Fulfilled"
     else:
         return "Over-delivered"

@@ -1,6 +1,6 @@
 {
  "actions": [],
- "default_print_format": "\u0e43\u0e1a\u0e04\u0e34\u0e27\u0e2a\u0e2d\u0e07\u0e20\u0e32\u0e29\u0e32",
+ "default_print_format": "ใบคิวสองภาษา",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -335,11 +335,10 @@
    "label": "Truck Variance (Net Truck Weight vs Scrap Weight)"
   },
   {
-   "default": "0.1",
    "fieldname": "truck_variance_threshold_percent",
    "fieldtype": "Percent",
    "label": "Truck Variance Threshold %",
-   "description": "Maximum acceptable variance between net truck weight and total scrap weight (default 0.1%)"
+   "description": "Left blank on a new Dropoff, then filled from SMT Variance Settings the first time variance is calculated. The stored value is what this document is judged against from then on."
   },
   {
    "fieldname": "truck_variance",
@@ -371,11 +370,10 @@
    "label": "Indicated Variance (Supplier Indicated vs Actual Weighed)"
   },
   {
-   "default": "0.1",
    "fieldname": "indicated_variance_threshold_percent",
    "fieldtype": "Percent",
    "label": "Indicated Variance Threshold %",
-   "description": "Maximum acceptable variance between supplier's indicated weight and actual weighed weight (default 0.1%)"
+   "description": "Left blank on a new Dropoff, then filled from SMT Variance Settings the first time variance is calculated. The stored value is what this document is judged against from then on."
   },
   {
    "fieldname": "indicated_variance",

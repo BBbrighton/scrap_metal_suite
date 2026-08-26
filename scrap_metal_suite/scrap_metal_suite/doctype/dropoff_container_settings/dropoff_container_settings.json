@@ -17,10 +17,11 @@
   },
   {
    "default": "0.1",
-   "description": "⚠️ NOT USED AT RUNTIME. Read only by the one-shot container migration patch. Live variance uses the per-Dropoff fields `truck_variance_threshold_percent` / `indicated_variance_threshold_percent`. Changing this does NOT tighten or loosen any weight check.",
+   "description": "⚠️ MOVED — read only by the one-time container migration patch. The live tolerance is <b>SMT Variance Settings → Container Weight Variance</b>.",
    "fieldname": "weight_variance_threshold_pct",
    "fieldtype": "Percent",
-   "label": "Weight Variance Threshold (%)"
+   "label": "Weight Variance Threshold (%)",
+   "read_only": 1
   },
   {
    "fieldname": "section_gates",

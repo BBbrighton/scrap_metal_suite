@@ -65,9 +65,12 @@ def _test_setting_is_honoured():
         # Passes a 7.5% tolerance, fails a 0.5% one.
         frappe.db.savepoint("vt")
         try:
+            # Source of truth moved to `SMT Variance Settings` — one page where a
+            # manager can reach every tolerance, instead of four scattered places.
             frappe.db.set_single_value(
-                "Production Sorting Settings", "variance_threshold_percent", setting
+                "SMT Variance Settings", "sorting_variance_threshold_percent", setting
             )
+            frappe.clear_cache()
             doc = frappe.new_doc("Dropoff Final")
             doc.dropoff = src.dropoff
             doc.dropoff_total_weight = 1000
@@ -92,10 +95,84 @@ def _test_setting_is_honoured():
             frappe.db.rollback(save_point="vt")
 
 
+def _test_dropoff_has_no_field_defaults():
+    """The same trap, on Dropoff's two thresholds.
+
+    `Dropoff.truck_variance_threshold_percent` and its declared-weight twin both
+    carried `"default": "0.1"`. Frappe applies field defaults at creation, so the
+    field was never empty and the global was unreachable — the identical bug this
+    module already guards on Dropoff Final, sitting one doctype over, untested.
+    """
+    meta = frappe.get_meta("Dropoff")
+    for fieldname in ("truck_variance_threshold_percent", "indicated_variance_threshold_percent"):
+        field = meta.get_field(fieldname)
+        _check(
+            f"Dropoff.{fieldname} has NO field default",
+            field is not None and not field.default,
+            f"default={getattr(field, 'default', 'FIELD MISSING')!r}",
+        )
+
+
+def _test_unset_is_not_zero():
+    """A never-configured field must fall back, not read as zero.
+
+    `frappe.db.get_single_value` returns `0.0` — not `None` — for a numeric
+    Single field with no row, so an `is None` guard cannot tell "unset" from a
+    manager deliberately typing 0. Reading unset as 0 would demand an exact
+    weight match on every document.
+    """
+    from scrap_metal_suite.utils.variance import FALLBACKS, get_threshold
+
+    key = "sorting_variance_threshold_percent"
+    frappe.db.savepoint("vt_unset")
+    try:
+        frappe.db.set_single_value("SMT Variance Settings", key, 0)
+        frappe.clear_cache()
+        _check("a deliberate 0 is honoured", get_threshold(key) == 0.0,
+               f"got {get_threshold(key)}")
+
+        frappe.db.sql(
+            "delete from tabSingles where doctype='SMT Variance Settings' and field=%s", key
+        )
+        frappe.clear_cache()
+        _check("a never-configured field falls back to the default",
+               get_threshold(key) == FALLBACKS[key],
+               f"got {get_threshold(key)}, expected {FALLBACKS[key]}")
+    finally:
+        frappe.db.rollback(save_point="vt_unset")
+        frappe.clear_cache()
+
+
+def _test_fulfillment_bands_are_configurable():
+    """The 98/102 fulfilment band used to be a literal in dropoff.py."""
+    from scrap_metal_suite.scrap_metal_suite.doctype.dropoff.dropoff import _get_fulfillment_status
+
+    frappe.db.savepoint("vt_fb")
+    try:
+        frappe.db.set_single_value("SMT Variance Settings", "fulfillment_under_percent", 90)
+        frappe.db.set_single_value("SMT Variance Settings", "fulfillment_over_percent", 110)
+        frappe.clear_cache()
+        _check("95% is Fulfilled once the band widens to 90-110",
+               _get_fulfillment_status(95) == "Fulfilled",
+               f"got {_get_fulfillment_status(95)}")
+        _check("89% is still Partial at a 90% floor",
+               _get_fulfillment_status(89) == "Partial",
+               f"got {_get_fulfillment_status(89)}")
+        _check("111% is Over-delivered at a 110% ceiling",
+               _get_fulfillment_status(111) == "Over-delivered",
+               f"got {_get_fulfillment_status(111)}")
+    finally:
+        frappe.db.rollback(save_point="vt_fb")
+        frappe.clear_cache()
+
+
 def run():
     RESULTS.clear()
     _test_no_field_default()
+    _test_dropoff_has_no_field_defaults()
     _test_setting_is_honoured()
+    _test_unset_is_not_zero()
+    _test_fulfillment_bands_are_configurable()
 
     print("=" * 70)
     print("VARIANCE THRESHOLD REGRESSION TEST")

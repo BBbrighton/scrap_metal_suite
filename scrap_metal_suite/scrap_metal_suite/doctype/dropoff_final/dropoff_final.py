@@ -6,6 +6,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
+from scrap_metal_suite.utils.variance import get_threshold
+
 
 class DropoffFinal(Document):
 	def before_save(self):
@@ -134,13 +136,17 @@ class DropoffFinal(Document):
 		else:
 			self.variance_percent = 0
 
-		threshold = flt(self.variance_threshold_percent)
-		if not threshold:
-			threshold = flt(frappe.db.get_single_value(
-				"Production Sorting Settings", "variance_threshold_percent"
-			)) or 5.0
-			self.variance_threshold_percent = threshold
-		self.variance_ok = self.variance_percent <= threshold
+		# Stamp the tolerance onto the document the first time it is judged, then
+		# keep using that stored number. A manager raising the global threshold
+		# must not silently re-grade a Dropoff Final that was already assessed —
+		# a past Verified result stays reproducible.
+		#
+		# The old code fell back to a bare `or 5.0` here, so an unconfigured
+		# `Production Sorting Settings` quietly graded everything at 5% while
+		# the guides promised 0.1%.
+		if not self.variance_threshold_percent:
+			self.variance_threshold_percent = get_threshold("sorting_variance_threshold_percent")
+		self.variance_ok = self.variance_percent <= flt(self.variance_threshold_percent)
 
 	def set_verification_status(self):
 		"""Set verification status based on variance.
