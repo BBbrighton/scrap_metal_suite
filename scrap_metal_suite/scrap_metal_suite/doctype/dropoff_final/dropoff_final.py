@@ -17,6 +17,7 @@ class DropoffFinal(Document):
 		self.calculate_variance()
 		self.set_verification_status()
 		self.auto_complete_if_done()
+		self.apply_settlement_ledger()
 
 	def aggregate_from_sortings(self):
 		"""Aggregate all Production Sorting records for this dropoff"""
@@ -215,7 +216,11 @@ class DropoffFinal(Document):
 
 	def auto_complete_if_done(self):
 		"""Auto-set to Unsettled if sorting is done and variance is within threshold"""
-		if self.status in ("Unsettled", "Settled"):
+		# "Partially Settled" belongs in this guard for the same reason "Settled"
+		# does: money has already moved against this document, so sorting
+		# progress must not walk the status backwards. apply_settlement_ledger()
+		# owns every settlement status from here on.
+		if self.status in ("Unsettled", "Partially Settled", "Settled"):
 			return
 
 		if (self.good_items or self.unwanted_items) and self.variance_ok:
@@ -225,3 +230,90 @@ class DropoffFinal(Document):
 			self.completed_by = frappe.session.user
 		elif self.good_items or self.unwanted_items:
 			self.status = "In Progress"
+
+	def apply_settlement_ledger(self):
+		"""Derive per-item settled/remaining qty from submitted PO Final allocations.
+
+		MUST run last in `before_save`. `aggregate_from_sortings()` has just
+		cleared and rebuilt `self.good_items`, so anything stamped earlier would
+		already be gone — and because Dropoff Final is not submittable, that
+		rebuild happens on every save for the life of the document.
+
+		That is exactly why these numbers are DERIVED rather than stored and
+		incremented. The Price Lock pattern (`update_settled_qty`, an atomic SQL
+		increment) works there because `SMT Price Lock Item` rows are frozen
+		source data on a submitted document; `Dropoff Final Good Item` rows are a
+		regenerated aggregate, so a stored ledger on them would be silently
+		destroyed the next time production submitted another sorting session.
+
+		Recomputing from `SMT Purchase Order Allocation` — the real join table —
+		means the ledger cannot drift, needs no backfill for existing records,
+		and makes PO Final submit/cancel idempotent.
+
+		See docs/PRICE_LOCK_SETTLEMENT_DESIGN.md §16.2.
+		"""
+		# Baseline: nothing settled. Applies to brand-new documents and to any
+		# item whose allocations were later cancelled.
+		for row in self.good_items:
+			row.settled_qty = 0
+			row.remaining_qty = flt(row.weight, 3)
+
+		if self.is_new():
+			return
+
+		allocations = frappe.get_all(
+			"SMT Purchase Order Allocation",
+			filters={
+				"drop_off_final": self.name,
+				"parenttype": "SMT Purchase Order",
+				"docstatus": 1,
+			},
+			fields=["item_code", "qty", "parent"],
+			order_by="creation asc",
+		)
+
+		settled_by_item = {}
+		documents = []
+		for alloc in allocations:
+			settled_by_item[alloc.item_code] = (
+				flt(settled_by_item.get(alloc.item_code, 0)) + flt(alloc.qty)
+			)
+			if alloc.parent not in documents:
+				documents.append(alloc.parent)
+
+		for row in self.good_items:
+			row.settled_qty = flt(settled_by_item.get(row.item_code, 0), 3)
+			row.remaining_qty = flt(flt(row.weight) - flt(row.settled_qty), 3)
+
+		self.settlement_documents = ", ".join(documents)
+		# Kept for backwards compatibility only — under partial settlement a
+		# single Link cannot express the relationship. `settlement_documents`
+		# is the complete answer.
+		self.po_final = documents[-1] if documents else None
+
+		self.derive_settlement_status()
+
+	def derive_settlement_status(self):
+		"""Set status from the ledger. Only ever touches settlement statuses."""
+		if self.status in ("Draft", "In Progress", "Cancelled"):
+			# Sorting is not finished yet; nothing can have been settled anyway.
+			return
+
+		any_settled = any(flt(r.settled_qty, 3) > 0 for r in self.good_items)
+		fully_settled = bool(self.good_items) and all(
+			flt(r.remaining_qty, 3) <= 0 for r in self.good_items
+		)
+
+		if fully_settled:
+			self.status = "Settled"
+			if not self.settled_at:
+				self.settled_at = now_datetime()
+				self.settled_by = frappe.session.user
+		elif any_settled:
+			self.status = "Partially Settled"
+			self.settled_at = None
+			self.settled_by = None
+		else:
+			self.status = "Unsettled"
+			self.settled_at = None
+			self.settled_by = None

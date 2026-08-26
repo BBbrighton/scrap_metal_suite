@@ -1091,9 +1091,21 @@ def test_310_rate_locked(results, ctx):
     frappe.db.rollback()
 
 
-def test_320_dropoff_coverage(results, ctx):
-    """All items in Dropoff Final must be allocated."""
-    print("\n--- 320. Dropoff Final Full Coverage Required ---")
+def test_320_partial_dropoff_settlement(results, ctx):
+    """v2: one Dropoff Final may be settled across several PO Finals.
+
+    Replaces the v1 test that asserted the opposite. Under the old equality rule
+    ("every item in a Dropoff Final must be fully allocated") skipping an item
+    threw; v2 relaxed coverage to an upper bound so a delivery can be paid for in
+    instalments, which makes that assertion void rather than merely failing.
+
+    What still has to hold is the ceiling, so this walks the whole cycle:
+    partial draw accepted -> DFL Partially Settled with the right remainder ->
+    over-draw on an exhausted item blocked -> second PO Final closes it out.
+
+    See docs/PRICE_LOCK_SETTLEMENT_DESIGN.md §16.4.
+    """
+    print("\n--- 320. Partial Dropoff Final Settlement (v2) ---")
 
     try:
         po = frappe.get_doc({
@@ -1108,14 +1120,14 @@ def test_320_dropoff_coverage(results, ctx):
         po.insert(ignore_permissions=True)
         po.submit()
 
-        # DOF with 2 items
+        # Delivery holds two items
         dof = create_test_dropoff_final(
             ctx["supplier"],
             [(ctx["copper"], 5.0), (ctx["aluminum"], 3.0)]
         )
 
-        # Only allocate copper, skip aluminum
-        pof = frappe.get_doc({
+        # --- 1. Draw only the copper. Legal in v2, threw in v1. ---------------
+        pof1 = frappe.get_doc({
             "doctype": "SMT Purchase Order",
             "supplier": ctx["supplier"],
             "final_date": today(),
@@ -1131,15 +1143,158 @@ def test_320_dropoff_coverage(results, ctx):
                 }
             ]
         })
+        pof1.insert(ignore_permissions=True)
+        pof1.submit()
+        results.add("partial_draw_accepted", True)
+
+        # --- 2. The delivery is now partly, not wholly, settled --------------
+        dof_doc = frappe.get_doc("Dropoff Final", dof)
+        results.add(
+            "dof_partially_settled",
+            dof_doc.status == "Partially Settled",
+            f"expected Partially Settled, got {dof_doc.status}",
+        )
+
+        ledger = {r.item_code: r for r in dof_doc.good_items}
+        results.add(
+            "copper_fully_drawn",
+            flt(ledger[ctx["copper"]].remaining_qty, 3) == 0,
+            f"copper remaining {ledger[ctx['copper']].remaining_qty}, expected 0",
+        )
+        results.add(
+            "aluminum_untouched",
+            flt(ledger[ctx["aluminum"]].remaining_qty, 3) == 3.0,
+            f"aluminum remaining {ledger[ctx['aluminum']].remaining_qty}, expected 3",
+        )
+        results.add(
+            "settlement_documents_recorded",
+            pof1.name in (dof_doc.settlement_documents or ""),
+            f"settlement_documents = {dof_doc.settlement_documents!r}",
+        )
+
+        # --- 3. The ceiling still holds: copper is exhausted -----------------
+        try:
+            over = frappe.get_doc({
+                "doctype": "SMT Purchase Order",
+                "supplier": ctx["supplier"],
+                "final_date": today(),
+                "drop_off_finals": [{"drop_off_final": dof}],
+                "allocations": [
+                    {
+                        "drop_off_final": dof,
+                        "item_code": ctx["copper"],
+                        "qty": 1.0,
+                        "source_type": "PO",
+                        "po": po.name,
+                        "rate": 300,
+                    }
+                ]
+            })
+            over.insert(ignore_permissions=True)
+            results.add(
+                "over_draw_blocked", False,
+                "Should have thrown — copper already fully drawn by another PO Final",
+            )
+        except frappe.exceptions.ValidationError as e:
+            assert_blocked_by(
+                results, "over_draw_blocked", e,
+                ["already", "remains", "exceed"],
+            )
+
+        # --- 4. A second PO Final closes out the remainder --------------------
+        pof2 = frappe.get_doc({
+            "doctype": "SMT Purchase Order",
+            "supplier": ctx["supplier"],
+            "final_date": today(),
+            "drop_off_finals": [{"drop_off_final": dof}],
+            "allocations": [
+                {
+                    "drop_off_final": dof,
+                    "item_code": ctx["aluminum"],
+                    "qty": 3.0,
+                    "source_type": "PO",
+                    "po": po.name,
+                    "rate": 75,
+                }
+            ]
+        })
+        pof2.insert(ignore_permissions=True)
+        pof2.submit()
+
+        dof_doc.reload()
+        results.add(
+            "dof_settled_after_second_pof",
+            dof_doc.status == "Settled",
+            f"expected Settled, got {dof_doc.status}",
+        )
+
+        # drawn_weight reflects THIS document, not the delivery total —
+        # this is what ใบสั่งซื้อ prints.
+        results.add(
+            "drawn_weight_is_per_document",
+            flt(pof2.drop_off_finals[0].drawn_weight, 3) == 3.0,
+            f"drawn_weight {pof2.drop_off_finals[0].drawn_weight}, expected 3",
+        )
+
+    except Exception as e:
+        results.add("partial_dropoff_settlement", False, e)
+
+
+def test_321_empty_draw_blocked(results, ctx):
+    """A Dropoff Final listed in the selector table must actually be drawn from.
+
+    Under an upper bound, drawing zero is arithmetically valid — but the row
+    would assert a relationship the document does not have, and would print on
+    ใบสั่งซื้อ as though the delivery were part of this settlement.
+    """
+    print("\n--- 321. Empty Draw Blocked ---")
+
+    try:
+        dof = create_test_dropoff_final(ctx["supplier"], [(ctx["copper"], 4.0)])
+
+        po = frappe.get_doc({
+            "doctype": "SMT Price Lock",
+            "supplier": ctx["supplier"],
+            "po_date": today(),
+            "items": [{"item_code": ctx["copper"], "po_qty": 10, "po_rate": 300}],
+        })
+        po.insert(ignore_permissions=True)
+        po.submit()
+
+        dof2 = create_test_dropoff_final(ctx["supplier"], [(ctx["copper"], 2.0)])
+
+        # dof2 is listed but every allocation points at dof
+        pof = frappe.get_doc({
+            "doctype": "SMT Purchase Order",
+            "supplier": ctx["supplier"],
+            "final_date": today(),
+            "drop_off_finals": [
+                {"drop_off_final": dof},
+                {"drop_off_final": dof2},
+            ],
+            "allocations": [
+                {
+                    "drop_off_final": dof,
+                    "item_code": ctx["copper"],
+                    "qty": 4.0,
+                    "source_type": "PO",
+                    "po": po.name,
+                    "rate": 300,
+                }
+            ]
+        })
         pof.insert(ignore_permissions=True)
-        results.add("dropoff_coverage_required", False, "Should have thrown — aluminum not allocated")
+        results.add(
+            "empty_draw_blocked", False,
+            "Should have thrown — dof2 listed but nothing allocated from it",
+        )
     except frappe.exceptions.ValidationError as e:
         assert_blocked_by(
-            results, "dropoff_coverage_required", e,
-            ["has ", "not allocated", "coverage"],
+            results, "empty_draw_blocked", e,
+            ["nothing is allocated", "remove the row"],
         )
     except Exception as e:
-        results.add("dropoff_coverage_required", False, e)
+        results.add("empty_draw_blocked", False, e)
 
     frappe.db.rollback()
 
@@ -1252,7 +1407,8 @@ def run(cleanup_first=True):
         test_290_po_cancel_with_settlement(results, ctx)
         test_300_accountant_read_access(results, ctx)
         test_310_rate_locked(results, ctx)
-        test_320_dropoff_coverage(results, ctx)
+        test_320_partial_dropoff_settlement(results, ctx)
+        test_321_empty_draw_blocked(results, ctx)
         test_330_spot_zero_rate_blocked(results, ctx)
         test_340_expired_po_blocked(results, ctx)
 

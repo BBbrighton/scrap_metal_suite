@@ -74,7 +74,7 @@
   {
    "fieldname": "section_dropoff_finals",
    "fieldtype": "Section Break",
-   "label": "Dropoff Finals Being Settled"
+   "label": "Dropoff Finals Drawn From"
   },
   {
    "fieldname": "drop_off_finals",

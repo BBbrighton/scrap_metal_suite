@@ -47,7 +47,8 @@
   "column_break_workflow",
   "po_final",
   "settled_by",
-  "settled_at"
+  "settled_at",
+  "settlement_documents"
  ],
  "fields": [
   {
@@ -65,7 +66,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nIn Progress\nUnsettled\nSettled\nCancelled",
+   "options": "Draft\nIn Progress\nUnsettled\nPartially Settled\nSettled\nCancelled",
    "reqd": 1
   },
   {
@@ -314,7 +315,7 @@
    "label": "PO Final",
    "options": "SMT Purchase Order",
    "read_only": 1,
-   "description": "Set when this Dropoff Final is settled via a PO Final"
+   "description": "The MOST RECENT PO Final that drew from this Dropoff Final. Not authoritative under partial settlement - see Settlement Documents."
   },
   {
    "fieldname": "settled_by",
@@ -327,6 +328,13 @@
    "fieldname": "settled_at",
    "fieldtype": "Datetime",
    "label": "Settled At",
+   "read_only": 1
+  },
+  {
+   "description": "Every PO Final that has drawn from this Dropoff Final, most recent last.",
+   "fieldname": "settlement_documents",
+   "fieldtype": "Small Text",
+   "label": "Settlement Documents",
    "read_only": 1
   }
  ],

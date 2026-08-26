@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, now_datetime
+from frappe.utils import flt
 
 from scrap_metal_suite.overrides.naming import supplier_monthly_name
 
@@ -21,6 +21,7 @@ class SMTPurchaseOrder(Document):
 		self.validate_supplier_consistency()
 		self.validate_allocations()
 		self.validate_dropoff_coverage()
+		self.calculate_drawn_weights()
 		self.calculate_totals()
 
 	def validate_supplier_consistency(self):
@@ -135,7 +136,19 @@ class SMTPurchaseOrder(Document):
 		return po_items[0]
 
 	def validate_dropoff_coverage(self):
-		"""Sum of allocations per item per Dropoff Final must equal the Dropoff Final's qty."""
+		"""This document's draw, plus what other submitted PO Finals already took,
+		must not exceed what the Dropoff Final actually holds.
+
+		v1 demanded exact equality — a Dropoff Final was closed in full, by one PO
+		Final, or not at all. v2 relaxes that to an upper bound so a single
+		delivery can be settled in instalments across several PO Finals.
+
+		A useful side effect: a partially allocated PO Final is now a valid
+		draft. Under the equality rule `validate()` threw on every save until the
+		last row was filled in, so an accountant could not save work in progress.
+
+		See docs/PRICE_LOCK_SETTLEMENT_DESIGN.md §16.4.
+		"""
 		for dof_row in self.drop_off_finals:
 			dof_name = dof_row.drop_off_final
 
@@ -157,20 +170,20 @@ class SMTPurchaseOrder(Document):
 					alloc_map.setdefault(row.item_code, 0)
 					alloc_map[row.item_code] += flt(row.qty)
 
-			# Every item in the Dropoff Final must be fully allocated
-			for item_code, weight in dof_item_map.items():
-				allocated = flt(alloc_map.get(item_code, 0), 3)
-				expected = flt(weight, 3)
-				if allocated != expected:
-					frappe.throw(
-						_("Dropoff Final {0}: Item {1} has {2} kg but only {3} kg "
-						  "allocated. All items must be fully allocated.").format(
-							dof_name, item_code, expected, allocated
-						)
-					)
+			# Under an upper bound rather than an equality, drawing zero is
+			# arithmetically valid — but a row in the selector table that draws
+			# nothing asserts a relationship this document does not have.
+			if not alloc_map:
+				frappe.throw(
+					_("Dropoff Final {0} is listed above but nothing is allocated "
+					  "from it. Pull its items or remove the row.").format(dof_name)
+				)
 
-			# No allocations for items not in the Dropoff Final
-			for item_code in alloc_map:
+			# What OTHER submitted PO Finals have already drawn from this delivery
+			settled_elsewhere = self.get_settled_elsewhere(dof_name)
+
+			for item_code, allocated in alloc_map.items():
+				# No allocations for items not in the Dropoff Final
 				if item_code not in dof_item_map:
 					frappe.throw(
 						_("Allocation references item {0} in Dropoff Final {1}, "
@@ -178,6 +191,57 @@ class SMTPurchaseOrder(Document):
 							item_code, dof_name
 						)
 					)
+
+				available = flt(dof_item_map[item_code], 3)
+				elsewhere = flt(settled_elsewhere.get(item_code, 0), 3)
+				remaining = flt(available - elsewhere, 3)
+				drawn = flt(allocated, 3)
+
+				if drawn > remaining:
+					frappe.throw(
+						_("Dropoff Final {0}, item {1}: this document draws {2} kg "
+						  "but only {3} kg remains ({4} kg received, {5} kg already "
+						  "settled by other PO Finals).").format(
+							dof_name, item_code, drawn, remaining, available, elsewhere
+						)
+					)
+
+	def get_settled_elsewhere(self, dof_name):
+		"""Qty per item already drawn from this Dropoff Final by OTHER submitted PO Finals.
+
+		Excludes this document by name so re-validating a submitted doc doesn't
+		count its own rows twice. A cancelled PO Final has docstatus 2 and drops
+		out here automatically, which is what returns its share to the pool.
+		"""
+		rows = frappe.get_all(
+			"SMT Purchase Order Allocation",
+			filters={
+				"drop_off_final": dof_name,
+				"parenttype": "SMT Purchase Order",
+				"parent": ["!=", self.name],
+				"docstatus": 1,
+			},
+			fields=["item_code", "qty"],
+		)
+		settled = {}
+		for row in rows:
+			settled[row.item_code] = flt(settled.get(row.item_code, 0)) + flt(row.qty)
+		return settled
+
+	def calculate_drawn_weights(self):
+		"""Stamp each selector row with what THIS document draws from that delivery.
+
+		`total_weight` is fetched from the Dropoff Final and is its entire good
+		weight — under partial settlement that is no longer what this document
+		settles, and printing it on ใบสั่งซื้อ would hand the supplier a figure
+		far larger than what they are being paid for.
+		"""
+		drawn = {}
+		for row in self.allocations:
+			drawn[row.drop_off_final] = flt(drawn.get(row.drop_off_final, 0)) + flt(row.qty)
+
+		for dof_row in self.drop_off_finals:
+			dof_row.drawn_weight = flt(drawn.get(dof_row.drop_off_final, 0), 3)
 
 	def calculate_totals(self):
 		self.total_po_value = flt(
@@ -190,7 +254,7 @@ class SMTPurchaseOrder(Document):
 
 	def on_submit(self):
 		self.update_po_settlement()
-		self.mark_dropoff_finals_settled()
+		self.sync_dropoff_finals()
 		self.create_draft_purchase_invoice()
 		self.db_set("status", "Submitted")
 
@@ -201,15 +265,30 @@ class SMTPurchaseOrder(Document):
 				po_doc = frappe.get_doc("SMT Price Lock", row.po)
 				po_doc.update_settled_qty(row.po_item_row, flt(row.qty))
 
-	def mark_dropoff_finals_settled(self):
-		"""Mark each Dropoff Final as Settled."""
+	def sync_dropoff_finals(self):
+		"""Re-derive each referenced Dropoff Final's settlement ledger.
+
+		Used by BOTH on_submit and on_cancel — this method does no arithmetic of
+		its own, it just saves the Dropoff Final and lets
+		`DropoffFinal.apply_settlement_ledger()` recompute settled/remaining qty
+		and status from the submitted allocations. By the time either hook runs,
+		this document's docstatus is already committed, so the recompute sees the
+		correct picture in both directions.
+
+		That symmetry is the point. v1 had `mark_dropoff_finals_settled` stamping
+		status=Settled and `revert_dropoff_finals` stamping it back to Unsettled;
+		under partial settlement the revert was a double-payment vector — cancel
+		one of two PO Finals drawing on the same delivery and the whole Dropoff
+		Final returned to the pool while the other document still held a
+		submitted, invoiced claim on part of it.
+
+		`ignore_permissions` because accountants hold read-only on Dropoff Final
+		per PRICE_LOCK_SETTLEMENT_DESIGN.md §9.2 — the write is a system
+		consequence of settling, not a user edit.
+		"""
 		for dof_row in self.drop_off_finals:
-			frappe.db.set_value("Dropoff Final", dof_row.drop_off_final, {
-				"status": "Settled",
-				"po_final": self.name,
-				"settled_by": frappe.session.user,
-				"settled_at": now_datetime()
-			})
+			dof = frappe.get_doc("Dropoff Final", dof_row.drop_off_final)
+			dof.save(ignore_permissions=True)
 
 	def create_draft_purchase_invoice(self):
 		"""Create a Draft Purchase Invoice from the allocation rows."""
@@ -236,7 +315,7 @@ class SMTPurchaseOrder(Document):
 
 	def on_cancel(self):
 		self.revert_po_settlement()
-		self.revert_dropoff_finals()
+		self.sync_dropoff_finals()
 		self.db_set("status", "Cancelled")
 
 	def revert_po_settlement(self):
@@ -246,15 +325,63 @@ class SMTPurchaseOrder(Document):
 				po_doc = frappe.get_doc("SMT Price Lock", row.po)
 				po_doc.update_settled_qty(row.po_item_row, -flt(row.qty))
 
-	def revert_dropoff_finals(self):
-		"""Revert Dropoff Finals to Unsettled."""
+	@frappe.whitelist()
+	def get_pullable_items(self):
+		"""Wanted items still available to draw, for the pull dialog.
+
+		Good items only — unwanted material is returned to the supplier, never
+		paid for, and `validate_dropoff_coverage` correspondingly only ever looks
+		at `Dropoff Final Good Item`.
+
+		Returns rows already net of (a) what other submitted PO Finals have drawn
+		and (b) what this document has allocated so far, so re-clicking the button
+		after adding another Dropoff Final never duplicates existing work. Rows
+		with nothing left are omitted entirely.
+
+		Deliberately returns no `source_type`, `po` or `rate`: design decision #7
+		forbids automatic FIFO allocation. Choosing which Price Lock to draw down
+		is the accountant's judgment — the button removes the transcription, not
+		the decision.
+		"""
+		already_here = {}
+		for row in self.allocations:
+			key = (row.drop_off_final, row.item_code)
+			already_here[key] = flt(already_here.get(key, 0)) + flt(row.qty)
+
+		pullable = []
 		for dof_row in self.drop_off_finals:
-			frappe.db.set_value("Dropoff Final", dof_row.drop_off_final, {
-				"status": "Unsettled",
-				"po_final": None,
-				"settled_by": None,
-				"settled_at": None
-			})
+			dof_name = dof_row.drop_off_final
+			if not dof_name:
+				continue
+
+			settled_elsewhere = self.get_settled_elsewhere(dof_name)
+
+			for item in frappe.get_all(
+				"Dropoff Final Good Item",
+				filters={"parent": dof_name, "parenttype": "Dropoff Final"},
+				fields=["item_code", "item_name", "weight", "uom"],
+				order_by="idx asc",
+			):
+				received = flt(item.weight, 3)
+				elsewhere = flt(settled_elsewhere.get(item.item_code, 0), 3)
+				here = flt(already_here.get((dof_name, item.item_code), 0), 3)
+				remaining = flt(received - elsewhere - here, 3)
+
+				if remaining <= 0:
+					continue
+
+				pullable.append({
+					"drop_off_final": dof_name,
+					"item_code": item.item_code,
+					"item_name": item.item_name,
+					"uom": item.uom or "Kg",
+					"received_qty": received,
+					"settled_elsewhere": elsewhere,
+					"already_allocated": here,
+					"qty": remaining,
+				})
+
+		return pullable
 
 	def handle_purchase_invoice(self):
 		"""Delete draft PI or block if submitted."""

@@ -8,10 +8,12 @@
   "drop_off_final",
   "column_break_1",
   "drop_off_date",
-  "total_weight"
+  "total_weight",
+  "drawn_weight"
  ],
  "fields": [
   {
+   "columns": 3,
    "fieldname": "drop_off_final",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -24,6 +26,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "columns": 2,
    "fetch_from": "drop_off_final.creation",
    "fieldname": "drop_off_date",
    "fieldtype": "Date",
@@ -32,6 +35,8 @@
    "read_only": 1
   },
   {
+   "columns": 2,
+   "description": "The Dropoff Final's entire good weight - NOT what this document settles.",
    "fetch_from": "drop_off_final.total_good_weight",
    "fieldname": "total_weight",
    "fieldtype": "Float",
@@ -39,12 +44,22 @@
    "label": "Total Weight (kg)",
    "precision": "3",
    "read_only": 1
+  },
+  {
+   "columns": 3,
+   "description": "What THIS PO Final draws from that Dropoff Final. Computed from the allocation rows below.",
+   "fieldname": "drawn_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Drawn Here (kg)",
+   "precision": "3",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-04-15 00:00:00.000000",
+ "modified": "2026-08-26 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Scrap Metal Suite",
  "name": "SMT Purchase Order Dropoff",

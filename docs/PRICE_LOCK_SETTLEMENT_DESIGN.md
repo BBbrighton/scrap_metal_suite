@@ -695,3 +695,175 @@ Extends `cleanup_test_data()` to also delete:
 | 9 | Two accounting roles: SMT Accountant + SMT Accounting Manager | Identical permissions in v1, but the split exists for future differentiation (approvals, rate thresholds). |
 | 10 | Accountants get read-only access to all SMT doctypes | They need to trace the full chain (Dropoff → Sorting → Weights) to verify and reconcile. |
 | 11 | Dedicated SMT Accounting workspace | Gives accountants a focused entry point, following the SMT Production workspace pattern. |
+
+---
+
+## 16. v2 — Partial Dropoff Final Settlement (2026-08-26)
+
+**Status:** Implemented
+**Supersedes:** the §10 bullet "Partial drop-off settlement" (out of scope in v1)
+
+### 16.1 What changed and why
+
+v1 held that a Dropoff Final is closed *in full, in one PO Final, or not at all*.
+That forced a 1000 kg delivery to be settled by a single document even when the
+business wanted to pay for it in instalments — a **timing** constraint, not a
+pricing one. (Pricing complexity was always handled *within* one PO Final by
+allocating across several Price Locks and Spot rates; that has not changed.)
+
+v2 makes the Dropoff Final a **drawdown account**, symmetric with the Price
+Lock: many PO Finals may draw from one Dropoff Final, and one PO Final may still
+draw from many Dropoff Finals. The relationship is genuinely many-to-many.
+
+### 16.2 Where the truth lives
+
+`SMT Purchase Order Allocation` was already the join table. Every row states
+*"this many kg of this item, from this Dropoff Final, settled against this Price
+Lock (or Spot) at this rate."* v2 changes nothing about that row — it stops
+pretending the relationship is 1:1.
+
+**Critical constraint discovered during design:** `Dropoff Final Good Item` rows
+are **derived, not source data**. `DropoffFinal.before_save` calls
+`aggregate_from_sortings()`, which clears and rebuilds `good_items` from the
+submitted Production Sorting records on *every save* — and Dropoff Final is not
+submittable, so this keeps happening for the life of the document. A stored
+settlement ledger on those rows would be silently destroyed the next time
+production submitted another sorting session for the same dropoff.
+
+The Price Lock pattern (`update_settled_qty` — atomic SQL increment against a
+frozen, submitted row) therefore **cannot be transplanted onto Dropoff Final**.
+
+**Decision: derive, never store.** `settled_qty` / `remaining_qty` on the good
+item row are recomputed in `before_save`, immediately after
+`aggregate_from_sortings()` rebuilds the rows. The wipe stops being a hazard and
+becomes the mechanism — rows and their ledger values are always regenerated
+together from the same source of truth.
+
+Consequences, all of them favourable:
+
+| | Stored ledger (rejected) | Derived ledger (chosen) |
+|---|---|---|
+| Survives re-sorting | no — silently wiped | yes — recomputed |
+| Can drift from allocations | possible | impossible |
+| Needs a backfill patch for live data | yes | no — derives from existing allocations |
+| PO Final submit/cancel | increments/decrements | triggers a recompute |
+| Idempotent | no | yes |
+| `revert_dropoff_finals` double-payment hole | present | cannot exist |
+
+### 16.3 Data model changes
+
+**`Dropoff Final Good Item`** — two new fields, read-only and system-managed,
+with explicit grid `columns` widths so they are actually visible. Frappe caps
+grid width at 10 units and silently drops trailing `in_list_view` columns; this
+is why `SMT Price Lock Item.remaining_qty` was invisible for four months despite
+being correctly maintained.
+
+| Field | Type | Notes |
+|---|---|---|
+| `settled_qty` | Float(3) | Derived: sum of submitted allocations for this DFL + item |
+| `remaining_qty` | Float(3) | `weight - settled_qty` |
+
+**`Dropoff Final`**
+
+| Field | Change |
+|---|---|
+| `status` | New value `Partially Settled`, between `Unsettled` and `Settled` |
+| `settlement_documents` | New Small Text — comma-joined PO Final names, mirroring the existing `sorting_sessions` pattern |
+| `po_final` | Retained, but now means **the most recent** settling PO Final. Not authoritative under many-to-many; read `settlement_documents` or query allocations |
+
+**`SMT Purchase Order Dropoff`** — the `drop_off_finals` child table stays
+hand-editable as the accountant's *selector* (it is what the pull button reads).
+It is no longer a statement of what got closed:
+
+| Field | Change |
+|---|---|
+| `total_weight` | Unchanged — the DFL's whole good weight (fetched) |
+| `drawn_weight` | New Float(3), computed — what **this document** draws from that DFL |
+
+The section label changes from *"Dropoff Finals Being Settled"* to *"Dropoff
+Finals Drawn From"*, which is now literally true.
+
+### 16.4 Validation changes (`SMT Purchase Order`)
+
+- `validate_dropoff_coverage` — the v1 rule *"allocations must **equal** the DFL
+  weight"* becomes *"this document's draw, plus everything already settled by
+  **other** submitted PO Finals, must not **exceed** the DFL weight."* This is
+  the single gate that made partial settlement impossible.
+- Every listed Dropoff Final must have at least one allocation. Under `<=`, zero
+  is an arithmetically valid draw, which would leave a row in the selector table
+  asserting a relationship the document does not have.
+- `validate_supplier_consistency` needs no change: it blocks `status == "Settled"`,
+  and `Partially Settled` is correctly not that.
+- Allocations still may not reference an item the Dropoff Final does not have.
+
+**Side effect worth naming:** because coverage is no longer an equality, a
+partially allocated PO Final is now a *valid draft*. In v1 it could not be saved
+at all — `validate()` runs on every save, so an accountant halfway through
+allocating was thrown. Work in progress now survives.
+
+### 16.5 Controller flow
+
+`DropoffFinal.before_save` gains a final step, which must run last because it
+overrides status:
+
+```
+aggregate_from_sortings()    # wipes and rebuilds good_items
+calculate_totals()
+calculate_variance()
+set_verification_status()
+auto_complete_if_done()      # now also skips Partially Settled
+apply_settlement_ledger()    # NEW - stamps settled/remaining, derives status
+```
+
+Status derivation: every good item fully drawn gives `Settled`; any draw at all
+gives `Partially Settled`; otherwise whatever `auto_complete_if_done` chose is
+left alone.
+
+`SMTPurchaseOrder.on_submit` / `on_cancel` stop doing arithmetic on the Dropoff
+Final. Both call `sync_dropoff_finals()`, which saves each affected DFL (with
+`ignore_permissions=True` — accountants hold read-only on Dropoff Final per
+§9.2) and lets the recompute do the work. Using the same call in both directions
+is what makes it idempotent.
+
+Note that the **Price Lock** side is unchanged: `SMT Price Lock Item` rows *are*
+frozen source data, so the atomic-increment ledger there remains correct and
+stays as it is.
+
+### 16.6 The "Pull Items from Dropoff Finals" button
+
+Implements §6 Step 2 to Step 4, specced in v1 and never built. Until now every
+allocation row was hand-typed.
+
+Flow: list the Dropoff Finals in the selector table, click **Pull Items from
+Dropoff Finals**, and a dialog lists each DFL's *wanted* items (good items only
+— unwanted material is never paid) with **remaining** qty already net of other
+PO Finals. Tick rows, optionally reduce the qty, and allocation rows are
+appended.
+
+Deliberate omissions:
+
+- **It does not guess `source_type`, `po`, or `rate`.** Design decision #7
+  forbids automatic FIFO allocation — choosing which Price Lock to draw down is
+  the accountant's business judgment. The button removes the transcription, not
+  the decision.
+- **It is additive**, keyed on `(drop_off_final, item_code)`. Re-clicking after
+  adding a fourth Dropoff Final does not disturb allocation work already done on
+  the first three, and it does not disturb a row that has been split across two
+  Price Locks.
+- Items already fully drawn, by this document or another, do not appear.
+
+### 16.7 Knock-on fixes required
+
+| Item | Why |
+|---|---|
+| `ใบสั่งซื้อ` print format | Iterated `drop_off_finals` printing `total_weight` — the DFL's *whole* weight. A supplier paid for 300 of 1000 kg would receive a document reading 1000 kg. Now prints `drawn_weight` |
+| `test_320_dropoff_coverage` | Asserted that skipping an item throws. Under `<=` that is legal, so the test's intent is void; it now asserts over-draw is blocked instead |
+| `smt_purchase_order.js` `set_query` | Hardcoded `status: "Unsettled"`; now `["in", ["Unsettled", "Partially Settled"]]` |
+
+### 16.8 Operational consequence, accepted knowingly
+
+Splitting one delivery across several PO Finals produces **several Purchase
+Invoices and several Payment Entries for one truckload**. That is more paperwork
+on both sides, and the supplier reconciles one delivery against multiple
+payments. This was raised explicitly during design and accepted — the timing
+flexibility is worth it.
