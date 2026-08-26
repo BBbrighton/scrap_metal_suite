@@ -1,10 +1,10 @@
 # Price Lock & Settlement — User Guide / คู่มือผู้ใช้งาน
 
-> **Status:** Production — ใช้งานจริง แต่มีข้อควรระวัง 3 ข้อในหัวข้อ 10 / in daily use, with three known traps listed in §10
+> **Status:** Production — ใช้งานจริง เหลือข้อควรระวัง 2 ข้อ (เรื่องใบพิมพ์) ในหัวข้อ 10 / in daily use; two known traps remain, both on printed output, listed in §10
 > **Who / ใคร:** SMT Accountant, SMT Accounting Manager, System Manager
 > **Where / ที่ไหน:** Frappe desk เท่านั้น ไม่มีหน้าจอ terminal / desk only, there is no touch terminal for this
 > **Desk paths:** `/app/smt-accounting` (workspace) · `/app/smt-price-lock` · `/app/smt-purchase-order` · `/app/dropoff-final`
-> **Last verified:** 2026-08-25 — เดินครบทั้งเส้นกับข้อมูลจริง / walked end to end on live data
+> **Last verified:** 2026-08-26 — ทดสอบการจ่ายบางส่วนกับข้อมูลจริง / partial settlement tested on live data
 
 ---
 
@@ -32,8 +32,8 @@ Your job has only two moments: **before the material arrives**, and **after sort
 4. **Submit แล้ว Amend ไม่ได้** — ต้อง Cancel แล้วสร้างใหม่ ดู [ข้อ 10](#10-ปัญหาที่พบบ่อย--what-can-go-wrong)
    Amend does not work. Cancel and re-create.
 
-> ✅ **เส้นทางนี้ทดสอบแล้วว่าใช้ได้จริง** เมื่อ 25 ส.ค. 2026 เดินครบตั้งแต่ Dropoff Final → ใบสั่งซื้อ → Submit → ใบแจ้งหนี้ร่างออกมาถูกต้อง
-> The whole chain was walked end to end on 25 Aug 2026: a `Unsettled` Dropoff Final settled cleanly and produced a correct draft Purchase Invoice.
+> ✅ **เส้นทางนี้ทดสอบแล้วว่าใช้ได้จริง** — เดินครบตั้งแต่ Dropoff Final → ใบสั่งซื้อ → Submit → ใบแจ้งหนี้ร่าง และ **ทดสอบการจ่ายบางส่วนแล้ว** เมื่อ 26 ส.ค. 2026: ตัด 1,000 กก. จากใบที่มีของดี 4,450 กก. ใบนั้นเปลี่ยนเป็น `Partially Settled` และยังเลือกมาทำใบสั่งซื้อรอบหน้าได้
+> The whole chain was walked end to end, and **partial settlement was tested on 26 Aug 2026**: 1,000 kg was drawn from a 4,450 kg delivery, which moved to `Partially Settled` and stayed selectable for the next settlement.
 
 ---
 
@@ -149,7 +149,7 @@ On 21 Aug 2026 ACME Metals agrees to deliver 1,000 kg of `ทองแดงป�
 |---|---|
 | Status | `Open` |
 | Total PO Value | `50,000.00` |
-| Total Settled Value | `0.00` ⚠️ *(ช่องนี้จะค้างที่ 0.00 ตลอดไป — ดูหัวข้อ 10 / this field stays at 0.00 forever — see §10)* |
+| Total Settled Value | `0.00` — ยังไม่มีใครส่งของมาตัด พอสรุปยอดแล้วค่านี้จะขยับตาม / nothing settled against it yet; it updates as settlements consume the lock |
 | Items → `ทองแดงปอก` | PO Qty `1,000.000` · Settled Qty `0.000` · Remaining Qty `1,000.000` |
 
 **และระบบสร้างเอกสารอีกใบให้เองเงียบๆ / And the system silently created a second document:**
@@ -464,9 +464,9 @@ Cancel every settlement that references it first, then the lock.
 
 | อาการ / Symptom | สาเหตุ / Cause | แก้ยังไง / Fix |
 |---|---|---|
-| **Total Settled Value เป็น `0.00` เสมอ** แม้จ่ายเงินไปแล้วครึ่งใบ / **always reads `0.00`** even after settling | 🐛 **บั๊กที่ยืนยันแล้ว** ช่องนี้คำนวณตอน Save เท่านั้น และการตัดโควตาไม่ผ่าน Save / **confirmed bug** — the field is only computed on save, and settlement bypasses save | อย่าใช้ช่องนี้ ให้ดู **Settled Qty × PO Rate** ในตาราง Items แทน หรือดู Grand Total ในใบสั่งซื้อ / ignore it. Read **Settled Qty × PO Rate** from the Items table, or the settlement's Grand Total |
+| **Total Settled Value เป็น `0.00` เสมอ** แม้จ่ายเงินไปแล้วครึ่งใบ / **always reads `0.00`** even after settling | ✅ **แก้แล้ว** ตรวจกับใบจริงเมื่อ 26 ส.ค. 2026 — ใบที่ปิดครบแสดงยอดตรงกับ Total PO Value / **fixed** — re-checked against live locks on 26 Aug 2026; fully settled locks now report the correct amount | ถ้ายังเจอ `0.00` บนใบที่ตัดไปแล้ว ให้แจ้งพร้อมเลข `PLO-…` / if you still see `0.00` on a lock with settled quantity, report it with the `PLO-…` number |
 | **POS Order Status ค้างที่ `Pending`** ทั้งที่ Fulfillment Status เป็น `Fulfilled` แล้ว / **stuck at `Pending`** while Fulfillment Status says `Fulfilled` | ✅ **แก้แล้ว** — ตรวจกับใบจริงทั้ง 127 ใบเมื่อ 25 ส.ค. 2026 ไม่มีใบไหนไม่ตรงกันเลย / **fixed** — all 127 live orders re-checked on 25 Aug 2026, zero disagreements | ถ้ายังเจอใบที่ไม่ตรง เปิดใบนั้นแล้วกด Save 1 ครั้ง / if you still find one, open it and press Save once |
-| **Dropoff Final เลือกไม่ขึ้นในใบสั่งซื้อ** / does not appear in the picker | สถานะไม่ใช่ `Unsettled` — ส่วนใหญ่เป็น `In Progress` เพราะ variance ตอนคัดแยกเกิน `0.10%` / status is not `Unsettled`, usually `In Progress` because sorting variance exceeded `0.10%` | ⚠️ **ไม่มีทางแก้จากหน้าจอ** ไม่มีปุ่ม override และหน้าฟอร์ม Dropoff Final แก้ไม่ได้เลย ต้องให้ System Manager แก้ผ่าน API หรือให้ฝ่ายคัดแยกทำใหม่ให้ตรง / **no UI escape hatch exists.** The form is read-only and there is no override button. A System Manager must fix it via API, or sorting must be redone |
+| **Dropoff Final เลือกไม่ขึ้นในใบสั่งซื้อ** / does not appear in the picker | สถานะไม่ใช่ `Unsettled` — ส่วนใหญ่เป็น `In Progress` เพราะ variance ตอนคัดแยกเกิน `0.10%` / status is not `Unsettled`, usually `In Progress` because sorting variance exceeded `0.10%` | เปิดใบนั้นในหน้า Desk แล้วกดปุ่มสีเหลือง **`Accept Variance & Release`** ใส่เหตุผล — สถานะจะกลับเป็น `Unsettled` ทันที ดูหัวข้อ 11 / open it in the desk and press the amber **`Accept Variance & Release`** button with a reason; it returns to `Unsettled` immediately. See §11 |
 | Dropoff Final เป็น `Unsettled` แต่ Verification Status เป็น `Needs Review` | ครั้งแรกผ่านเกณฑ์ แล้วมีการคัดแยกเพิ่มทีหลังจนเกินเกณฑ์ สถานะเลยค้าง / it passed once, then later sorting pushed it out of tolerance and the status stayed | ระบบ **จะยอมให้สรุปยอดได้** ทั้งที่ยังไม่ผ่านการตรวจ ให้ดู Verification Status ด้วยตาทุกครั้งก่อนกด Submit / the system **will let you settle it anyway**. Check Verification Status by eye before submitting |
 | *Supplier … has no Short Code* | ผู้ขายยังไม่ได้กรอก Short Code | เปิด Supplier กรอก Short Code (2–8 ตัวอักษร) แล้วลองใหม่ |
 | *Allocation row 1: Total allocation of … exceeds remaining qty …* | จัดสรรเกินโควตาที่เหลือในใบยืนยันราคา | ลดจำนวนลง หรือแยกส่วนเกินไปเป็น `Spot` |
@@ -520,13 +520,28 @@ type − supplier short code − YYMM − per-supplier monthly counter.
 | สถานะ / Status | หมายความว่า / Means | สรุปยอดได้ไหม / Settleable |
 |---|---|---|
 | `Draft` | สร้างแล้ว ยังไม่มีการคัดแยก / created, no sorting yet | ไม่ได้ / no |
-| `In Progress` | คัดแยกแล้ว แต่ variance เกินเกณฑ์ / sorted but out of tolerance | ไม่ได้ — และไม่มีทาง override / no, and no override exists |
-| `Unsettled` | พร้อมจ่ายเงิน / ready to pay | **ได้** / **yes** |
-| `Settled` | จ่ายแล้ว / paid | ไม่ได้ (จ่ายไปแล้ว) / no |
+| `In Progress` | คัดแยกแล้ว แต่ variance เกินเกณฑ์ / sorted but out of tolerance | ไม่ได้ จนกว่าหัวหน้าจะกดยอมรับ / not until a manager accepts it — ดูข้างล่าง / see below |
+| `Unsettled` | พร้อมจ่ายเงิน ยังไม่ได้ตัดอะไรเลย / ready to pay, nothing drawn yet | **ได้** / **yes** |
+| `Partially Settled` | จ่ายไปแล้วบางส่วน ยังเหลือของให้ตัดอีก / part-paid, some weight still undrawn | **ได้** — เลือกมาทำใบสั่งซื้อรอบหน้าได้เรื่อย ๆ จนกว่าจะครบ / **yes** — keeps appearing in the picker until every kilo is drawn |
+| `Settled` | ตัดครบทุกกิโลแล้ว / every kilo drawn | ไม่ได้ / no |
 | `Cancelled` | ยกเลิกแล้ว / cancelled | ไม่ได้ / no |
 
-> **ถ้าเจอสถานะอื่นนอกจาก 5 อย่างนี้** (เช่น `Completed`) แปลว่าเป็นข้อมูลเก่าจากระบบรุ่นก่อน — เลือกในใบสั่งซื้อไม่ขึ้น ให้แจ้งผู้ดูแลระบบพร้อมเลข `DFL-…`
-> Anything outside these five (a stray `Completed`, for instance) is leftover data from an older version. It will not appear in the picker — report it with the `DFL-…` number.
+> **ถ้าเจอสถานะอื่นนอกจาก 6 อย่างนี้** (เช่น `Completed`) แปลว่าเป็นข้อมูลเก่าจากระบบรุ่นก่อน — เลือกในใบสั่งซื้อไม่ขึ้น ให้แจ้งผู้ดูแลระบบพร้อมเลข `DFL-…`
+> Anything outside these six (a stray `Completed`, for instance) is leftover data from an older version. It will not appear in the picker — report it with the `DFL-…` number.
+
+### ปลดล็อกใบที่ค้างอยู่ที่ `In Progress` / Releasing a stuck `In Progress`
+
+ใบที่ variance เกินเกณฑ์จะค้างอยู่ที่ `In Progress` และเลือกมาสรุปยอดไม่ได้ **แต่มีทางออก** — เปิดใบนั้นในหน้า Desk แล้วกดปุ่มสีเหลือง **`Accept Variance & Release`** ที่มุมขวาบน
+A Dropoff Final whose sorting variance exceeded the threshold parks at `In Progress` and cannot be settled. **There is a way out**: open it in the desk and press the amber **`Accept Variance & Release`** button.
+
+1. ระบบถามว่า **"ทำไมส่วนต่างนี้ถึงยอมรับได้?"** — **บังคับกรอก** ปล่อยว่างไม่ได้
+   It asks **"Why is this discrepancy acceptable?"** — mandatory, you cannot skip it.
+2. กรอกเหตุผล แล้วกด **Accept & Release**
+   → สถานะเปลี่ยนเป็น `Unsettled` และเลือกมาทำใบสั่งซื้อได้ทันที
+   → ระบบบันทึก **ชื่อคุณ เวลา และเหตุผล** ติดไว้กับใบนั้นถาวร / your name, the time and the reason are stamped on the record permanently
+
+> นี่คือการตัดสินใจของคน ไม่ใช่การข้ามการตรวจสอบ — ใช้เมื่อรู้สาเหตุของส่วนต่างแล้วและยอมรับได้ เช่น ของเปียกฝนระหว่างทาง
+> This is a recorded human decision, not a way around the check. Use it when you know why the weights disagree and accept it — wet material, for instance.
 
 ### กฎที่ระบบบังคับ ห้ามฝืน / Rules the system enforces, no exceptions
 
