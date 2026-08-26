@@ -3,7 +3,7 @@
 > **Status:** Production
 > **Source:** `www/pos/truck.html`, `www/pos/truck.py`, `www/pos/terminal.py`, `api/v1/dropoff.py`, `api/v1/pos.py`, `scrap_metal_suite/doctype/truck_weight/`, `scrap_metal_suite/doctype/weight_photo/`, `scrap_metal_suite/doctype/scale/`, `scrap_metal_suite/doctype/dropoff/dropoff.py`, `public/js/scale_reader.js`, `fixtures/print_format.json`
 > **Last verified:** 2026-08-21 against `feature/container-redesign` @ `d598a9b`
-> **App version:** `1.1.0` (`scrap_metal_suite/__init__.py`)
+> **App version:** `2.0.0` (`scrap_metal_suite/__init__.py`)
 
 ---
 

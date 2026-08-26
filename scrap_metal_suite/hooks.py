@@ -268,12 +268,49 @@ fixtures = [
         # backslash itself, so r"\_TEST\_%" matches nothing and the filter
         # silently passes everything. Verified on `metal`: "_TEST_%" excludes
         # the 5 test scales, r"\_TEST\_%" returns all 12.
+        # ⚠️ Do NOT re-export this on a dev bench without checking the diff.
+        # The filter only excludes `_TEST_%`, so any scale created for local
+        # testing under another name (`Prod_Scale1`, for one) is swept in and
+        # would be created as a real hardware record on production.
         "dt": "Scale",
         "filters": [["name", "not like", "_TEST_%"]]
     },
     {
         "dt": "Print Format",
         "filters": [["module", "=", "Scrap Metal Suite"]]
+    },
+    {
+        # Permissions were the one part of the configuration that did not travel.
+        # `git pull` gives code; roles stayed behind, and Custom DocPerm rows
+        # *replace* a doctype's standard permissions wholesale rather than adding
+        # to them. That is how `POS Operator` was silently dropped from Truck
+        # Weight and Dropoff on production — an operator could weigh a truck once
+        # but not reweigh it or attach a photo, with no error that named the cause.
+        #
+        # Scoped to this app's own doctypes by name. Custom DocPerm has no
+        # `module` field, so an unfiltered export would sweep up every permission
+        # customisation on the site, including other apps' and ERPNext's own.
+        #
+        # ⚠️ On the first deploy this OVERWRITES the target site's permissions for
+        # these doctypes. Capture what production has before applying it — see
+        # docs/guide/admin/50-platform-roles-scheduler.md.
+        "dt": "Custom DocPerm",
+        "filters": [["parent", "in", [
+            "Dropoff",
+            "Dropoff Final",
+            "POS Order",
+            "POS Session",
+            "POS Profile Scrap",
+            "Production Sorting",
+            "Scale",
+            "Scrap Weight",
+            "Scrap Weight Container",
+            "Truck Weight",
+            "Production Session",
+            "SMT Price Lock",
+            "SMT Purchase Order",
+            "SMT Variance Settings",
+        ]]]
     }
 ]
 

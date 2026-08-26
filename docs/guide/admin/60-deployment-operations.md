@@ -3,7 +3,7 @@
 > **Status:** Production
 > **Source:** `docs/stocktake/STOCKTAKE_2026-08-21.md`, `sites/common_site_config.json`, `Procfile`, `README.md`, `pyproject.toml`, `www/pos/terminal.py`, `frappe/build.py`, `frappe/migrate.py`, live `bench` on the dev machine
 > **Last verified:** 2026-08-21 on the local WSL bench (`metal`) and against the stock-take. **Production facts are second-hand — see the ⚠️ markers.**
-> **App version:** `1.1.0` (`scrap_metal_suite/__init__.py:1`)
+> **App version:** `2.0.0` (`scrap_metal_suite/__init__.py:1`)
 
 Related: [00 Architecture](00-architecture.md) · [50 Platform](50-platform-roles-scheduler.md) · [70 Testing](70-testing.md)
 

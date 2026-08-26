@@ -3,7 +3,7 @@
 > **Status:** Production
 > **Source:** `scrap_metal_suite/hooks.py`, `scrap_metal_suite/scheduler.py`, `scrap_metal_suite/overrides/{supplier,reportview,naming}.py`, `scrap_metal_suite/patches.txt`, `scrap_metal_suite/patches/v2_0/*`, `scrap_metal_suite/fixtures/*.json`, `scrap_metal_suite/api/v1/auth.py`, every `doctype/*/*.json` `permissions` block
 > **Last verified:** 2026-08-21 against `feature/container-redesign` @ `d598a9b`, live site `metal`
-> **App version:** `1.1.0` (`scrap_metal_suite/__init__.py:1`)
+> **App version:** `2.0.0` (`scrap_metal_suite/__init__.py:1`)
 
 This is the layer nobody looks at until something breaks at 6am. Everything here is derived from source and, where possible, checked against the running dev site.
 

@@ -3,7 +3,7 @@
 > **Status:** Production
 > **Source:** `hooks.py`, `modules.txt`, `scrap_metal_suite/doctype/**`, `api/v1/**`, `www/**`
 > **Last verified:** 2026-08-21 against `feature/container-redesign`
-> **App version:** `1.1.0` (`scrap_metal_suite/__init__.py`)
+> **App version:** `2.0.0` (`scrap_metal_suite/__init__.py`)
 
 This is the map. Each subsystem has its own reference — follow the links rather than expecting depth here.
 

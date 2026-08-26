@@ -3,7 +3,7 @@
 > **Status:** Production
 > **Source:** `scrap_metal_suite/api_test/*.py` (38 files), `scrap_metal_suite/ui_test/*.py` (7 files), `scrap_metal_suite/doctype/*/test_*.py` (3 files), `docs/E2E_TESTING_OVERVIEW.md`, `docs/E2E_MANUAL_TEST_SCRIPT.md`
 > **Last verified:** 2026-08-21 — **every suite below was executed on the live `metal` site while writing this page.** Results are observed, not quoted.
-> **App version:** `1.1.0`
+> **App version:** `2.0.0`
 
 Related: [00 Architecture](00-architecture.md) · [50 Platform](50-platform-roles-scheduler.md) · [60 Deployment & Operations](60-deployment-operations.md) · [90 Extending This App](90-extending-this-app.md)
 
