@@ -51,6 +51,17 @@
    "onboard": 1,
    "only_for": "",
    "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Variance Thresholds",
+   "link_count": 0,
+   "link_to": "SMT Variance Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
  "modified": "2026-02-21 12:00:00.000000",
@@ -78,6 +89,13 @@
    "doc_view": "",
    "label": "Production Sorting Settings",
    "link_to": "Production Sorting Settings",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "",
+   "label": "Variance Thresholds",
+   "link_to": "SMT Variance Settings",
    "type": "DocType"
   }
  ],

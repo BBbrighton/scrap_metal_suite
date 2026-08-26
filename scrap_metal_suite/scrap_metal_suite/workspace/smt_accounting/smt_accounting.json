@@ -106,6 +106,25 @@
    "onboard": 0,
    "only_for": "",
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Variance Thresholds",
+   "link_count": 0,
+   "link_to": "SMT Variance Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
  "modified": "2026-04-15 00:00:00.000000",
@@ -143,6 +162,13 @@
    "doc_view": "List",
    "label": "SMT Purchase Order",
    "link_to": "SMT Purchase Order",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "",
+   "label": "Variance Thresholds",
+   "link_to": "SMT Variance Settings",
    "type": "DocType"
   }
  ],
