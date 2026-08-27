@@ -29,9 +29,21 @@ def get_context(context):
 
 
 def has_pos_access():
-    """Check if current user has POS access."""
+    """Who may see the terminal chooser at /pos.
+
+    This is the hub page, not a terminal — it shows three cards and each
+    destination enforces its own access. Sorting staff were excluded here, so
+    the route every guide documents ("open /pos, click Production Sorting")
+    ended in Access Denied for exactly the people it was written for; the
+    sorting terminal itself has always admitted them. Letting them see the hub
+    grants nothing: /pos/terminal and /pos/truck still turn them away.
+    """
     roles = frappe.get_roles()
-    return "POS Operator" in roles or "POS Manager" in roles or "System Manager" in roles
+    return any(r in roles for r in (
+        "POS Operator", "POS Manager",
+        "Production Worker", "Production Manager",
+        "System Manager",
+    ))
 
 
 def get_active_session():
