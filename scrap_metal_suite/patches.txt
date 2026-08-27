@@ -12,3 +12,4 @@ scrap_metal_suite.patches.v2_0.backfill_pos_order_status
 scrap_metal_suite.patches.v2_0.backfill_supplier_short_codes
 scrap_metal_suite.patches.v2_0.seed_variance_settings
 scrap_metal_suite.patches.v2_0.link_variance_settings_workspace
+scrap_metal_suite.patches.v2_0.baseline_permissions

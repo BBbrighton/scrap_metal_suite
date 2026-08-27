@@ -279,39 +279,6 @@ fixtures = [
         "dt": "Print Format",
         "filters": [["module", "=", "Scrap Metal Suite"]]
     },
-    {
-        # Permissions were the one part of the configuration that did not travel.
-        # `git pull` gives code; roles stayed behind, and Custom DocPerm rows
-        # *replace* a doctype's standard permissions wholesale rather than adding
-        # to them. That is how `POS Operator` was silently dropped from Truck
-        # Weight and Dropoff on production — an operator could weigh a truck once
-        # but not reweigh it or attach a photo, with no error that named the cause.
-        #
-        # Scoped to this app's own doctypes by name. Custom DocPerm has no
-        # `module` field, so an unfiltered export would sweep up every permission
-        # customisation on the site, including other apps' and ERPNext's own.
-        #
-        # ⚠️ On the first deploy this OVERWRITES the target site's permissions for
-        # these doctypes. Capture what production has before applying it — see
-        # docs/guide/admin/50-platform-roles-scheduler.md.
-        "dt": "Custom DocPerm",
-        "filters": [["parent", "in", [
-            "Dropoff",
-            "Dropoff Final",
-            "POS Order",
-            "POS Session",
-            "POS Profile Scrap",
-            "Production Sorting",
-            "Scale",
-            "Scrap Weight",
-            "Scrap Weight Container",
-            "Truck Weight",
-            "Production Session",
-            "SMT Price Lock",
-            "SMT Purchase Order",
-            "SMT Variance Settings",
-        ]]]
-    }
 ]
 
 # Document Events for Supplier source tracking
