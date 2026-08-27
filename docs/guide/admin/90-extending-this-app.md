@@ -209,3 +209,70 @@ Both read as correct in review. Neither errors. Both silently use the wrong valu
 - CSS — `getComputedStyle(document.documentElement).getPropertyValue('--token')` must be empty
 
 And when you fix one, **add a test that fails if the default comes back** — `api_test/test_variance_threshold.py` is the worked example. It was verified by reintroducing the bug and confirming 4 of its 5 checks fail.
+
+---
+
+## ⚠️ Never name a doctype so its table contains a SQL keyword
+
+> **Found the hard way:** 2026-08-27, on production, an hour after a deploy.
+
+Every desk page carrying a `Dropoff` shortcut showed:
+
+> *Use of sub-query or function is restricted*
+
+Nothing in this app caused it. Frappe's injection guard
+(`frappe/model/db_query.py`, `sanitize_fields`) takes the text after `count(`,
+splits on the first space, and asks whether that token **contains** a
+blacklisted SQL keyword:
+
+```python
+field  = "count(`tabDropoff`.name) as total_count"
+token  = "`tabdropoff"
+"drop" in "`tabdropoff"   # True  ->  frappe.throw(...)
+```
+
+The doctype is called **Dropoff**. `tabDropoff` contains `drop`. A row count
+reads as a `DROP TABLE`.
+
+**The blacklist:** `select`, `create`, `insert`, `delete`, `drop`, `update`,
+`case`, `show`. A doctype named *Showroom*, *Case Study*, *Update Log* or
+*Insertion Point* hits the same wall.
+
+**Check before you name one:**
+
+```python
+token = ("`tab" + doctype.lower()).split(" ", 1)[0]
+[k for k in ["select","create","insert","delete","drop","update","case","show"]
+ if k in token]        # must be empty
+```
+
+Only the *first word* matters — the token is split on the first space. So
+`Dropoff Final` trips (`tabdropoff`) while `Scrap Weight Container` is fine
+(`tabscrap`).
+
+### Where it surfaces, and where it does not
+
+The count is requested client-side, in `shortcut_widget.js`:
+
+```js
+let filters = frappe.utils.process_filter_expression(this.stats_filter);
+if (this.type == "DocType" && this.doc_view != "New" && filters) { …count… }
+```
+
+`stats_filter` is stored as `'[]'` — an empty array, which is **truthy in
+JavaScript** — so the count fires for every DocType shortcut. Clearing
+`stats_filter` makes the condition false and the request is never made.
+
+Two traps when diagnosing this:
+
+- **`frappe.client.get_count` succeeds** where the desk fails. The browser calls
+  `frappe.desk.reportview.get_count`, which is the one that builds the
+  `count(...)` field. Testing the wrong one says everything is fine.
+- **`List View Settings.disable_count` does not help.** The workspace shortcut
+  never consults it.
+
+`patches/v2_0/fix_dropoff_shortcut_counts.py` clears `stats_filter` on exactly
+the shortcuts whose target trips the guard, and leaves every other count alone.
+
+**Renaming the doctype is not the fix** — 617 live records, every reference and
+every URL. Losing a number badge is the cheaper trade.
