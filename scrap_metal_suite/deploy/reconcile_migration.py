@@ -57,6 +57,18 @@ def _legacy_weight_per_dropoff():
     return out
 
 
+def _count_containers():
+    """Container count, tolerating the table not existing yet.
+
+    `before()` runs against the OLD schema, where `Scrap Weight Container` has
+    never been created — counting it there raises rather than returning 0.
+    """
+    try:
+        return frappe.db.count("Scrap Weight Container")
+    except Exception:
+        return 0
+
+
 def before():
     frappe.set_user("Administrator")
     snap = {
@@ -65,7 +77,7 @@ def before():
             """SELECT count(*) FROM `tabScrap Weight`
                WHERE dropoff IS NULL OR dropoff=''"""
         )[0][0],
-        "containers": frappe.db.count("Scrap Weight Container"),
+        "containers": _count_containers(),
         "dropoffs": frappe.db.count("Dropoff"),
     }
     json.dump(snap, open(SNAPSHOT, "w"), ensure_ascii=False, indent=1)

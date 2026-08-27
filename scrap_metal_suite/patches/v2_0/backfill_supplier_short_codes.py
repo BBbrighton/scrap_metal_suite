@@ -27,14 +27,59 @@ suffix order is arbitrary, so the log prints every derived code — review it if
 the office already uses specific abbreviations.
 
 Idempotent: suppliers that already have a code are skipped untouched.
+
+**Creates the Custom Field itself when it is missing.** Frappe syncs fixtures
+*after* post-model-sync patches, so on any site that has never carried this
+field — which is every site before this release, production included — the
+column does not exist when this patch runs, and the query dies with
+
+    (1054, "Unknown column 'tabSupplier.short_code' in 'WHERE'")
+
+That takes the whole migration down with it: the three patches queued after this
+one never execute and `bench migrate` exits on a half-migrated site. Caught by
+dry-running against a production backup; it did not show up on the dev bench
+only because the field had been created there by an earlier install. A patch
+cannot assume its own fixture has landed yet.
 """
 
 import frappe
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 from scrap_metal_suite.overrides.supplier import _derive_default, _free_short_code
 
+# Kept in step with fixtures/custom_field.json — see the module docstring for
+# why this patch cannot wait for that fixture to be applied.
+SHORT_CODE_FIELD = {
+    "fieldname": "short_code",
+    "fieldtype": "Data",
+    "label": "Short Code",
+    "insert_after": "supplier_name",
+    "length": 8,
+    "reqd": 1,
+    "unique": 1,
+    "description": (
+        "2-8 ASCII chars (A-Z, 0-9). Used in document IDs (PLO-{short}-YYMM-###). "
+        "Editable, but only affects new documents — existing ones keep their "
+        "original names. Auto-defaulted from supplier_name when possible; for "
+        "Thai-only names you must type it."
+    ),
+}
+
+
+def _ensure_short_code_field():
+    """Create `Supplier.short_code` when this site has never had it."""
+    if frappe.db.has_column("Supplier", "short_code"):
+        return
+
+    print("  Supplier.short_code is missing — creating the Custom Field first")
+    create_custom_fields({"Supplier": [SHORT_CODE_FIELD]}, ignore_validate=True)
+    frappe.db.commit()
+    frappe.clear_cache(doctype="Supplier")
+
 
 def execute():
+    _ensure_short_code_field()
+
     suppliers = frappe.get_all(
         "Supplier",
         filters=[["short_code", "in", [None, ""]]],
