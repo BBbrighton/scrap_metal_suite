@@ -105,6 +105,28 @@ body {
                             <span class="scale-location">{{ scale.location or '' }}</span>
                         </div>
                     </button>
+                    {% else %}
+                    {#
+                        No Production-type scale exists. Without the else branch this
+                        rendered an empty box under the words "select from list" — the
+                        operator is told to choose from a list that is not there, with
+                        nothing on screen saying why or what to do.
+                    #}
+                    <div class="scale-empty" style="padding:20px; border:1px dashed #f59e0b;
+                         border-radius:8px; background:rgba(245,158,11,0.08); text-align:left;">
+                        <div style="font-weight:600; color:#f59e0b; margin-bottom:6px;">
+                            ยังไม่มีตาชั่งสำหรับการคัดแยก / No production scale set up
+                        </div>
+                        <div style="font-size:0.85rem; line-height:1.6;">
+                            การคัดแยกต้องใช้ตาชั่งที่ตั้งค่า <b>usage_type = Production</b>
+                            ตอนนี้ยังไม่มีในระบบ จึงเริ่มงานไม่ได้<br>
+                            Sorting needs a scale whose <b>usage_type is Production</b>.
+                            None exists yet, so no session can start.<br><br>
+                            <b>แก้ไขโดย / To fix:</b> ผู้ดูแลระบบเปิด
+                            <a href="/app/scale/new" target="_blank"><b>Desk → Scale → New</b></a>
+                            แล้วตั้ง <code>usage_type = Production</code> และติ๊ก <code>is_active</code>
+                        </div>
+                    </div>
                     {% endfor %}
                 </div>
             </div>

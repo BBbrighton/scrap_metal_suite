@@ -3085,6 +3085,16 @@ async function initCctv() {
             updateCameraBadge('unknown', cam.cameras.length);
             refreshCameraStatus();
         } else {
+            // No Camera records. The badge used to stay hidden and this went to
+            // console.info, so the only route to configuring cameras was a menu
+            // that only appears once cameras are already configured. Show a
+            // greyed badge that says so and points at the Desk form.
+            const box = document.getElementById('cameraBadgeContainer');
+            if (box) {
+                box.style.display = 'inline-block';
+                box.classList.add('camera-unconfigured');
+                updateCameraBadge('unconfigured', 0);
+            }
             console.info('CCTV: ' + t('noTruckCameras'));
         }
     } catch (e) {
@@ -3113,6 +3123,7 @@ function updateCameraBadge(state, total, onlineCount) {
         partial: 'partial',
         bad: 'disconnected',
         testing: 'connecting',
+        unconfigured: '',
         unknown: ''
     }[state] || '';
     dot.className = ('scale-status-indicator ' + cssState).trim();
@@ -3122,6 +3133,9 @@ function updateCameraBadge(state, total, onlineCount) {
     else if (state === 'partial') label = (onlineCount || 0) + '/' + total + ' ' + t('online');
     else if (state === 'bad') label = t('cameraStatusNone');
     else if (state === 'testing') label = t('testing');
+    // `noCamerasConfigured` already exists in both languages and names the fix
+    // ("add one at Desk > Camera"). It was written for this case and never shown.
+    else if (state === 'unconfigured') label = t('noCamerasConfigured');
     else label = t('notTested');
 
     if (menuStatus) menuStatus.textContent = label;

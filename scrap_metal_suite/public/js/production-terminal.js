@@ -71,11 +71,37 @@ async function selectScale(scaleName, scaleDisplayName) {
     }
 }
 
+/** Header "Start Session" button.
+ *
+ * The scale picker is rendered server-side in the page body, so this only has
+ * to put it in front of the operator. It used to msgprint "please select a
+ * scale" and stop — a dialog telling you to use a list, over a dark overlay,
+ * with no list in it and nothing to click. If the picker is empty the page
+ * itself now explains why (no Production-type scale), so scroll to it rather
+ * than opening a dialog that repeats an instruction the operator cannot follow.
+ */
 async function startSession() {
-    frappe.msgprint({
-        title: POS_I18N.t('startSession') || 'Start Session',
-        message: POS_I18N.t('scanScaleOrSelect') || 'Please select a scale to start your production session'
-    });
+    const setup = document.getElementById('sessionSetup');
+    if (!setup) {
+        frappe.msgprint({
+            title: POS_I18N.t('error') || 'Error',
+            indicator: 'red',
+            message: POS_I18N.t('scanScaleOrSelect') ||
+                'The scale picker is not on this page. Reload, or ask an admin to check /pos/production.'
+        });
+        return;
+    }
+    setup.style.display = '';
+    setup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const first = setup.querySelector('.scale-option');
+    if (first) {
+        first.focus();
+    } else {
+        // Picker is empty — the page explains why; make sure it is seen.
+        const empty = setup.querySelector('.scale-empty');
+        if (empty) empty.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 async function confirmCloseSession() {
@@ -535,9 +561,32 @@ async function selectDropoff(dropoffId) {
         frappe.msgprint({
             title: POS_I18N.t('error') || 'Error',
             indicator: 'red',
-            message: error.message || 'Failed to load dropoff'
+            message: serverError(error, 'Failed to load dropoff') +
+                '<br><br><small>' + escapeHtml(dropoffId) + '</small>'
         });
     }
+}
+
+/** Pull the real reason out of a Frappe error.
+ *
+ * A server-side throw arrives with the message in `_server_messages` or
+ * `exc`, and `error.message` is usually undefined — so `error.message || "..."`
+ * silently discarded every server error and showed the same generic sentence
+ * over a dark overlay. That is how a missing database column surfaced for weeks
+ * as "Failed to load dropoff" with nothing to act on.
+ */
+function serverError(error, fallback) {
+    try {
+        const msgs = (error && (error._server_messages || (error.responseJSON || {})._server_messages));
+        if (msgs) {
+            const parsed = JSON.parse(msgs);
+            const first = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
+            if (first && first.message) return first.message;
+        }
+    } catch (e) { /* fall through to the plainer sources below */ }
+    if (error && error.message) return error.message;
+    if (error && error.exc_type) return error.exc_type;
+    return fallback;
 }
 
 function clearDropoff() {
