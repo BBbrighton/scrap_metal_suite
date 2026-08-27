@@ -18,7 +18,7 @@ PATCHES = [
     "fix_variance_threshold_defaults", "backfill_settled_value",
     "backfill_pos_order_status", "backfill_supplier_short_codes",
     "seed_variance_settings", "link_variance_settings_workspace",
-    "baseline_permissions",
+    "baseline_permissions", "fix_dropoff_shortcut_counts",
 ]
 
 # The permissions a workflow cannot run without. Each was missing at some point
