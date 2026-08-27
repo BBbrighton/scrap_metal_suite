@@ -361,9 +361,16 @@ def get_dropoff_for_sorting(dropoff):
                 "total_weight": flt(item.total_weight)
             })
 
+    # `Production Sorting` has no `verification_status` field — that lives on
+    # `Dropoff Final`, which is where the variance is judged. Selecting it here
+    # raised (1054, "Unknown column 'verification_status' in 'SELECT'") and took
+    # the whole call down, so the sorting terminal could not open ANY dropoff.
+    # It survived every test on the dev bench only because that database still
+    # carries the column as an orphan from an older schema; a site migrated from
+    # clean does not, which is every site but that one.
     existing_sorting = frappe.db.get_value(
         "Production Sorting", {"dropoff": dropoff},
-        ["name", "status", "verification_status"], as_dict=True
+        ["name", "status"], as_dict=True
     )
 
     # The individual bags behind the aggregated source_items. A dropoff is
@@ -764,10 +771,11 @@ def get_sorting_for_dropoff(dropoff):
     """Check if a sorting record exists for a dropoff."""
     check_production_operator()
 
+    # No `verification_status` on this doctype — see get_dropoff_for_sorting.
     sorting = frappe.db.get_value(
         "Production Sorting",
         {"dropoff": dropoff},
-        ["name", "status", "verification_status", "total_weight"],
+        ["name", "status", "total_weight"],
         as_dict=True
     )
     return sorting
