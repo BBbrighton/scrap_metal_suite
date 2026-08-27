@@ -11,6 +11,7 @@ Idempotent: re-running adds nothing.
 import frappe
 
 TARGET = "SMT Variance Settings"
+ROUTE = "smt-variance-settings"
 LABEL = "Variance Thresholds"
 
 WORKSPACES = ("SMT Production", "SMT Accounting")
@@ -36,9 +37,23 @@ def execute():
 			})
 			changed = True
 
-		if not any(s.link_to == TARGET for s in ws.shortcuts):
+		# A URL shortcut, not a DocType one. Frappe puts a record count on every
+		# DocType shortcut, and `SMT Variance Settings` is a Single — Singles keep
+		# their values in `tabSingles` and have no table of their own, so the count
+		# query hits a table that does not exist and the whole workspace answers
+		# "Use of sub-query or function is restricted" on every visit. The link
+		# still lands on the same form; it simply carries no count, which a
+		# settings page never had a meaningful one for anyway.
+		existing = next((s for s in ws.shortcuts
+		                 if s.link_to == TARGET or s.url == f"/app/{ROUTE}"), None)
+		if existing and existing.type == "DocType":
+			existing.type = "URL"
+			existing.url = f"/app/{ROUTE}"
+			existing.link_to = None
+			changed = True
+		elif not existing:
 			ws.append("shortcuts", {
-				"type": "DocType", "link_to": TARGET, "label": LABEL, "color": "Orange",
+				"type": "URL", "url": f"/app/{ROUTE}", "label": LABEL, "color": "Orange",
 			})
 			changed = True
 
