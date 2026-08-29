@@ -63,7 +63,7 @@ class POSSession(Document):
 
     def on_update(self):
         """Handle scale release when session is closed"""
-        if self.status == "Closed" and self.scale:
+        if self.status == "Closed":
             self._release_scale_lock()
 
     def on_trash(self):
@@ -99,12 +99,28 @@ class POSSession(Document):
                 )
 
     def _release_scale_lock(self):
-        """Clear the in_use lock on the linked scale if it still points here."""
-        if not self.scale:
-            return
-        in_use_by = frappe.db.get_value("Scale", self.scale, "in_use_by_session")
-        if in_use_by == self.name:
-            scale_doc = frappe.get_doc("Scale", self.scale)
+        """Clear every scale lock pointing at this session.
+
+        Sweeps by `in_use_by_session` instead of following `self.scale`. A
+        switch_scale moves the lock to another Scale without necessarily
+        rewriting `self.scale`, so following that field releases the wrong
+        scale and strands the real one.
+
+        This bit production: SES-2026-00149 closed on 2026-03-04 holding
+        `ตราชั่งใหญ่` while its `scale` field said SCALE-002. The lock
+        survived until it was cleared by hand on 2026-08-28, six months later,
+        blocking that scale for every operator in between.
+
+        on_trash() already swept correctly; this is the same sweep. The caller
+        no longer guards on `self.scale` either - an empty field must not mean
+        "nothing to release".
+        """
+        for scale_name in frappe.get_all(
+            "Scale",
+            filters={"in_use_by_session": self.name},
+            pluck="name",
+        ):
+            scale_doc = frappe.get_doc("Scale", scale_name)
             scale_doc.in_use = 0
             scale_doc.in_use_by_session = None
             scale_doc.save()
