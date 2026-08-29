@@ -247,7 +247,9 @@ def store_weight_photo_bytes(content, parent_doctype, parent_doc, weight_type=No
     file_doc = frappe.get_doc({
         "doctype": "File",
         "file_name": file_name,
-        "is_private": 0,
+        # Private: these frames carry licence plates and faces, and a file
+        # under /files/ is served by nginx with no permission check at all.
+        "is_private": 1,
         "content": content,
         "attached_to_doctype": parent_doctype,
         "attached_to_name": parent_doc,

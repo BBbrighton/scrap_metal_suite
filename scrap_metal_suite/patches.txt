@@ -14,3 +14,4 @@ scrap_metal_suite.patches.v2_0.seed_variance_settings
 scrap_metal_suite.patches.v2_0.link_variance_settings_workspace
 scrap_metal_suite.patches.v2_0.baseline_permissions
 scrap_metal_suite.patches.v2_0.fix_dropoff_shortcut_counts
+scrap_metal_suite.patches.v2_0.privatise_weighing_photos

@@ -2177,7 +2177,8 @@ async function attachPhotos(scrapWeightName) {
 
             const formData = new FormData();
             formData.append('file', blob, 'scrap_photo_' + scrapWeightName + '_' + (i + 1) + '_' + Date.now() + '.jpg');
-            formData.append('is_private', '0');
+            // Private: weighing photos are evidence, not public assets.
+            formData.append('is_private', '1');
 
             const uploadResponse = await fetch('/api/method/upload_file', {
                 method: 'POST',
@@ -3480,7 +3481,8 @@ window.CONTAINER_UI = (function () {
                 const blob = await (await fetch(photos[i])).blob();
                 const fd = new FormData();
                 fd.append('file', blob, 'container_photo_' + containerName + '_' + (i + 1) + '_' + Date.now() + '.jpg');
-                fd.append('is_private', '0');
+                // Private: weighing photos are evidence, not public assets.
+                fd.append('is_private', '1');
                 const upRes = await fetch('/api/method/upload_file', {
                     method: 'POST',
                     headers: { 'X-Frappe-CSRF-Token': frappe.csrf_token },

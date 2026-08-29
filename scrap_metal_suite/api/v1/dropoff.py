@@ -579,7 +579,8 @@ def save_truck_photo(dropoff, photo, weight_type=None):
             "file_url": photo,
             "attached_to_doctype": "Truck Weight",
             "attached_to_name": truck_weight_name,
-            "is_private": 0
+            # Private - scrap photos show plates, people and the yard.
+            "is_private": 1
         }).insert(ignore_permissions=True)
 
     # Count total attachments for this Truck Weight

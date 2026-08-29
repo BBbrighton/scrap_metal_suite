@@ -1992,7 +1992,8 @@ async function saveAllPhotos() {
                 const xhr = new XMLHttpRequest();
                 const formData = new FormData();
                 formData.append('file', new File([blob], fileName, { type: 'image/jpeg' }));
-                formData.append('is_private', '0');
+                // Private: weighing photos are evidence, not public assets.
+                formData.append('is_private', '1');
 
                 xhr.open('POST', '/api/method/upload_file', true);
                 xhr.setRequestHeader('X-Frappe-CSRF-Token', frappe.csrf_token);
