@@ -17,3 +17,6 @@ example_tobedeleted/
 FUTURE_ENHANCEMENTS.md
 PLAN_*.md
 *_DESIGN.md
+
+# Local-only session state (never push - this repo is public)
+docs/SESSION_HANDOFF_LOCAL.md
