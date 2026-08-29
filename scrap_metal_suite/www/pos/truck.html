@@ -3442,10 +3442,23 @@ function printTruckWeight(truckWeightName) {
 }
 
 function reprintLastTruckWeight() {
-    var name = state.lastTruckWeight;
-    if (!name && state.truckWeights && state.truckWeights.length > 0) {
-        name = state.truckWeights[0].name;
+    var weights = state.truckWeights || [];
+
+    // Only honour lastTruckWeight while its dropoff is still on screen. It
+    // survives selectDropoff(), so on the next truck it would reprint the
+    // previous one's ticket.
+    var name = weights.some(function(t) { return t.name === state.lastTruckWeight; })
+        ? state.lastTruckWeight
+        : null;
+
+    // Nothing printed this session - the operator is reprinting a weigh that is
+    // already closed, so give them the closing ticket. get_dropoff_details()
+    // returns truck weights creation-ascending, so that is the last entry;
+    // taking [0] printed the opening Gross ticket instead.
+    if (!name && weights.length > 0) {
+        name = weights[weights.length - 1].name;
     }
+
     if (name) {
         printTruckWeight(name);
     } else {
