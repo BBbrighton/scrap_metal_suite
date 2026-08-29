@@ -53,7 +53,7 @@ import requests
 from requests.auth import HTTPDigestAuth
 
 APP_NAME = "smt-camera-agent"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 MAIN_CHANNEL = "101"
 DEFAULT_SUB_CHANNEL = "102"
@@ -107,7 +107,7 @@ def load_config(path=None):
     config.setdefault("log_file", os.path.join(_base_dir(), APP_NAME + ".log"))
     config.setdefault("retry_queue_size", 50)
     config.setdefault("sync_camera_clocks", True)
-    config.setdefault("clock_sync_interval_hours", 6)
+    config.setdefault("clock_sync_interval_hours", 1)
     config.setdefault("time_zone", DEFAULT_TIME_ZONE)
 
     for cam in config["cameras"]:
@@ -184,11 +184,25 @@ def fetch_preview(cam):
     return try_fetch(cam, cam.get("channel", DEFAULT_SUB_CHANNEL), PREVIEW_TIMEOUT)
 
 
+# Read once per camera and kept - the timeZone is a config value that only
+# changes if someone edits it in the camera UI, and a clock set now happens
+# on the capture path where a spare round trip is worth avoiding.
+_TZ_CACHE = {}
+
+
 def camera_time_zone(cam):
     """Read the camera's configured timeZone so a clock set doesn't clobber it.
 
+    Cached per camera. Only successful reads are cached, so a camera that was
+    unreachable on the first attempt is retried rather than pinned to the
+    fallback zone forever.
+
     Returns the timeZone string (e.g. "CST-7:00:00") or None.
     """
+    cached = _TZ_CACHE.get(cam["ip"])
+    if cached:
+        return cached
+
     try:
         response = requests.get(
             "http://{ip}:{port}/ISAPI/System/time".format(ip=cam["ip"], port=cam.get("port", 80)),
@@ -198,7 +212,9 @@ def camera_time_zone(cam):
         if response.status_code == 200:
             match = re.search(r"<timeZone>(.*?)</timeZone>", response.text)
             if match:
-                return match.group(1).strip()
+                zone = match.group(1).strip()
+                _TZ_CACHE[cam["ip"]] = zone
+                return zone
     except requests.exceptions.RequestException:
         pass
 
@@ -270,6 +286,31 @@ class ClockSync:
                 log.info("Clock set on %s -> %s", cam["name"], detail)
             else:
                 log.warning("Could not set clock on %s: %s", cam["name"], detail)
+
+    def ensure_fresh(self, cam):
+        """Set one camera's clock immediately before a capture.
+
+        The periodic loop alone is not enough. These units lose their clock on
+        every power cycle, so a camera that reboots between passes stamps every
+        photo 2000-01-02 until the next pass comes round - and the burned-in
+        timestamp is the part a person reads off the photo when a weighing is
+        disputed. One extra request, on an event that happens a few hundred
+        times a month, buys a stamp that is always right.
+
+        Never raises: a clock that cannot be set must not cost us the photo.
+        """
+        try:
+            ok, detail = set_camera_time(cam, self.fallback_zone)
+        except Exception as e:  # noqa: BLE001 - the capture matters more
+            log.error("Clock sync errored on %s before capture: %s", cam["name"], e)
+            self.last_result[cam["name"]] = {"ok": False, "detail": str(e)}
+            return False
+
+        self.last_result[cam["name"]] = {"ok": ok, "detail": detail}
+        if not ok:
+            # ERROR, not WARNING: this one silently produces bad evidence.
+            log.error("Clock not set on %s before capture: %s", cam["name"], detail)
+        return ok
 
     def _loop(self):
         while True:
@@ -403,7 +444,7 @@ class CloudUploader:
 # CAPTURE ORCHESTRATION
 # =============================================================================
 
-def do_capture(registry, uploader, body):
+def do_capture(registry, uploader, body, clock=None):
     """Fetch from one or all cameras and upload each JPEG to the cloud."""
     parent_doctype = body.get("parentDoctype")
     parent_doc = body.get("parentDoc")
@@ -424,6 +465,15 @@ def do_capture(registry, uploader, body):
     summary = {"ok": 0, "fail": 0, "photo_count": 0, "results": [], "errors": []}
 
     for cam in cameras:
+        # Correct the clock before the shutter, not after - see ClockSync.ensure_fresh.
+        # Guarded even though ensure_fresh swallows its own errors: this is the
+        # evidence path, and no clock problem is worth losing the photo over.
+        if clock is not None:
+            try:
+                clock.ensure_fresh(cam)
+            except Exception as e:  # noqa: BLE001
+                log.error("Clock sync raised on %s, capturing anyway: %s", cam["name"], e)
+
         content, channel = fetch_capture(cam)
         if not content:
             summary["fail"] += 1
@@ -559,7 +609,7 @@ class AgentHandler(BaseHTTPRequestHandler):
             return self._send_json({"error": "bad request body: {0}".format(e)}, 400)
 
         try:
-            result = do_capture(self.registry, self.uploader, body)
+            result = do_capture(self.registry, self.uploader, body, self.clock)
         except Exception as e:
             log.exception("Capture failed")
             return self._send_json({"ok": 0, "fail": 1, "errors": [str(e)]}, 500)
