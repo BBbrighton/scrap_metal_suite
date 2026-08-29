@@ -92,7 +92,7 @@
             <button class="btn-header btn-theme" onclick="toggleTheme()" title="Toggle Theme">
                 <span id="themeIcon">&#9728;</span>
             </button>
-            <button class="btn-header" onclick="reprintLastTruckWeight()" title="Reprint last ticket">&#x1F5B6; Print</button>
+            <button class="btn-header" onclick="openPrintMenu()" title="Print">&#x1F5B6; <span data-i18n="print">Print</span></button>
             <button class="btn-header btn-danger" onclick="confirmCloseSession()" data-i18n="closeSession">Close Session</button>
         </div>
     </header>
@@ -449,6 +449,35 @@
             <div class="modal-footer">
                 <button class="btn-pos btn-secondary" onclick="closeRemarksModal()">Cancel</button>
                 <button class="btn-pos btn-primary" onclick="saveRemarks()">Save Remarks</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Menu: which document, under which company header -->
+    <div id="printMenuModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="printMenuTitle" data-i18n="print">Print</h3>
+                <button class="modal-close" onclick="closePrintMenu()">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="print-menu-group">
+                    <div class="print-menu-label" id="printMenuSlipLabel" data-i18n="printWeightSlip">Weight slip</div>
+                    <div class="print-menu-row">
+                        <button class="btn-pos btn-primary" onclick="printFromMenu('slip','SMT')">SMT</button>
+                        <button class="btn-pos btn-primary" onclick="printFromMenu('slip','MD')">MD</button>
+                    </div>
+                </div>
+                <div class="print-menu-group">
+                    <div class="print-menu-label" id="printMenuDropoffLabel" data-i18n="printDropoff">Drop-off</div>
+                    <div class="print-menu-row">
+                        <button class="btn-pos btn-primary" onclick="printFromMenu('dropoff','SMT')">SMT</button>
+                        <button class="btn-pos btn-primary" onclick="printFromMenu('dropoff','MD')">MD</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-pos btn-secondary" onclick="closePrintMenu()" data-i18n="cancel">Cancel</button>
             </div>
         </div>
     </div>
@@ -3427,10 +3456,19 @@ function recaptureWeightFromReview() {
     frappe.show_alert({ message: t('recaptureWeightHint'), indicator: 'blue' }, 4);
 }
 
-// ===== Print Thermal Receipt =====
-function printTruckWeight(truckWeightName) {
-    const printUrl = '/printview?doctype=Truck%20Weight&name=' + encodeURIComponent(truckWeightName) + '&format=Truck%20Weight%20Thermal&no_letterhead=1';
-    state.lastTruckWeight = truckWeightName;
+// ===== Print =====
+// Formats render whichever company header `brand` names - see the BRANDS block
+// at the top of each print format. Omitting it prints SMT, so every existing
+// caller and Desk print is unchanged.
+const PRINT_DROPOFF_FORMAT = 'ใบคิวสองภาษา';
+
+function openPrintView(doctype, docname, format, brand) {
+    var printUrl = '/printview?doctype=' + encodeURIComponent(doctype) +
+        '&name=' + encodeURIComponent(docname) +
+        '&format=' + encodeURIComponent(format) +
+        '&no_letterhead=1';
+    if (brand) printUrl += '&brand=' + encodeURIComponent(brand);
+
     var iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
     iframe.src = printUrl;
@@ -3441,7 +3479,38 @@ function printTruckWeight(truckWeightName) {
     document.body.appendChild(iframe);
 }
 
-function reprintLastTruckWeight() {
+function printTruckWeight(truckWeightName, brand) {
+    state.lastTruckWeight = truckWeightName;
+    openPrintView('Truck Weight', truckWeightName, 'Truck Weight Thermal', brand);
+}
+
+function printDropoffReceipt(brand) {
+    if (!state.dropoff || !state.dropoff.name) {
+        frappe.show_alert({message: t('noDropoffSelected') || 'No dropoff selected', indicator: 'orange'}, 3);
+        return;
+    }
+    openPrintView('Dropoff', state.dropoff.name, PRINT_DROPOFF_FORMAT, brand);
+}
+
+// ===== Print Menu =====
+function openPrintMenu() {
+    document.getElementById('printMenuModal').style.display = 'flex';
+}
+
+function closePrintMenu() {
+    document.getElementById('printMenuModal').style.display = 'none';
+}
+
+function printFromMenu(what, brand) {
+    closePrintMenu();
+    if (what === 'dropoff') {
+        printDropoffReceipt(brand);
+    } else {
+        reprintLastTruckWeight(brand);
+    }
+}
+
+function reprintLastTruckWeight(brand) {
     var weights = state.truckWeights || [];
 
     // Only honour lastTruckWeight while its dropoff is still on screen. It
@@ -3460,7 +3529,7 @@ function reprintLastTruckWeight() {
     }
 
     if (name) {
-        printTruckWeight(name);
+        printTruckWeight(name, brand);
     } else {
         frappe.show_alert({message: t('noRecentWeight') || 'No weight ticket to reprint. Select a dropoff first.', indicator: 'orange'}, 3);
     }

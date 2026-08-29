@@ -7626,3 +7626,31 @@ button.category-tab.from-order-tab.active {
 .pos-terminal.light-theme .panel-journal .container-voided-block summary {
     color: #64748b;
 }
+
+/* ===== Print menu =====
+   One row of company choices per document type. Tokens stay --pos- prefixed:
+   Frappe defines bare --card-bg / --text-muted on every www page, which would
+   silently win over any var(--x, fallback) written here. */
+.print-menu-group {
+    margin-bottom: 20px;
+}
+
+.print-menu-group:last-child {
+    margin-bottom: 0;
+}
+
+.print-menu-label {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--pos-text-primary, #1a1a1a);
+}
+
+.print-menu-row {
+    display: flex;
+    gap: 12px;
+}
+
+.print-menu-row .btn-pos {
+    flex: 1;
+}

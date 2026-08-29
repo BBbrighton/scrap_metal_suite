@@ -84,6 +84,11 @@
         journal_empty_completed: 'Drop-off closed — Reopen to add or modify bags.',
         noRecentWeight: 'No active receipt yet — finish weighing first.',
 
+        // Print menu - document type, then which company header to print under
+        print: 'Print',
+        printWeightSlip: 'Weight slip',
+        printDropoff: 'Drop-off',
+
         // Verification
         override_reason: 'Override Reason',
 
@@ -192,6 +197,11 @@
         dropoff_completed_banner: 'ใบดร็อปออฟเสร็จสิ้นแล้ว กดเปิดใหม่ด้านบนเพื่อเพิ่มถุง',
         journal_empty_completed: 'ใบดร็อปออฟปิดแล้ว กดเปิดใหม่เพื่อเพิ่มหรือแก้ไขถุง',
         noRecentWeight: 'ยังไม่มีใบชั่ง — กดเสร็จสิ้นการชั่งก่อน',
+
+        // Print menu
+        print: 'พิมพ์',
+        printWeightSlip: 'ใบชั่งรถ',
+        printDropoff: 'ใบส่งสินค้า',
 
         // Verification
         override_reason: 'เหตุผลในการข้าม',
