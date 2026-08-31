@@ -6,6 +6,10 @@ from frappe import _
 from frappe.utils import flt, nowdate
 
 from scrap_metal_suite.api.v1.auth import check_pos_operator
+from scrap_metal_suite.scrap_metal_suite.doctype.scale.scale import (
+    is_lock_holder_active,
+    release_locks_for_session,
+)
 
 
 def _calculate_variance(order):
@@ -827,9 +831,24 @@ def set_session_scale(session, scale):
     if not scale_data.is_active:
         frappe.throw(_("Scale '{0}' is not active").format(scale))
 
-    # Check if scale is already in use by another session
+    # Check if scale is already in use by another session.
+    #
+    # Only a session that is still Open can be weighing on this scale. A lock
+    # left behind by a closed (or vanished) session is a leftover, and nothing
+    # else in the app will ever clear it — so take it over here rather than
+    # blocking every future operator. Dropoff._validate_container_lock has
+    # taken this same view of its own lock since Wave 11; the scale lock was
+    # the one that still refused.
+    #
+    # This bit production twice on the same scale: ตราชั่งใหญ่ stayed locked to
+    # SES-2026-00149 (closed 2026-03-04) until it was cleared by hand on
+    # 2026-08-28, then came back on 2026-08-29 when the Scale record was
+    # recreated carrying the stale in_use values, and had to be cleared again.
     if scale_data.in_use and scale_data.in_use_by_session:
-        frappe.throw(_("Scale '{0}' is already in use by session {1}").format(scale, scale_data.in_use_by_session))
+        if is_lock_holder_active(scale_data.in_use_by_session):
+            frappe.throw(_("Scale '{0}' is already in use by session {1}").format(scale, scale_data.in_use_by_session))
+
+        release_locks_for_session(scale_data.in_use_by_session)
 
     # Set scale on session
     session_doc.scale = scale

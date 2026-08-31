@@ -7,6 +7,10 @@ from frappe import _
 from frappe.utils import flt, now_datetime, sanitize_html
 
 from scrap_metal_suite.api.v1.auth import check_production_operator
+from scrap_metal_suite.scrap_metal_suite.doctype.scale.scale import (
+    is_lock_holder_active,
+    release_locks_for_session,
+)
 
 
 @frappe.whitelist()
@@ -163,9 +167,15 @@ def set_session_scale(session, scale):
         frappe.throw(_("Scale '{0}' not found").format(scale))
     if not scale_data.is_active:
         frappe.throw(_("Scale '{0}' is not active").format(scale))
+    # A lock only counts while the session holding it is still Open — see the
+    # note in api/v1/pos.py:set_session_scale. Anything else is a leftover no
+    # other code path will ever clear, so take it over.
     if scale_data.in_use and scale_data.in_use_by_session:
-        frappe.throw(_("Scale '{0}' is already in use by session {1}").format(
-            scale, scale_data.in_use_by_session))
+        if is_lock_holder_active(scale_data.in_use_by_session):
+            frappe.throw(_("Scale '{0}' is already in use by session {1}").format(
+                scale, scale_data.in_use_by_session))
+
+        release_locks_for_session(scale_data.in_use_by_session)
 
     session_doc.scale = scale
     session_doc.save()

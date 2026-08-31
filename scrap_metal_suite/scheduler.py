@@ -4,6 +4,11 @@
 import frappe
 from frappe.utils import now_datetime, add_to_date, today
 
+from scrap_metal_suite.scrap_metal_suite.doctype.scale.scale import (
+    release_locks_for_session,
+    release_stale_locks,
+)
+
 
 def close_idle_sessions():
     """
@@ -30,11 +35,13 @@ def close_idle_sessions():
             doc.closed_by = "Administrator"
             doc.save(ignore_permissions=True)
 
-            if session.scale:
-                scale_doc = frappe.get_doc("Scale", session.scale)
-                scale_doc.in_use = 0
-                scale_doc.in_use_by_session = None
-                scale_doc.save(ignore_permissions=True)
+            # Sweep by `in_use_by_session`, not `session.scale`: a switch_scale
+            # moves the lock without rewriting the session's own field, so
+            # following it releases the wrong scale and strands the real one.
+            # (POSSession.on_update already fires this sweep on the save above;
+            # calling it again is a no-op, and keeps the release correct if
+            # that hook is ever bypassed.)
+            release_locks_for_session(session.name)
 
             closed_count += 1
             frappe.logger().info(
@@ -77,11 +84,8 @@ def close_idle_production_sessions():
             doc.closed_by = "Administrator"
             doc.save(ignore_permissions=True)
 
-            if session.scale:
-                scale_doc = frappe.get_doc("Scale", session.scale)
-                scale_doc.in_use = 0
-                scale_doc.in_use_by_session = None
-                scale_doc.save(ignore_permissions=True)
+            # Sweep by `in_use_by_session` — see close_idle_sessions above.
+            release_locks_for_session(session.name)
 
             closed_count += 1
             frappe.logger().info(
@@ -130,3 +134,28 @@ def expire_open_pos():
         frappe.logger().info(f"Auto-expired {len(expired_pos)} PO(s)")
 
     return len(expired_pos)
+
+
+def release_stale_scale_locks():
+    """Free scales still flagged in_use by a session that is no longer Open.
+
+    Every other release path keys off a session closing *now*. A lock that
+    outlives that moment has nothing left to clear it: a Scale record restored
+    or recreated carrying old `in_use` values, or a session closed by a path
+    that skipped the hook, blocks that scale for every operator until someone
+    edits the database by hand.
+
+    That is not hypothetical — ตราชั่งใหญ่ sat locked to SES-2026-00149 (closed
+    2026-03-04) until 2026-08-28, came back on 2026-08-29 when the Scale record
+    was recreated with the stale values still on it, and had to be cleared by
+    hand a second time on 2026-08-31. This sweep is what closes that loop.
+    """
+    released = release_stale_locks()
+
+    if released:
+        frappe.db.commit()
+        frappe.logger().info(
+            f"Released {len(released)} stale scale lock(s): {', '.join(released)}"
+        )
+
+    return released

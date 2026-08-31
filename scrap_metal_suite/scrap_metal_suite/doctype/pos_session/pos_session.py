@@ -6,6 +6,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
+from scrap_metal_suite.scrap_metal_suite.doctype.scale.scale import release_locks_for_session
+
 
 class POSSession(Document):
     def before_insert(self):
@@ -76,27 +78,18 @@ class POSSession(Document):
         pointing at this session, not just `self.scale`, in case a prior
         switch_scale moved the lock to a different scale.
         """
-        for scale_name in frappe.get_all(
-            "Scale",
-            filters={"in_use_by_session": self.name},
-            pluck="name",
-        ):
-            try:
-                # Direct DB write — at on_trash time, get_doc + save round-trip
-                # may fail because parent in-progress deletes can race with
-                # related-doc lookups. The scale's audit trail isn't critical
-                # for a session-cleanup release.
-                frappe.db.set_value(
-                    "Scale", scale_name,
-                    {"in_use": 0, "in_use_by_session": None},
-                    update_modified=False,
-                )
-            except Exception as e:
-                # Don't block the trash on a side-effect failure.
-                frappe.log_error(
-                    f"Failed to release scale {scale_name} on POS Session {self.name} trash: {e}",
-                    "POS Session on_trash scale release",
-                )
+        try:
+            # `use_db` writes direct — at on_trash time a get_doc + save
+            # round-trip may fail because parent in-progress deletes can race
+            # with related-doc lookups. The scale's audit trail isn't critical
+            # for a session-cleanup release.
+            release_locks_for_session(self.name, use_db=True)
+        except Exception as e:
+            # Don't block the trash on a side-effect failure.
+            frappe.log_error(
+                f"Failed to release scales on POS Session {self.name} trash: {e}",
+                "POS Session on_trash scale release",
+            )
 
     def _release_scale_lock(self):
         """Clear every scale lock pointing at this session.
@@ -115,12 +108,4 @@ class POSSession(Document):
         no longer guards on `self.scale` either - an empty field must not mean
         "nothing to release".
         """
-        for scale_name in frappe.get_all(
-            "Scale",
-            filters={"in_use_by_session": self.name},
-            pluck="name",
-        ):
-            scale_doc = frappe.get_doc("Scale", scale_name)
-            scale_doc.in_use = 0
-            scale_doc.in_use_by_session = None
-            scale_doc.save()
+        release_locks_for_session(self.name)

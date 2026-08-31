@@ -6,6 +6,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
+from scrap_metal_suite.scrap_metal_suite.doctype.scale.scale import release_locks_for_session
+
 
 class ProductionSession(Document):
     def before_insert(self):
@@ -61,11 +63,13 @@ class ProductionSession(Document):
         }
 
     def on_update(self):
-        """Handle scale release when session is closed"""
-        if self.status == "Closed" and self.scale:
-            in_use_by = frappe.db.get_value("Scale", self.scale, "in_use_by_session")
-            if in_use_by == self.name:
-                scale_doc = frappe.get_doc("Scale", self.scale)
-                scale_doc.in_use = 0
-                scale_doc.in_use_by_session = None
-                scale_doc.save()
+        """Handle scale release when session is closed.
+
+        Sweeps by `in_use_by_session` rather than following `self.scale`: an
+        empty `scale` field must not be read as "nothing to release", and a
+        lock can sit on a scale this session no longer names. Same reasoning as
+        POS Session._release_scale_lock, where following `self.scale` stranded
+        a production scale for six months.
+        """
+        if self.status == "Closed":
+            release_locks_for_session(self.name)
