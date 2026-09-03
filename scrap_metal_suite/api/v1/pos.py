@@ -735,6 +735,17 @@ def get_scales(usage_type=None, scale_type=None):
         order_by="scale_name asc"
     )
 
+    # A lock only counts while the session holding it is still open. The stored
+    # flag can outlive its holder - a session that closed without releasing, or
+    # a crash - and the terminal DISABLES any scale it sees as in use. Reporting
+    # the raw flag therefore hides a perfectly free scale for good: the
+    # self-healing release in `select_scale` only runs when somebody acquires
+    # the scale, and a disabled dropdown option can never be acquired.
+    for scale in scales:
+        if scale.get("in_use") and not is_lock_holder_active(scale.get("in_use_by_session")):
+            scale["in_use"] = 0
+            scale["in_use_by_session"] = None
+
     return scales
 
 
