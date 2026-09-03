@@ -19,6 +19,8 @@ doctype for manufacturing, and colliding with it would confuse every future
 reader.
 """
 
+import datetime
+
 import frappe
 from frappe.utils import add_to_date, get_datetime, nowdate
 
@@ -67,6 +69,19 @@ def _pickup_rows(query, exact_only=False):
     """.format(fields), {"start": start, "end": end, "q": "%{0}%".format(query)}, as_dict=True)
 
 
+def _scheduled_sort_key(row):
+    """Sort key that survives a missing schedule.
+
+    A delivery always carries a scheduled datetime; a collection may not, and
+    substituting "" for the empty ones made Python compare a str against a
+    datetime and raise. Both sides are merged before sorting, so any partial
+    search that matched one of each crashed - while an exact match returned
+    early and looked fine.
+    """
+    value = row.get("scheduled")
+    return value if isinstance(value, datetime.datetime) else datetime.datetime.min
+
+
 @frappe.whitelist()
 def lookup_visit(query):
     """Find what a truck is here for, on either side of the yard.
@@ -105,7 +120,7 @@ def lookup_visit(query):
             r["doctype"] = doctype
             rows.append(r)
 
-    rows.sort(key=lambda r: (r.get("scheduled") or ""), reverse=True)
+    rows.sort(key=_scheduled_sort_key, reverse=True)
     return rows[:10]
 
 
