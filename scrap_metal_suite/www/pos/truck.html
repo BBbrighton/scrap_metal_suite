@@ -785,6 +785,11 @@ const state = {
     theme: localStorage.getItem('posTheme') || 'dark',
     language: localStorage.getItem('posLanguage') || 'en',
     dropoff: null,
+    // What this truck is here for. Deliveries and collections use the same
+    // weighbridge in opposite order, so one screen serves both and this decides
+    // how it behaves. Null until something is scanned; a Dropoff keeps every
+    // existing code path exactly as it was.
+    visit: null,
     weightType: null,
     remarks: '',
     capturedPhotoData: null,
@@ -951,19 +956,27 @@ function closeScanner() { POS_SCANNER.close(); }
 function submitManualDropoff() { POS_SCANNER.submitManual(searchAndSelectDropoff); }
 
 async function searchAndSelectDropoff(query) {
-    const parsedQuery = POS_SCANNER.parseQRValue(query, ['/app/dropoff/']);
+    const parsedQuery = POS_SCANNER.parseQRValue(query, ['/app/dropoff/', '/app/pickup/']);
 
     try {
-        const data = await callAPI('scrap_metal_suite.api.v1.dropoff.lookup_dropoff', { query: parsedQuery });
+        const data = await callAPI('scrap_metal_suite.api.v1.weighbridge.lookup_visit', { query: parsedQuery });
+        const rows = (data.message || []);
 
-        if (data.message && data.message.length > 0) {
-            const d = data.message[0];
-            selectDropoff(d.name, d.dropoff_scheduled_start || '', d.license_plate || '', d.supplier_name || '', d.status || 'Draft');
+        if (rows.length === 1) {
+            const d = rows[0];
+            selectVisit(d.doctype, d.name, d.scheduled || '', d.license_plate || '',
+                        d.party_name || '', d.status || 'Draft');
+        } else if (rows.length > 1) {
+            // A plate matching a delivery AND a collection is legitimate. Show
+            // both rather than choosing: weighing against the wrong document
+            // would not surface until settlement.
+            document.getElementById('dropoffSearch').value = parsedQuery;
+            searchDropoff(parsedQuery);
         } else {
             frappe.msgprint(t('noDropoffsFound') + ': ' + parsedQuery);
         }
     } catch (error) {
-        console.error('Dropoff search error:', error);
+        console.error('Visit search error:', error);
         frappe.msgprint(t('errorSearchingDropoff'));
     }
 }
@@ -1046,9 +1059,15 @@ function handleDropoffSearchKeydown(event) {
             }
             if (dropoffActiveIndex >= 0 && items[dropoffActiveIndex]) {
                 const data = items[dropoffActiveIndex].dataset;
-                selectDropoff(
+                // Through selectVisit, not selectDropoff: choosing with the
+                // keyboard must set the visit type exactly as clicking does, or
+                // a collection would be weighed as a delivery.
+                selectVisit(
+                    data.doctype || 'Dropoff',
                     data.name || '',
-                    data.dropoffDate || '',
+                    // The row sets data-dropoff-start; this read dropoffDate and
+                    // so was always undefined - the date never reached the card.
+                    data.dropoffStart || '',
                     data.licensePlate || '',
                     data.supplierName || '',
                     data.status || 'Draft'
@@ -1066,7 +1085,7 @@ function handleDropoffSearchKeydown(event) {
 async function searchDropoff(query) {
     clearTimeout(searchTimeout);
     const resultsDiv = document.getElementById('dropoffResults');
-    const parsedQuery = POS_SCANNER.parseQRValue(query, ['/app/dropoff/']);
+    const parsedQuery = POS_SCANNER.parseQRValue(query, ['/app/dropoff/', '/app/pickup/']);
 
     if (parsedQuery.length < 2) {
         clearDropoffSearchResults();
@@ -1075,15 +1094,19 @@ async function searchDropoff(query) {
 
     searchTimeout = setTimeout(async () => {
         try {
-            const data = await callAPI('scrap_metal_suite.api.v1.dropoff.lookup_dropoff', { query: parsedQuery });
+            const data = await callAPI('scrap_metal_suite.api.v1.weighbridge.lookup_visit', { query: parsedQuery });
 
             if (data.message && data.message.length > 0) {
                 dropoffSearchResults = data.message;
                 dropoffActiveIndex = -1;
+                // Rows arrive from both sides of the yard, so each says which it
+                // is. The same plate can appear twice - a truck may deliver in
+                // the morning and collect in the afternoon - and picking one for
+                // the operator would weigh it against the wrong document.
                 resultsDiv.innerHTML = dropoffSearchResults.map((d, index) => `
-                    <div class="dropoff-result" data-index="${index}" data-name="${d.name}" data-dropoff-start="${d.dropoff_scheduled_start || ''}" data-license-plate="${d.license_plate || ''}" data-supplier-name="${d.supplier_name || ''}" data-status="${d.status || 'Draft'}" onclick="selectDropoff('${d.name}', '${d.dropoff_scheduled_start || ''}', '${d.license_plate || ''}', '${d.supplier_name || ''}', '${d.status || 'Draft'}')">
+                    <div class="dropoff-result" data-index="${index}" data-name="${d.name}" data-doctype="${d.doctype}" data-dropoff-start="${d.scheduled || ''}" data-license-plate="${d.license_plate || ''}" data-supplier-name="${d.party_name || ''}" data-status="${d.status || 'Draft'}" onclick="selectVisit('${d.doctype}', '${d.name}', '${d.scheduled || ''}', '${d.license_plate || ''}', '${(d.party_name || '').replace(/'/g, "\\'")}', '${d.status || 'Draft'}')">
                         <span class="dropoff-id">${d.name}</span>
-                        <span class="dropoff-details">${d.supplier_name || ''} ${d.license_plate ? '| ' + d.license_plate : ''} ${d.status === 'Closed' ? '| ✓' : ''}</span>
+                        <span class="dropoff-details">${d.doctype === 'Pickup' ? '&#128229; ' + (t('pickup') || 'Pickup') : '&#128230; ' + (t('dropoff') || 'Dropoff')} | ${d.party_name || ''} ${d.license_plate ? '| ' + d.license_plate : ''} ${d.status === 'Closed' ? '| \u2713' : ''}</span>
                     </div>
                 `).join('');
                 resultsDiv.style.display = 'block';
@@ -1101,6 +1124,18 @@ async function searchDropoff(query) {
             resultsDiv.style.display = 'block';
         }
     }, 300);
+}
+
+/**
+ * Pick what this truck is here for, then load the delivery or collection.
+ *
+ * selectDropoff still does all the work; this only decides which way round the
+ * screen should behave first. A Dropoff therefore follows exactly the path it
+ * always has.
+ */
+async function selectVisit(doctype, name, scheduled, licensePlate, partyName, status) {
+    await loadVisitFlow(doctype, name);
+    selectDropoff(name, scheduled, licensePlate, partyName, status);
 }
 
 function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
@@ -1275,6 +1310,10 @@ function toggleDropoffDetails(event) {
 
 function clearDropoff() {
     state.dropoff = null;
+    // Clear the visit too, or the next truck inherits the last one's direction
+    // and a delivery gets weighed as a collection.
+    state.visit = null;
+    applyVisitFlowToUI();
     resetWeights();
 
     // Show search input, hide dropoff card
@@ -3010,6 +3049,76 @@ async function saveTareWeight() {
     showWeightConfirmModal('tare', weight);
 }
 
+// =============================================================================
+// WHICH WAY IS THIS TRUCK GOING?
+//
+//   Dropoff (buy)   arrives LOADED  -> gross, unload, -> tare (empty)
+//   Pickup  (sell)  arrives EMPTY   -> tare,  load,   -> gross (loaded)
+//
+// Same two weighings, opposite order, different thing to check them against.
+// Everything below reads the flow rather than assuming a delivery.
+// =============================================================================
+
+/** True while the terminal is working a collection rather than a delivery. */
+function isPickup() {
+    return !!(state.visit && state.visit.doctype === 'Pickup');
+}
+
+/** The weighing an operator does FIRST for whatever is loaded. */
+function firstWeightType() {
+    return isPickup() ? 'tare' : 'gross';
+}
+
+/** Which API records a weight for the visit in hand. */
+function weightRecordMethod() {
+    return isPickup()
+        ? 'scrap_metal_suite.api.v1.pickup.record_pickup_weight'
+        : 'scrap_metal_suite.api.v1.dropoff.record_truck_weight';
+}
+
+/**
+ * Load a visit's flow from the server and remember it.
+ *
+ * Held server-side on purpose: the order of the weighings is a property of the
+ * trade, not of this screen, and one definition is what stops the two sides
+ * drifting apart in the UI.
+ */
+async function loadVisitFlow(doctype, name) {
+    try {
+        const res = await callAPI('scrap_metal_suite.api.v1.weighbridge.get_visit_flow', { doctype });
+        state.visit = Object.assign({ doctype: doctype, name: name }, res.message || {});
+    } catch (e) {
+        // A delivery is the overwhelmingly common case and the behaviour this
+        // screen has always had, so fall back to it rather than blocking a weigh.
+        console.error('Could not load visit flow, defaulting to Dropoff:', e.message);
+        state.visit = { doctype: 'Dropoff', name: name };
+    }
+    applyVisitFlowToUI();
+}
+
+/** Re-label and re-order the screen for the visit in hand. */
+function applyVisitFlowToUI() {
+    const pickup = isPickup();
+
+    // The tab names stay Gross and Tare - they are accurate either way. What
+    // changes is which one the operator reaches for first, so that tab leads.
+    const headers = document.querySelector('.weight-tab-headers');
+    const tabGross = document.getElementById('tabGross');
+    const tabTare = document.getElementById('tabTare');
+    if (headers && tabGross && tabTare) {
+        headers.appendChild(pickup ? tabGross : tabTare);
+    }
+
+    // The counterparty is a supplier on the way in and a customer on the way out.
+    const partyLabel = document.querySelector('#dropoffDetailsCard .detail-label-supplier');
+    if (partyLabel) {
+        partyLabel.textContent = pickup ? (t('customer') || 'Customer')
+                                        : (t('supplier') || 'Supplier');
+    }
+
+    switchWeightTab(firstWeightType());
+}
+
 async function saveWeightByType(weightType, weight, remarks, reweightReason) {
     if (!weight || isNaN(weight) || weight <= 0) {
         frappe.msgprint(t('enterValidWeight') || 'Please enter a valid weight greater than 0');
@@ -3022,20 +3131,27 @@ async function saveWeightByType(weightType, weight, remarks, reweightReason) {
     }
 
     try {
+        // The two sides take the same arguments under different names, because
+        // each API belongs to its own document.
         const params = {
             session: state.session,
-            dropoff: state.dropoff.name,
             weight_type: weightType,
             weight: weight,
             entry_method: state.weightCapturedFromScale ? 'Scale (Auto)' : 'Manual Entry'  // Phase 8D
         };
+        if (isPickup()) {
+            params.pickup = state.dropoff.name;
+        } else {
+            params.dropoff = state.dropoff.name;
+        }
 
         if (remarks) params.remarks = remarks;
         if (reweightReason) params.reweight_reason = reweightReason;
 
-        console.log('Calling record_truck_weight with params:', params);
+        const method = weightRecordMethod();
+        console.log('Recording weight via', method, params);
 
-        const response = await callAPI('scrap_metal_suite.api.v1.dropoff.record_truck_weight', params);
+        const response = await callAPI(method, params);
 
         if (response.message) {
             // Update state
