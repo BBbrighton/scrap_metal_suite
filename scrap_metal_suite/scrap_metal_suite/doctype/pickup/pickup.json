@@ -7,85 +7,290 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "naming_series", "customer", "customer_name", "column_break_head", "status",
-  "scheduled_start", "section_break_vehicle", "license_plate", "driver_name",
-  "column_break_vehicle", "driver_id", "section_break_items", "items",
-  "total_agreed_weight", "section_break_weigh_in", "tare_weight",
-  "tare_weight_time", "column_break_weigh_in", "tare_weight_scale",
-  "tare_weight_operator", "section_break_weigh_out", "gross_weight",
-  "gross_weight_time", "column_break_weigh_out", "gross_weight_scale",
-  "gross_weight_operator", "section_break_net", "net_weight",
-  "weight_variance_percent", "column_break_net", "verification_status",
-  "section_break_links", "sales_order", "column_break_links", "delivery_note",
-  "section_break_audit", "session", "pos_profile", "column_break_audit", "remarks"
+  "naming_series",
+  "customer",
+  "customer_name",
+  "column_break_head",
+  "status",
+  "scheduled_start",
+  "section_break_vehicle",
+  "license_plate",
+  "driver_name",
+  "column_break_vehicle",
+  "driver_id",
+  "section_break_items",
+  "items",
+  "total_agreed_weight",
+  "section_break_weigh_in",
+  "tare_weight",
+  "tare_weight_time",
+  "column_break_weigh_in",
+  "tare_weight_scale",
+  "tare_weight_operator",
+  "section_break_weigh_out",
+  "gross_weight",
+  "gross_weight_time",
+  "column_break_weigh_out",
+  "gross_weight_scale",
+  "gross_weight_operator",
+  "section_break_net",
+  "net_weight",
+  "weight_variance_percent",
+  "column_break_net",
+  "verification_status",
+  "section_break_links",
+  "sales_order",
+  "column_break_links",
+  "delivery_note",
+  "section_break_audit",
+  "session",
+  "pos_profile",
+  "column_break_audit",
+  "remarks"
  ],
  "fields": [
-  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series",
-   "options": "PU-.YY..MM..DD.-.###", "reqd": 1, "set_only_once": 1},
-  {"fieldname": "customer", "fieldtype": "Link", "in_standard_filter": 1,
-   "label": "Customer", "options": "Customer", "reqd": 1},
-  {"fetch_from": "customer.customer_name", "fieldname": "customer_name",
-   "fieldtype": "Data", "label": "Customer Name", "read_only": 1},
-  {"fieldname": "column_break_head", "fieldtype": "Column Break"},
-  {"default": "Scheduled", "fieldname": "status", "fieldtype": "Select",
-   "in_list_view": 1, "in_standard_filter": 1, "label": "Status",
-   "options": "Scheduled\nIn Progress\nCompleted\nCancelled", "reqd": 1},
-  {"fieldname": "scheduled_start", "fieldtype": "Datetime", "label": "Scheduled"},
-
-  {"fieldname": "section_break_vehicle", "fieldtype": "Section Break", "label": "Vehicle & Driver"},
-  {"fieldname": "license_plate", "fieldtype": "Data", "in_list_view": 1, "label": "License Plate"},
-  {"description": "Recorded because goods are leaving the site.",
-   "fieldname": "driver_name", "fieldtype": "Data", "label": "Driver Name"},
-  {"fieldname": "column_break_vehicle", "fieldtype": "Column Break"},
-  {"fieldname": "driver_id", "fieldtype": "Data", "label": "Driver ID"},
-
-  {"fieldname": "section_break_items", "fieldtype": "Section Break", "label": "Agreed Items"},
-  {"fieldname": "items", "fieldtype": "Table", "label": "Items", "options": "Pickup Item"},
-  {"description": "Sum of the agreed item weights. Checked against what the weighbridge measured.",
-   "fieldname": "total_agreed_weight", "fieldtype": "Float", "label": "Total Agreed Weight (kg)",
-   "read_only": 1},
-
-  {"description": "The truck arrives EMPTY and is weighed on the way in.",
-   "fieldname": "section_break_weigh_in", "fieldtype": "Section Break",
-   "label": "Weigh In - Empty Truck (Tare)"},
-  {"fieldname": "tare_weight", "fieldtype": "Float", "label": "Tare Weight (kg)", "read_only": 1},
-  {"fieldname": "tare_weight_time", "fieldtype": "Datetime", "label": "Time", "read_only": 1},
-  {"fieldname": "column_break_weigh_in", "fieldtype": "Column Break"},
-  {"fieldname": "tare_weight_scale", "fieldtype": "Link", "label": "Scale", "options": "Scale", "read_only": 1},
-  {"fieldname": "tare_weight_operator", "fieldtype": "Link", "label": "Operator", "options": "User", "read_only": 1},
-
-  {"description": "The truck leaves LOADED and is weighed on the way out.",
-   "fieldname": "section_break_weigh_out", "fieldtype": "Section Break",
-   "label": "Weigh Out - Loaded Truck (Gross)"},
-  {"fieldname": "gross_weight", "fieldtype": "Float", "label": "Gross Weight (kg)", "read_only": 1},
-  {"fieldname": "gross_weight_time", "fieldtype": "Datetime", "label": "Time", "read_only": 1},
-  {"fieldname": "column_break_weigh_out", "fieldtype": "Column Break"},
-  {"fieldname": "gross_weight_scale", "fieldtype": "Link", "label": "Scale", "options": "Scale", "read_only": 1},
-  {"fieldname": "gross_weight_operator", "fieldtype": "Link", "label": "Operator", "options": "User", "read_only": 1},
-
-  {"fieldname": "section_break_net", "fieldtype": "Section Break", "label": "What Actually Left"},
-  {"description": "Gross out minus tare in - the weight the weighbridge says left the site.",
-   "fieldname": "net_weight", "fieldtype": "Float", "label": "Net Weight (kg)", "read_only": 1},
-  {"fieldname": "weight_variance_percent", "fieldtype": "Percent",
-   "label": "Variance vs Agreed (%)", "read_only": 1},
-  {"fieldname": "column_break_net", "fieldtype": "Column Break"},
-  {"default": "Pending", "fieldname": "verification_status", "fieldtype": "Select",
-   "in_standard_filter": 1, "label": "Verification",
-   "options": "Pending\nVerified\nNeeds Review", "read_only": 1},
-
-  {"collapsible": 1, "fieldname": "section_break_links", "fieldtype": "Section Break",
-   "label": "Sales Documents (linked once the sales side exists)"},
-  {"description": "Empty for now. Populated when pickups are raised against an order.",
-   "fieldname": "sales_order", "fieldtype": "Link", "label": "Sales Order", "options": "Sales Order"},
-  {"fieldname": "column_break_links", "fieldtype": "Column Break"},
-  {"description": "Empty until stock is tracked. Generated from this Pickup.",
-   "fieldname": "delivery_note", "fieldtype": "Link", "label": "Delivery Note", "options": "Delivery Note"},
-
-  {"collapsible": 1, "fieldname": "section_break_audit", "fieldtype": "Section Break", "label": "Audit"},
-  {"fieldname": "session", "fieldtype": "Link", "label": "POS Session", "options": "POS Session", "read_only": 1},
-  {"fieldname": "pos_profile", "fieldtype": "Link", "label": "POS Profile", "options": "POS Profile Scrap", "read_only": 1},
-  {"fieldname": "column_break_audit", "fieldtype": "Column Break"},
-  {"fieldname": "remarks", "fieldtype": "Small Text", "label": "Remarks"}
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PU-.YY..MM..DD.-.###",
+   "reqd": 1,
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_head",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Scheduled",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Scheduled\nIn Progress\nCompleted\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "scheduled_start",
+   "fieldtype": "Datetime",
+   "label": "Scheduled"
+  },
+  {
+   "fieldname": "section_break_vehicle",
+   "fieldtype": "Section Break",
+   "label": "Vehicle & Driver"
+  },
+  {
+   "fieldname": "license_plate",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "License Plate"
+  },
+  {
+   "description": "Recorded because goods are leaving the site.",
+   "fieldname": "driver_name",
+   "fieldtype": "Data",
+   "label": "Driver Name"
+  },
+  {
+   "fieldname": "column_break_vehicle",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "driver_id",
+   "fieldtype": "Data",
+   "label": "Driver ID"
+  },
+  {
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Agreed Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Pickup Item"
+  },
+  {
+   "description": "Sum of the agreed item weights. Checked against what the weighbridge measured.",
+   "fieldname": "total_agreed_weight",
+   "fieldtype": "Float",
+   "label": "Total Agreed Weight (kg)",
+   "read_only": 1
+  },
+  {
+   "description": "The truck arrives EMPTY and is weighed on the way in.",
+   "fieldname": "section_break_weigh_in",
+   "fieldtype": "Section Break",
+   "label": "Weigh In - Empty Truck (Tare)"
+  },
+  {
+   "fieldname": "tare_weight",
+   "fieldtype": "Float",
+   "label": "Tare Weight (kg)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tare_weight_time",
+   "fieldtype": "Datetime",
+   "label": "Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_weigh_in",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "tare_weight_scale",
+   "fieldtype": "Link",
+   "label": "Scale",
+   "options": "Scale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tare_weight_operator",
+   "fieldtype": "Link",
+   "label": "Operator",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "description": "The truck leaves LOADED and is weighed on the way out.",
+   "fieldname": "section_break_weigh_out",
+   "fieldtype": "Section Break",
+   "label": "Weigh Out - Loaded Truck (Gross)"
+  },
+  {
+   "fieldname": "gross_weight",
+   "fieldtype": "Float",
+   "label": "Gross Weight (kg)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gross_weight_time",
+   "fieldtype": "Datetime",
+   "label": "Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_weigh_out",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gross_weight_scale",
+   "fieldtype": "Link",
+   "label": "Scale",
+   "options": "Scale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gross_weight_operator",
+   "fieldtype": "Link",
+   "label": "Operator",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_net",
+   "fieldtype": "Section Break",
+   "label": "What Actually Left"
+  },
+  {
+   "description": "Gross out minus tare in - the weight the weighbridge says left the site.",
+   "fieldname": "net_weight",
+   "fieldtype": "Float",
+   "label": "Net Weight (kg)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weight_variance_percent",
+   "fieldtype": "Percent",
+   "label": "Variance vs Agreed (%)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_net",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "verification_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Verification",
+   "options": "Pending\nVerified\nNeeds Review",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_links",
+   "fieldtype": "Section Break",
+   "label": "Sales Documents (linked once the sales side exists)"
+  },
+  {
+   "description": "Empty for now. Populated when pickups are raised against an order.",
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "column_break_links",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Empty until stock is tracked. Generated from this Pickup.",
+   "fieldname": "delivery_note",
+   "fieldtype": "Link",
+   "label": "Delivery Note",
+   "options": "Delivery Note"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit"
+  },
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "label": "POS Session",
+   "options": "POS Session",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pos_profile",
+   "fieldtype": "Link",
+   "label": "POS Profile",
+   "options": "POS Profile Scrap",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_audit",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
@@ -96,11 +301,36 @@
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
-  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1,
-   "report": 1, "role": "System Manager", "share": 1, "write": 1},
-  {"create": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1,
-   "role": "POS Manager", "share": 1, "write": 1},
-  {"create": 1, "print": 1, "read": 1, "report": 1, "role": "POS Operator", "write": 1}
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "POS Operator",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "SMT Accountant"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "SMT Accounting Manager"
+  }
  ],
  "search_fields": "customer,license_plate,status",
  "sort_field": "creation",
