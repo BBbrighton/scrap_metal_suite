@@ -200,7 +200,25 @@ def get_pickup_details(pickup):
     check_pos_operator()
 
     doc = frappe.get_doc("Pickup", pickup)
+
+    # Same shape the buy side returns, so the terminal renders photos through
+    # exactly the code it already uses.
+    truck_weights = frappe.get_all(
+        "Truck Weight",
+        filters={"pickup": pickup},
+        fields=["name", "weight", "weight_type", "weighed_at", "is_reweight"],
+        order_by="creation asc",
+    )
+    for tw in truck_weights:
+        tw["photos"] = frappe.get_all(
+            "Weight Photo",
+            filters={"parent": tw.name, "parenttype": "Truck Weight"},
+            fields=["name", "photo", "file_name", "captured_at", "weight_type"],
+            order_by="idx asc",
+        )
+
     return {
+        "truck_weights": truck_weights,
         "name": doc.name,
         "customer": doc.customer,
         "customer_name": doc.customer_name,

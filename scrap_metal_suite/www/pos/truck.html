@@ -1177,16 +1177,45 @@ function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
     loadWeightData(name);
 }
 
+/**
+ * Present a collection's details in the shape this screen already renders.
+ *
+ * The two sides name the same ideas differently - a delivery has expected items
+ * and an indicated total, a collection has agreed items and an agreed total -
+ * so the mapping lives here rather than making either API pretend to be the
+ * other.
+ */
+function adaptPickupDetails(d) {
+    return Object.assign({}, d, {
+        total_indicated_weight: d.total_agreed_weight || 0,
+        expected_items: (d.items || []).map(function (r) {
+            return {
+                item: r.item_code,
+                item_name: r.item_name,
+                indicated_weight: r.qty
+            };
+        })
+    });
+}
+
 // Fetch dropoff details from API
 async function fetchDropoffDetails(dropoffName) {
     try {
-        const response = await frappe.call({
-            method: 'scrap_metal_suite.api.v1.dropoff.get_dropoff_details',
-            args: { dropoff: dropoffName }
-        });
+        // A collection has its own details endpoint returning the agreed items
+        // and both weighings; a delivery keeps the one it always used.
+        const response = isPickup()
+            ? await frappe.call({
+                method: 'scrap_metal_suite.api.v1.pickup.get_pickup_details',
+                args: { pickup: dropoffName }
+              })
+            : await frappe.call({
+                method: 'scrap_metal_suite.api.v1.dropoff.get_dropoff_details',
+                args: { dropoff: dropoffName }
+              });
 
         if (response.message) {
-            const details = response.message;
+            const details = isPickup() ? adaptPickupDetails(response.message)
+                                       : response.message;
 
             // Phase 8B: Store variance thresholds and indicated weight from dropoff
             if (state.dropoff) {
@@ -1366,9 +1395,11 @@ function clearDropoff() {
 // ===== Weight Data =====
 async function loadWeightData(dropoffName) {
     try {
-        const response = await callAPI('scrap_metal_suite.api.v1.dropoff.get_dropoff_verification', {
-            dropoff: dropoffName
-        });
+        // get_pickup_details already carries both weighings, the agreed total
+        // and the variance, so a collection needs no separate verification call.
+        const response = isPickup()
+            ? await callAPI('scrap_metal_suite.api.v1.pickup.get_pickup_details', { pickup: dropoffName })
+            : await callAPI('scrap_metal_suite.api.v1.dropoff.get_dropoff_verification', { dropoff: dropoffName });
 
         if (response.message) {
             state.weights = {
@@ -1683,13 +1714,12 @@ async function saveWeight() {
     }
 
     try {
-        const response = await callAPI('scrap_metal_suite.api.v1.dropoff.record_truck_weight', {
+        const response = await callAPI(weightRecordMethod(), Object.assign({
             session: state.session,
-            dropoff: state.dropoff.name,
             weight_type: state.weightType,
             weight: weight,
             entry_method: state.weightCapturedFromScale ? 'Scale (Auto)' : 'Manual Entry'  // Phase 8D
-        });
+        }, visitParam()));
 
         if (response.message) {
             state.weights = {
@@ -2050,14 +2080,15 @@ async function saveAllPhotos() {
 
             if (uploadResult.message && uploadResult.message.file_url) {
                 // Save to Weight Photo child table
-                await callAPI('scrap_metal_suite.api.v1.dropoff.save_weight_photo', {
+                // `dropoff` is optional on this endpoint and would be wrong for a
+                // collection; the photo hangs off parent_doc either way.
+                await callAPI('scrap_metal_suite.api.v1.dropoff.save_weight_photo', Object.assign({
                     parent_doctype: 'Truck Weight',
                     parent_doc: tw.name,
                     photo_url: uploadResult.message.file_url,
                     weight_type: 'Truck ' + currentPhotoWeightType,
-                    dropoff: state.dropoff.name,
                     session: state.session
-                });
+                }, isPickup() ? {} : { dropoff: state.dropoff.name }));
                 savedCount++;
             }
         }
@@ -3069,6 +3100,11 @@ function firstWeightType() {
     return isPickup() ? 'tare' : 'gross';
 }
 
+/** The parameter naming this visit, for whichever API is being called. */
+function visitParam() {
+    return isPickup() ? { pickup: state.dropoff.name } : { dropoff: state.dropoff.name };
+}
+
 /** Which API records a weight for the visit in hand. */
 function weightRecordMethod() {
     return isPickup()
@@ -3935,9 +3971,10 @@ async function confirmCompleteDropoff() {
     if (!state.dropoff) return;
 
     try {
-        const response = await callAPI('scrap_metal_suite.api.v1.dropoff.complete_dropoff', {
-            dropoff: state.dropoff.name
-        });
+        const response = await callAPI(
+            isPickup() ? 'scrap_metal_suite.api.v1.pickup.complete_pickup'
+                       : 'scrap_metal_suite.api.v1.dropoff.complete_dropoff',
+            visitParam());
 
         if (response.message) {
             closeCompleteDropoffModal();
