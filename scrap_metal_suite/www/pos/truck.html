@@ -1188,11 +1188,14 @@ function selectDropoff(name, dropoffDate, licensePlate, supplierName, status) {
 function adaptPickupDetails(d) {
     return Object.assign({}, d, {
         total_indicated_weight: d.total_agreed_weight || 0,
+        // renderExpectedItems reads `weight` and `uom`; anything else shows as "-".
         expected_items: (d.items || []).map(function (r) {
             return {
                 item: r.item_code,
+                item_code: r.item_code,
                 item_name: r.item_name,
-                indicated_weight: r.qty
+                weight: r.qty,
+                uom: r.uom || 'Kg'
             };
         })
     });
@@ -3146,10 +3149,14 @@ function applyVisitFlowToUI() {
     }
 
     // The counterparty is a supplier on the way in and a customer on the way out.
-    const partyLabel = document.querySelector('#dropoffDetailsCard .detail-label-supplier');
+    // The data-i18n key moves with the text, so a later re-translation - a
+    // language toggle, say - does not quietly put "Supplier" back on a collection.
+    const partyLabel = document.querySelector(
+        '#dropoffCardBody [data-i18n="supplier"], #dropoffCardBody [data-i18n="customer"]');
     if (partyLabel) {
-        partyLabel.textContent = pickup ? (t('customer') || 'Customer')
-                                        : (t('supplier') || 'Supplier');
+        const key = pickup ? 'customer' : 'supplier';
+        partyLabel.setAttribute('data-i18n', key);
+        partyLabel.textContent = t(key) || (pickup ? 'Customer' : 'Supplier');
     }
 
     switchWeightTab(firstWeightType());

@@ -183,6 +183,9 @@ const POS_I18N = (function() {
 
             // ===== Supplier =====
             supplier: 'Supplier',
+            customer: 'Customer',
+            visitDropoff: 'Dropoff',
+            visitPickup: 'Pickup',
             licensePlate: 'License Plate',
 
             // ===== Status =====
@@ -382,6 +385,7 @@ const POS_I18N = (function() {
             enterDropoffId: 'Enter Dropoff ID...',
             dropoffId: 'Dropoff ID:',
             supplier: 'Supplier:',
+            customer: 'Customer:',
             totalWeight: 'Total Weight:',
             clearDropoff: 'Clear',
             weighItems: 'Weigh Items',
@@ -597,6 +601,9 @@ const POS_I18N = (function() {
 
             // ===== Supplier =====
             supplier: 'ผู้ขาย',
+            customer: 'ลูกค้า',
+            visitDropoff: 'รับเข้า',
+            visitPickup: 'จ่ายออก',
             licensePlate: 'ป้ายทะเบียน',
 
             // ===== Status =====
@@ -797,6 +804,7 @@ const POS_I18N = (function() {
             enterDropoffId: 'กรอก ID รอบรับสินค้า...',
             dropoffId: 'รหัสรอบรับ:',
             supplier: 'ผู้ขาย:',
+            customer: 'ลูกค้า:',
             totalWeight: 'น้ำหนักรวม:',
             clearDropoff: 'ล้าง',
             weighItems: 'ชั่งน้ำหนักสินค้า',
