@@ -33,6 +33,10 @@ FALLBACKS = {
 	"indicated_variance_threshold_percent": 0.1,
 	"sorting_variance_threshold_percent": 0.1,
 	"container_weight_variance_threshold_pct": 0.1,
+	# Sale side: agreed item weights vs what the weighbridge measured leaving.
+	# Looser than the buy side by default - the buy side weighs what it received,
+	# while this compares a figure agreed in advance against a real truck.
+	"pickup_variance_threshold_percent": 1.0,
 	"fulfillment_under_percent": 98.0,
 	"fulfillment_over_percent": 102.0,
 }

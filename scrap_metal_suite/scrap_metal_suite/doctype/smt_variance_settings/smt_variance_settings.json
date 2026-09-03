@@ -14,6 +14,7 @@
   "container_weight_variance_threshold_pct",
   "section_sorting",
   "sorting_variance_threshold_percent",
+  "pickup_variance_threshold_percent",
   "section_fulfillment",
   "fulfillment_under_percent",
   "column_break_fulfillment",
@@ -80,6 +81,13 @@
    "reqd": 1
   },
   {
+   "default": "1.0",
+   "description": "Sale side. How far the weighbridge may differ from the agreed item weights before a Pickup is flagged for review.",
+   "fieldname": "pickup_variance_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Pickup Variance Threshold (%)"
+  },
+  {
    "fieldname": "section_fulfillment",
    "fieldtype": "Section Break",
    "label": "Order Fulfilment / การส่งของตามออเดอร์"
@@ -116,11 +124,41 @@
  "name": "SMT Variance Settings",
  "owner": "Administrator",
  "permissions": [
-  {"create": 1, "email": 1, "print": 1, "read": 1, "role": "System Manager", "share": 1, "write": 1},
-  {"create": 1, "email": 1, "print": 1, "read": 1, "role": "SMT Manager", "share": 1, "write": 1},
-  {"create": 1, "email": 1, "print": 1, "read": 1, "role": "Production Manager", "share": 1, "write": 1},
-  {"read": 1, "role": "SMT Accounting Manager"},
-  {"read": 1, "role": "POS Manager"}
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "SMT Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Production Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "SMT Accounting Manager"
+  },
+  {
+   "read": 1,
+   "role": "POS Manager"
+  }
  ],
  "quick_entry": 0,
  "sort_field": "modified",

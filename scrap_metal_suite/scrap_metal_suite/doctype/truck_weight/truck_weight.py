@@ -2,13 +2,28 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 
 class TruckWeight(Document):
     def validate(self):
+        self.validate_exactly_one_parent()
         self.validate_weight()
         self.validate_scale_max()
+
+    def validate_exactly_one_parent(self):
+        """A weighing belongs to a delivery or a collection, never both or neither.
+
+        `dropoff` used to be mandatory at the field level. The sale side weighs
+        the same trucks on the same scale, so that field is now optional and the
+        guarantee lives here instead - otherwise a weighing could end up
+        attached to nothing and silently drop out of both sides' totals.
+        """
+        if self.dropoff and self.pickup:
+            frappe.throw(_("A truck weight cannot belong to both a Dropoff and a Pickup"))
+        if not self.dropoff and not self.pickup:
+            frappe.throw(_("A truck weight must belong to either a Dropoff or a Pickup"))
 
     def validate_weight(self):
         """Ensure weight is positive"""

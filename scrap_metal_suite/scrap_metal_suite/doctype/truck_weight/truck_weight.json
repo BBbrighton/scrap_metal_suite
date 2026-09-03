@@ -7,6 +7,7 @@
  "field_order": [
   "naming_series",
   "dropoff",
+  "pickup",
   "license_plate",
   "supplier_name",
   "column_break_header",
@@ -47,7 +48,16 @@
    "in_standard_filter": 1,
    "label": "Drop-off",
    "options": "Dropoff",
-   "reqd": 1
+   "reqd": 0,
+   "depends_on": "eval:!doc.pickup"
+  },
+  {
+   "depends_on": "eval:!doc.dropoff",
+   "description": "Set when this weighing belongs to a collection rather than a delivery.",
+   "fieldname": "pickup",
+   "fieldtype": "Link",
+   "label": "Pickup",
+   "options": "Pickup"
   },
   {
    "fetch_from": "dropoff.license_plate",
