@@ -1137,7 +1137,7 @@ async function searchDropoff(query) {
                 resultsDiv.innerHTML = dropoffSearchResults.map((d, index) => `
                     <div class="dropoff-result" data-index="${index}" data-name="${d.name}" data-doctype="${d.doctype}" data-dropoff-start="${d.scheduled || ''}" data-license-plate="${d.license_plate || ''}" data-supplier-name="${d.party_name || ''}" data-status="${d.status || 'Draft'}" onclick="selectVisit('${d.doctype}', '${d.name}', '${d.scheduled || ''}', '${d.license_plate || ''}', '${(d.party_name || '').replace(/'/g, "\\'")}', '${d.status || 'Draft'}')">
                         <span class="dropoff-id">${d.name}</span>
-                        <span class="dropoff-details">${d.doctype === 'Pickup' ? '&#128229; ' + (t('pickup') || 'Pickup') : '&#128230; ' + (t('dropoff') || 'Dropoff')} | ${d.party_name || ''} ${d.license_plate ? '| ' + d.license_plate : ''} ${d.status === 'Closed' ? '| \u2713' : ''}</span>
+                        <span class="dropoff-details">${d.doctype === 'Pickup' ? '&#128229; ' + t('visitPickup') : '&#128230; ' + t('visitDropoff')} | ${d.party_name || ''} ${d.license_plate ? '| ' + d.license_plate : ''} ${d.status === 'Closed' ? '| \u2713' : ''}</span>
                     </div>
                 `).join('');
                 resultsDiv.style.display = 'block';

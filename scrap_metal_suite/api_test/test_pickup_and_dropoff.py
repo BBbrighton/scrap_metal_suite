@@ -65,11 +65,23 @@ def run():
 	# ------------------------------------------------------------------ delivery
 	print("\n=== DELIVERY SIDE (must be untouched) ===")
 
+	def weigh_delivery(weight_type, weight):
+		"""Record a delivery weight whether or not one is already there.
+
+		The dropoff this test picks up may already have been weighed, and
+		replacing an existing weight legitimately requires a reason. Asserting
+		on the first-record path alone made this test pass or fail on which
+		dropoff happened to be open.
+		"""
+		existing = frappe.db.exists("Truck Weight",
+		                            {"dropoff": DO, "weight_type": weight_type.title()})
+		kwargs = {"reweight_reason": "regression test"} if existing else {}
+		res = record_truck_weight(dropoff=DO, weight_type=weight_type, weight=weight, **kwargs)
+		_assert(flt(res["%s_weight" % weight_type]) == weight, res)
+
 	r.check("details load", lambda: _assert("truck_weights" in get_dropoff_details(DO)))
-	r.check("gross records", lambda: _assert(
-		flt(record_truck_weight(dropoff=DO, weight_type="gross", weight=21000)["gross_weight"]) == 21000))
-	r.check("tare records", lambda: _assert(
-		flt(record_truck_weight(dropoff=DO, weight_type="tare", weight=13000)["tare_weight"]) == 13000))
+	r.check("gross records", lambda: weigh_delivery("gross", 21000))
+	r.check("tare records", lambda: weigh_delivery("tare", 13000))
 	r.check("verification works", lambda: _assert("gross_weight" in get_dropoff_verification(DO)))
 	r.check("weighings carry no pickup link", lambda: _assert(all(
 		not t.pickup for t in frappe.get_all("Truck Weight", filters={"dropoff": DO}, fields=["pickup"]))))
