@@ -184,6 +184,7 @@ const POS_I18N = (function() {
             // ===== Supplier =====
             supplier: 'Supplier',
             customer: 'Customer',
+            printPickupTicket: 'Outbound ticket',
             visitDropoff: 'Dropoff',
             visitPickup: 'Pickup',
             licensePlate: 'License Plate',
@@ -602,6 +603,7 @@ const POS_I18N = (function() {
             // ===== Supplier =====
             supplier: 'ผู้ขาย',
             customer: 'ลูกค้า',
+            printPickupTicket: 'ใบชั่งน้ำหนักขาออก',
             visitDropoff: 'รับเข้า',
             visitPickup: 'จ่ายออก',
             licensePlate: 'ป้ายทะเบียน',

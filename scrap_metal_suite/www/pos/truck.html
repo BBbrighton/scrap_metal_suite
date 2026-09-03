@@ -3159,6 +3159,16 @@ function applyVisitFlowToUI() {
         partyLabel.textContent = t(key) || (pickup ? 'Customer' : 'Supplier');
     }
 
+    // The second print button is a delivery queue slip on the way in and the
+    // outbound gate ticket on the way out - naming it wrongly invites an
+    // operator to hand a driver the wrong piece of paper.
+    const docLabel = document.getElementById('printMenuDropoffLabel');
+    if (docLabel) {
+        const key = pickup ? 'printPickupTicket' : 'printDropoff';
+        docLabel.setAttribute('data-i18n', key);
+        docLabel.textContent = t(key) || (pickup ? 'ใบชั่งน้ำหนักขาออก' : 'Drop-off');
+    }
+
     switchWeightTab(firstWeightType());
 }
 
@@ -3621,6 +3631,8 @@ function recaptureWeightFromReview() {
 // at the top of each print format. Omitting it prints SMT, so every existing
 // caller and Desk print is unchanged.
 const PRINT_DROPOFF_FORMAT = 'ใบคิวสองภาษา';
+// The collection's own document: the gate ticket the driver leaves with.
+const PRINT_PICKUP_FORMAT = 'ใบชั่งน้ำหนักขาออก';
 
 function openPrintView(doctype, docname, format, brand) {
     var printUrl = '/printview?doctype=' + encodeURIComponent(doctype) +
@@ -3649,7 +3661,11 @@ function printDropoffReceipt(brand) {
         frappe.show_alert({message: t('noDropoffSelected') || 'No dropoff selected', indicator: 'orange'}, 3);
         return;
     }
-    openPrintView('Dropoff', state.dropoff.name, PRINT_DROPOFF_FORMAT, brand);
+    if (isPickup()) {
+        openPrintView('Pickup', state.dropoff.name, PRINT_PICKUP_FORMAT, brand);
+    } else {
+        openPrintView('Dropoff', state.dropoff.name, PRINT_DROPOFF_FORMAT, brand);
+    }
 }
 
 // ===== Print Menu =====
