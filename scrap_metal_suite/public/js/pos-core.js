@@ -1,3 +1,77 @@
+
+// =============================================================================
+// SERVER ERRORS, IN WORDS
+//
+// Frappe answers a failed call with three things: `_server_messages` (the
+// translated sentence written for a person), `exc_type` (the exception class)
+// and `exc` (a Python traceback). Only the first is fit to show at a
+// weighbridge; the traceback tells an operator nothing and buries the reason.
+// =============================================================================
+
+/** Strip the HTML Frappe allows in its messages, and tidy the whitespace. */
+function plainText(html) {
+    if (!html) return '';
+    const el = document.createElement('div');
+    el.innerHTML = String(html);
+    return (el.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+/** Plain-language text for an HTTP status, when there is nothing better. */
+function serverStatusMessage(status) {
+    if (status === 401 || status === 403) return 'Your session has expired. Please sign in again.';
+    if (status === 404) return 'That was not found. It may have been deleted.';
+    if (status === 409) return 'Someone else changed this at the same time. Please reload and try again.';
+    if (status === 417) return 'The server rejected that request.';
+    if (status >= 500) return 'The server had a problem. Please try again.';
+    if (status === 0) return 'No connection to the server. Check the network.';
+    return 'Request failed (' + status + ').';
+}
+
+/** Last-resort wording per exception class, when no server message was sent. */
+function messageForExcType(excType) {
+    const map = {
+        PermissionError: 'You do not have permission to do that.',
+        DoesNotExistError: 'That record no longer exists.',
+        TimestampMismatchError: 'Someone else changed this record while you had it open. Please reload.',
+        DuplicateEntryError: 'That already exists.',
+        LinkExistsError: 'This is still used by something else, so it cannot be removed.',
+        MandatoryError: 'Something required is missing.',
+        LinkValidationError: 'A linked record is missing or invalid.',
+        ValidationError: 'That could not be saved. Please check the values.'
+    };
+    return map[excType] || null;
+}
+
+/**
+ * The best sentence we can give the person at the scale.
+ *
+ * Order matters: the server's own message first, because it names the actual
+ * item, document or field. Everything after it is a fallback.
+ */
+function readableServerError(data, response) {
+    let raw = data && data._server_messages;
+    if (raw) {
+        try {
+            const list = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            const texts = (list || []).map(function (m) {
+                try {
+                    const o = typeof m === 'string' ? JSON.parse(m) : m;
+                    return plainText(o.message || o.title || o);
+                } catch (_) {
+                    return plainText(m);
+                }
+            }).filter(Boolean);
+            if (texts.length) return texts.join('\n');
+        } catch (_) { /* fall through */ }
+    }
+
+    const byType = messageForExcType(data && data.exc_type);
+    if (byType) return byType;
+
+    if (response && !response.ok) return serverStatusMessage(response.status);
+    return 'Something went wrong. Please try again.';
+}
+
 /**
  * pos-core.js - Core POS utilities shared between terminals
  *
@@ -152,10 +226,29 @@ const POS_CORE = (function() {
                 body: JSON.stringify(args)
             });
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch (_) {
+                // Not JSON at all - a gateway error page, or the server is down.
+                const err = new Error(response.ok
+                    ? 'The server sent a reply we could not read.'
+                    : serverStatusMessage(response.status));
+                err.status = response.status;
+                throw err;
+            }
 
-            if (data.exc) {
-                throw new Error(data.exc);
+            if (data.exc || data.exc_type || !response.ok) {
+                // `data.exc` is a raw Python traceback. It is useless to the
+                // person at the scale and it hides the actual reason, which
+                // Frappe puts in `_server_messages` already translated. Show
+                // that; keep the traceback in the console for whoever debugs it.
+                const err = new Error(readableServerError(data, response));
+                err.excType = data.exc_type || null;
+                err.traceback = data.exc || null;
+                err.status = response.status;
+                if (data.exc) console.error('[' + method + '] server traceback:', data.exc);
+                throw err;
             }
 
             return data;
