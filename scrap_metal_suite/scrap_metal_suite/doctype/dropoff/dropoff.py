@@ -10,6 +10,18 @@ from scrap_metal_suite.overrides.naming import supplier_daily_name
 from scrap_metal_suite.utils.variance import get_threshold
 
 
+def _items_orders_signature(doc):
+    """The only data validate_expected_items_match_orders depends on.
+
+    Compared explicitly rather than via has_value_changed(), which falls back to
+    list equality on child tables and cannot be relied on for this.
+    """
+    return (
+        tuple(sorted(r.item for r in (doc.get("expected_items") or []) if r.item)),
+        tuple(sorted(r.pos_order for r in (doc.get("orders") or []) if r.pos_order)),
+    )
+
+
 class Dropoff(Document):
     """
     Drop-off DocType Controller
@@ -133,9 +145,23 @@ class Dropoff(Document):
         Rules:
         1. All expected items must exist in at least one linked order
         2. Each linked order must have at least one item in expected items
+
+        Enforced only while the expected items or the linked orders are actually
+        being edited. Every save of a Dropoff runs validate(), and recording a
+        truck weight saves the Dropoff - so without this guard a mismatch left
+        over from data entry stops the operator weighing a truck that is
+        physically sitting on the weighbridge. A rule about paperwork must not
+        block a measurement.
         """
         # Only validate if orders are linked
         if not self.orders:
+            return
+
+        before = self.get_doc_before_save()
+        if before is not None and _items_orders_signature(self) == _items_orders_signature(before):
+            # Neither the expected items nor the linked orders changed in this
+            # save. Whatever the state is, it is pre-existing and is not this
+            # save's to re-litigate.
             return
 
         # Get all items from all orders (union)
