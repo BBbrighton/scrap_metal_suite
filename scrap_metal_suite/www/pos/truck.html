@@ -1813,13 +1813,15 @@ async function saveRemarks() {
     const remarks = document.getElementById('remarksInput').value.trim();
 
     try {
-        // Update Dropoff.truck_remarks directly
+        // A collection keeps its notes in `remarks`; a delivery has a dedicated
+        // `truck_remarks` beside its sorting notes. Writing the delivery's field
+        // on a Pickup would fail outright - the document does not exist.
         await frappe.call({
             method: 'frappe.client.set_value',
             args: {
-                doctype: 'Dropoff',
+                doctype: isPickup() ? 'Pickup' : 'Dropoff',
                 name: state.dropoff.name,
-                fieldname: 'truck_remarks',
+                fieldname: isPickup() ? 'remarks' : 'truck_remarks',
                 value: remarks
             }
         });
@@ -3455,11 +3457,15 @@ async function autoCaptureCctv(truckWeightName, weightType) {
     if (!cam.hasCameras()) return empty;
 
     try {
+        // `dropoff` is written onto the Weight Photo row, where it is a Link to
+        // Dropoff. Passing a Pickup name there fails link validation and the
+        // photo is lost, so a collection sends nothing and the row is left
+        // unlinked - the photo still hangs off its Truck Weight either way.
         const result = await cam.captureAll({
             parentDoctype: 'Truck Weight',
             parentDoc: truckWeightName,
             weightType: cctvWeightType(weightType),
-            dropoff: state.dropoff ? state.dropoff.name : null,
+            dropoff: (!isPickup() && state.dropoff) ? state.dropoff.name : null,
             session: state.session
         });
 
