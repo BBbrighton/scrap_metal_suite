@@ -461,18 +461,49 @@
                 <button class="modal-close" onclick="closePrintMenu()">&#10005;</button>
             </div>
             <div class="modal-body">
+                {#- The icon sits beside the label, never inside it:
+                    applyVisitFlowToUI() rewrites #printMenuDropoffLabel with
+                    textContent, which would eat any child element. -#}
                 <div class="print-menu-group">
-                    <div class="print-menu-label" id="printMenuSlipLabel" data-i18n="printWeightSlip">Weight slip</div>
+                    <div class="print-menu-head">
+                        <span class="print-menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/>
+                            </svg>
+                        </span>
+                        <div class="print-menu-label" id="printMenuSlipLabel" data-i18n="printWeightSlip">Weight slip</div>
+                    </div>
                     <div class="print-menu-row">
-                        <button class="btn-pos btn-primary" onclick="printFromMenu('slip','SMT')">SMT</button>
-                        <button class="btn-pos btn-primary" onclick="printFromMenu('slip','MD')">MD</button>
+                        <button class="btn-pos print-brand-btn" data-brand="SMT" onclick="printFromMenu('slip','SMT')">
+                            <span class="print-brand-code">SMT</span>
+                            <span class="print-brand-name">Scrap Metal Trading</span>
+                        </button>
+                        <button class="btn-pos print-brand-btn" data-brand="MD" onclick="printFromMenu('slip','MD')">
+                            <span class="print-brand-code">MD</span>
+                            <span class="print-brand-name">MD Recycle Group</span>
+                        </button>
                     </div>
                 </div>
                 <div class="print-menu-group">
-                    <div class="print-menu-label" id="printMenuDropoffLabel" data-i18n="printDropoff">Drop-off</div>
+                    <div class="print-menu-head">
+                        <span class="print-menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/>
+                            </svg>
+                        </span>
+                        <div class="print-menu-label" id="printMenuDropoffLabel" data-i18n="printDropoff">Drop-off</div>
+                    </div>
                     <div class="print-menu-row">
-                        <button class="btn-pos btn-primary" onclick="printFromMenu('dropoff','SMT')">SMT</button>
-                        <button class="btn-pos btn-primary" onclick="printFromMenu('dropoff','MD')">MD</button>
+                        <button class="btn-pos print-brand-btn" data-brand="SMT" onclick="printFromMenu('dropoff','SMT')">
+                            <span class="print-brand-code">SMT</span>
+                            <span class="print-brand-name">Scrap Metal Trading</span>
+                        </button>
+                        <button class="btn-pos print-brand-btn" data-brand="MD" onclick="printFromMenu('dropoff','MD')">
+                            <span class="print-brand-code">MD</span>
+                            <span class="print-brand-name">MD Recycle Group</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1225,6 +1256,9 @@ async function fetchDropoffDetails(dropoffName) {
                 state.dropoff.truck_variance_threshold_percent = details.truck_variance_threshold_percent || 0.1;
                 state.dropoff.indicated_variance_threshold_percent = details.indicated_variance_threshold_percent || 0.1;
                 state.dropoff.total_indicated_weight = details.total_indicated_weight || 0;
+                // A collection is judged against its own tolerance, which the
+                // sale side returns; default matches `SMT Variance Settings`.
+                state.dropoff.pickup_variance_threshold_percent = details.pickup_variance_threshold_percent || 1.0;
             }
 
             // Store truck weights with photos
@@ -1412,6 +1446,9 @@ async function loadWeightData(dropoffName) {
                 tare_weight_time: response.message.tare_weight_time,
                 net_truck_weight: response.message.net_weight || response.message.net_truck_weight,
                 total_scrap_weight: response.message.total_scrap_weight,
+                // The count behind total_scrap_weight — Active containers, not
+                // Scrap Weight documents. Shown so the two cannot disagree.
+                active_container_count: response.message.active_container_count || 0,
                 weight_variance: response.message.truck_variance || response.message.weight_variance,
                 weight_variance_percent: response.message.truck_variance_percent || response.message.weight_variance_percent,
                 truck_weight_remarks: response.message.truck_weight_remarks,
@@ -1589,8 +1626,18 @@ function updateWeightDisplay() {
             }
         }
 
+        // The total is the sum of Active containers, while the list above is
+        // Scrap Weight documents. Say how many containers produced it, so a
+        // total that disagrees with the list is legible instead of baffling.
         const scrapTotal = document.getElementById('scrapTotal');
-        if (scrapTotal) scrapTotal.textContent = (w.total_scrap_weight || 0).toFixed(2) + ' Kg';
+        if (scrapTotal) {
+            let totalText = (w.total_scrap_weight || 0).toFixed(2) + ' Kg';
+            const containers = w.active_container_count || 0;
+            if (containers) {
+                totalText += ' · ' + (t('containersCounted') || '{n} containers').replace('{n}', containers);
+            }
+            scrapTotal.textContent = totalText;
+        }
     } else {
         scrapPanel.style.display = 'none';
     }
@@ -1604,6 +1651,7 @@ function resetWeights() {
         tare_weight_time: null,
         net_truck_weight: null,
         total_scrap_weight: null,
+        active_container_count: 0,
         weight_variance: null,
         weight_variance_percent: null,
         truck_weight_remarks: null,
@@ -3915,23 +3963,71 @@ function showCompleteDropoffModal() {
         return;
     }
 
+    // This modal was written for a delivery, and every delivery concept in it
+    // is wrong for a collection: a collection has no scrap weights and never
+    // will, because the quantity is agreed up front rather than discovered by
+    // sorting. Re-label and re-aim it here. Both branches are always set, so
+    // moving from a collection back to a delivery restores delivery wording,
+    // and the data-i18n key travels with the text so a language toggle cannot
+    // quietly put "Dropoff" back on a collection.
+    const pickup = isPickup();
+    const relabel = (selector, key, fallback) => {
+        const el = document.querySelector(selector);
+        if (!el) return;
+        el.setAttribute('data-i18n', key);
+        el.textContent = t(key) || fallback;
+    };
+
+    relabel('#completeDropoffModal .modal-header h3',
+        pickup ? 'completePickup' : 'completeDropoff',
+        pickup ? 'Complete Collection' : 'Complete Dropoff');
+    relabel('#completeDropoffModal [data-i18n="dropoffId"], #completeDropoffModal [data-i18n="pickupId"]',
+        pickup ? 'pickupId' : 'dropoffId',
+        pickup ? 'Pickup ID' : 'Dropoff ID');
+    relabel('#completeDropoffModal [data-i18n="totalScrapWeight"], #completeDropoffModal [data-i18n="agreedWeight"]',
+        pickup ? 'agreedWeight' : 'totalScrapWeight',
+        pickup ? 'Agreed Weight' : 'Total Scrap Weight');
+    relabel('#completeDropoffModal [data-i18n="truckVarianceTitle"], #completeDropoffModal [data-i18n="pickupVarianceTitle"]',
+        pickup ? 'pickupVarianceTitle' : 'truckVarianceTitle',
+        pickup ? 'Weight Variance (Measured vs Agreed)' : 'Truck Variance (Net vs Scrap)');
+
+    // What the measured net gets checked against: the sorted scrap on the way
+    // in, the agreed quantity on the way out.
+    const compared = pickup
+        ? (state.dropoff.total_indicated_weight || 0)
+        : state.weights.total_scrap_weight;
+
     // Populate summary
     document.getElementById('completeSummaryId').textContent = state.dropoff.name;
     document.getElementById('completeSummaryNet').textContent =
         state.weights.net_truck_weight ? state.weights.net_truck_weight.toFixed(2) + ' ' + t('kg') : '--';
-    document.getElementById('completeSummaryScrap').textContent =
-        state.weights.total_scrap_weight ? state.weights.total_scrap_weight.toFixed(2) + ' ' + t('kg') : '--';
+    // On a delivery this row is the number that gates completion, and it comes
+    // from Active containers - so it says how many, rather than leaving the
+    // operator to guess why a screen full of weights totals nothing.
+    let comparedText = compared ? compared.toFixed(2) + ' ' + t('kg') : '--';
+    if (!pickup) {
+        const containers = state.weights.active_container_count || 0;
+        comparedText += ' · ' + (t('containersCounted') || '{n} containers').replace('{n}', containers);
+    }
+    document.getElementById('completeSummaryScrap').textContent = comparedText;
 
     // Phase 8B: Client-side variance calculation using thresholds from document
-    // 1. Truck Variance (Net Truck vs Scrap)
-    if (state.weights.net_truck_weight && state.weights.total_scrap_weight) {
-        const truckVariance = state.weights.net_truck_weight - state.weights.total_scrap_weight;
-        const truckVariancePercent = (Math.abs(truckVariance) / state.weights.net_truck_weight) * 100;
+    // 1. Truck Variance (Net Truck vs Scrap) — or, on a collection, measured vs agreed
+    if (state.weights.net_truck_weight && compared) {
+        const truckVariance = state.weights.net_truck_weight - compared;
+        // The server divides a collection's variance by the agreed weight
+        // (`Pickup.evaluate_variance`) and a delivery's by the truck net. Match
+        // each, or the colour here contradicts the verification status stored
+        // on the document.
+        const truckVariancePercent =
+            (Math.abs(truckVariance) / (pickup ? compared : state.weights.net_truck_weight)) * 100;
         const truckVarianceEl = document.getElementById('completeSummaryTruckVariance');
         truckVarianceEl.textContent = `${truckVariance.toFixed(2)} ${t('kg')} (${truckVariancePercent.toFixed(2)}%)`;
 
         // truck_variance_threshold_percent is a Frappe Percent field — stored as the percent number itself (1.0 = 1%).
-        const truckThreshold = state.dropoff.truck_variance_threshold_percent || 0.1;
+        const truckThreshold = pickup
+            ? (state.dropoff.pickup_variance_threshold_percent || 1.0)
+            : (state.dropoff.truck_variance_threshold_percent || 0.1);
         const truckRow = document.getElementById('completeSummaryTruckVarianceRow');
         truckRow.classList.remove('variance-ok', 'variance-warning', 'variance-error');
         if (truckVariancePercent <= truckThreshold) {
@@ -3944,7 +4040,9 @@ function showCompleteDropoffModal() {
     }
 
     // 2. Indicated Variance (Supplier Indicated vs Actual)
-    if (state.dropoff.total_indicated_weight && state.dropoff.total_indicated_weight > 0 && state.weights.total_scrap_weight) {
+    // Meaningless on a collection: there is no third number to compare, since
+    // the agreed weight is already the row above.
+    if (!pickup && state.dropoff.total_indicated_weight && state.dropoff.total_indicated_weight > 0 && state.weights.total_scrap_weight) {
         const indicatedWeight = state.dropoff.total_indicated_weight;
         const actualWeight = state.weights.total_scrap_weight;
         const indicatedVariance = indicatedWeight - actualWeight;
@@ -3968,11 +4066,14 @@ function showCompleteDropoffModal() {
         document.getElementById('completeSummaryIndicatedVarianceRow').style.display = 'none';
     }
 
-    // Check for blockers
+    // Check for blockers. Both weighings are required either way; scrap weights
+    // are a delivery-only requirement, and demanding them on a collection left
+    // the Complete button permanently disabled with no way for the operator to
+    // satisfy it.
     const blockers = [];
-    if (!state.weights.gross_weight) blockers.push(t('missingGrossWeight') || 'Missing gross weight');
-    if (!state.weights.tare_weight) blockers.push(t('missingTareWeight') || 'Missing tare weight');
-    if (!state.weights.total_scrap_weight) blockers.push(t('noScrapWeights') || 'No scrap weights recorded');
+    if (!state.weights.gross_weight) blockers.push(t('missingGrossWeight'));
+    if (!state.weights.tare_weight) blockers.push(t('missingTareWeight'));
+    if (!pickup && !state.weights.total_scrap_weight) blockers.push(t('noContainersRecorded'));
 
     const blockersWarning = document.getElementById('completeBlockersWarning');
     const blockersList = document.getElementById('completeBlockersList');

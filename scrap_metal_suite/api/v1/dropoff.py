@@ -789,12 +789,22 @@ def get_dropoff_verification(dropoff):
 
     doc = frappe.get_doc("Dropoff", dropoff)
 
-    # Get scrap records
+    # Get scrap records. Submitted only: a draft Scrap Weight is not evidence of
+    # anything yet, and listing one beside a total it does not contribute to put
+    # a 14.70 kg row directly above a 0.00 kg total on the completion screen.
     scrap_records = frappe.get_all(
         "Scrap Weight",
-        filters={"dropoff": dropoff},
+        filters={"dropoff": dropoff, "docstatus": 1},
         fields=["name", "total_weight", "is_reweight", "posting_date", "posting_time"],
         order_by="creation asc"
+    )
+
+    # The number behind `total_scrap_weight`. Since the container redesign that
+    # total is the sum of Active containers (`sync_actual_items`), NOT of the
+    # Scrap Weight documents above - so the screen has to show the count that
+    # actually produced it, or the two silently disagree.
+    active_containers = frappe.db.count(
+        "Scrap Weight Container", {"dropoff": dropoff, "status": "Active"}
     )
 
     # Get orders with fulfillment info
@@ -819,7 +829,10 @@ def get_dropoff_verification(dropoff):
     if not doc.tare_weight:
         blockers.append("Missing tare weight")
     if not doc.total_scrap_weight:
-        blockers.append("No scrap weights recorded")
+        # Name the thing the operator can actually go and do. "No scrap weights
+        # recorded" was read off a screen that was listing a Scrap Weight
+        # record; what is missing is containers, which is what the total counts.
+        blockers.append("No containers recorded")
     if not doc.truck_variance_ok:
         blockers.append(f"Truck variance {doc.truck_variance_percent:.2f}% exceeds threshold {doc.truck_variance_threshold_percent}%")
     if not doc.indicated_variance_ok:
@@ -844,6 +857,7 @@ def get_dropoff_verification(dropoff):
         # Scrap
         "scrap_records": scrap_records,
         "total_scrap_weight": doc.total_scrap_weight,
+        "active_container_count": active_containers,
         # Phase 8B: Dual Variance
         "total_truck_weight": doc.total_truck_weight,
         "truck_variance": doc.truck_variance,

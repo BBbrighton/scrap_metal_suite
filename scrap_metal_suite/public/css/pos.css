@@ -7632,18 +7632,44 @@ button.category-tab.from-order-tab.active {
    Frappe defines bare --card-bg / --text-muted on every www page, which would
    silently win over any var(--x, fallback) written here. */
 .print-menu-group {
-    margin-bottom: 20px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--pos-card-border, #334155);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
 }
 
 .print-menu-group:last-child {
     margin-bottom: 0;
 }
 
+/* Icon beside the label, not inside it: applyVisitFlowToUI() rewrites the
+   label with textContent and would delete a child node. */
+.print-menu-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px dashed var(--pos-card-border, #334155);
+}
+
+.print-menu-icon {
+    display: flex;
+    flex: none;
+    color: var(--pos-accent, #60a5fa);
+}
+
+.print-menu-icon svg {
+    width: 17px;
+    height: 17px;
+    display: block;
+}
+
 .print-menu-label {
     font-size: 14px;
     font-weight: 600;
-    margin-bottom: 10px;
-    color: var(--pos-text-primary, #1a1a1a);
+    color: var(--pos-text-primary, #e2e8f0);
 }
 
 .print-menu-row {
@@ -7651,6 +7677,84 @@ button.category-tab.from-order-tab.active {
     gap: 12px;
 }
 
-.print-menu-row .btn-pos {
+/* A named tile per company rather than two identical blue rectangles. The two
+   choices differ only in which letterhead the driver walks away with, so they
+   have to be told apart at a glance and under a thumb. */
+.print-menu-row .print-brand-btn {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-height: 62px;
+    justify-content: center;
+    padding: 10px 14px;
+    text-align: left;
+    background: var(--pos-card-bg, #1e293b);
+    border: 1px solid var(--pos-card-border, #334155);
+    border-left: 3px solid var(--pos-brand-accent, #60a5fa);
+    color: var(--pos-text-primary, #e2e8f0);
+}
+
+.print-brand-btn[data-brand="SMT"] { --pos-brand-accent: #38bdf8; }
+.print-brand-btn[data-brand="MD"]  { --pos-brand-accent: #f59e0b; }
+
+.print-brand-code {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+}
+
+.print-brand-name {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.25;
+    color: var(--pos-text-muted, #94a3b8);
+}
+
+.print-brand-btn:hover:not(:disabled) {
+    background: var(--pos-accent-soft, #1e3a8a33);
+    border-color: var(--pos-brand-accent, #60a5fa);
+}
+
+.print-brand-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.print-brand-btn:focus-visible {
+    outline: 2px solid var(--pos-accent, #60a5fa);
+    outline-offset: 2px;
+}
+
+.pos-terminal.light-theme .print-menu-group {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+.pos-terminal.light-theme .print-menu-head {
+    border-bottom-color: #e2e8f0;
+}
+
+.pos-terminal.light-theme .print-menu-label {
+    color: #1e293b;
+}
+
+.pos-terminal.light-theme .print-menu-row .print-brand-btn {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    border-left-color: var(--pos-brand-accent, #0284c7);
+    color: #1e293b;
+}
+
+.pos-terminal.light-theme .print-brand-btn[data-brand="SMT"] { --pos-brand-accent: #0284c7; }
+.pos-terminal.light-theme .print-brand-btn[data-brand="MD"]  { --pos-brand-accent: #b45309; }
+
+.pos-terminal.light-theme .print-brand-name {
+    color: #64748b;
+}
+
+.pos-terminal.light-theme .print-brand-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: var(--pos-brand-accent, #0284c7);
 }

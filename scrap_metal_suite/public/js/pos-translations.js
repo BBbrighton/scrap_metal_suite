@@ -335,6 +335,9 @@ const POS_I18N = (function() {
             scrapWeightRecords: 'Scrap Weight Records',
             complete: 'Complete',
             completeDropoff: 'Complete Dropoff',
+            completePickup: 'Complete Collection',
+            pickupId: 'Pickup ID',
+            agreedWeight: 'Agreed Weight',
             confirmEndSession: 'Are you sure you want to end this session?',
             selectTruckScale: 'Select Truck Scale',
             noTruckScalesAvailable: 'No truck scales available',
@@ -345,9 +348,22 @@ const POS_I18N = (function() {
             // ===== Variance (Phase 8B) =====
             truckVarianceTitle: 'Truck Variance (Net vs Scrap)',
             indicatedVarianceTitle: 'Indicated Variance (Supplier vs Actual)',
+            pickupVarianceTitle: 'Weight Variance (Measured vs Agreed)',
             truckVariance: 'Truck Variance',
             indicatedVariance: 'Indicated Variance',
             totalActualWeight: 'Total Actual Weight',
+
+            // ===== Completion blockers =====
+            // t() returns the key itself when a key is missing, so a
+            // `t('x') || 'fallback'` never reaches its fallback. These have to
+            // exist or the operator reads a camelCase identifier off the screen.
+            missingGrossWeight: 'Gross weight not recorded',
+            missingTareWeight: 'Tare weight not recorded',
+            // Names containers, not scrap weights: the total that gates
+            // completion is the sum of Active containers, so that is what the
+            // operator has to go and create.
+            noContainersRecorded: 'No containers recorded',
+            containersCounted: '{n} containers',
 
             // ===== Errors & Messages =====
             connectionError: 'Connection error. Please try again.',
@@ -754,6 +770,9 @@ const POS_I18N = (function() {
             scrapWeightRecords: 'บันทึกน้ำหนักเศษวัสดุ',
             complete: 'เสร็จสิ้น',
             completeDropoff: 'เสร็จสิ้นใบส่งของ',
+            completePickup: 'เสร็จสิ้นใบชั่งน้ำหนักขาออก',
+            pickupId: 'เลขที่ใบชั่งขาออก',
+            agreedWeight: 'น้ำหนักที่ตกลง',
             confirmEndSession: 'คุณต้องการสิ้นสุดเซสชันนี้หรือไม่?',
             selectTruckScale: 'เลือกเครื่องชั่งรถบรรทุก',
             noTruckScalesAvailable: 'ไม่มีเครื่องชั่งรถบรรทุกที่พร้อมใช้งาน',
@@ -764,9 +783,16 @@ const POS_I18N = (function() {
             // ===== Variance (Phase 8B) =====
             truckVarianceTitle: 'ค่าต่างรถ (สุทธิ vs เศษวัสดุ)',
             indicatedVarianceTitle: 'ค่าต่างแจ้ง (ผู้ขาย vs จริง)',
+            pickupVarianceTitle: 'ค่าต่างน้ำหนัก (ชั่งจริง vs ตกลง)',
             truckVariance: 'ค่าต่างรถ',
             indicatedVariance: 'ค่าต่างแจ้ง',
             totalActualWeight: 'น้ำหนักจริงรวม',
+
+            // ===== Completion blockers =====
+            missingGrossWeight: 'ยังไม่ได้บันทึกน้ำหนักรวม',
+            missingTareWeight: 'ยังไม่ได้บันทึกน้ำหนักรถเปล่า',
+            noContainersRecorded: 'ยังไม่ได้บันทึกถุงบรรจุ',
+            containersCounted: '{n} ถุง',
 
             // ===== Errors & Messages =====
             connectionError: 'เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่',

@@ -18,6 +18,7 @@ from frappe.utils import flt, now_datetime, sanitize_html
 
 from scrap_metal_suite.api.v1.auth import check_pos_operator
 from scrap_metal_suite.api.v1.dropoff import _update_session_activity
+from scrap_metal_suite.utils.variance import get_threshold
 
 
 def _validate_weight_against_scale(weight, scale):
@@ -239,4 +240,9 @@ def get_pickup_details(pickup):
         "net_weight": doc.net_weight,
         "weight_variance_percent": doc.weight_variance_percent,
         "verification_status": doc.verification_status,
+        # The buy side returns its thresholds so the terminal can colour a
+        # variance without a second round trip. Do the same here, or the
+        # completion modal has to invent a tolerance and will disagree with
+        # what `evaluate_variance` decided.
+        "pickup_variance_threshold_percent": get_threshold("pickup_variance_threshold_percent"),
     }
